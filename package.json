@@ -1,5 +1,5 @@
 {
-  "name": "gift-circles",
+  "name": "pinata",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -30,12 +30,14 @@
   "dependencies": {
     "@prisma/adapter-pg": "^7.10.1",
     "@prisma/client": "7.10.1",
+    "@tailwindcss/postcss": "^4.3.3",
     "dotenv": "^18.0.9",
     "next": "^16.4.3",
     "pg": "^8.23.1",
     "pg-boss": "^12.38.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
+    "tailwindcss": "^4.3.3",
     "zod": "^4.6.7"
   },
   "devDependencies": {

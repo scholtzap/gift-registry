@@ -1,0 +1,66 @@
+@import "tailwindcss";
+
+/* V7 Neon Pastel, decided 2026-10-26. DESIGN.md is the taste document; this file is its token set. */
+@theme {
+  --color-bg: #ffffff;
+  --color-wash-pink: #ffe7f0;
+  --color-wash-blue: #e3eeff;
+  --color-wash-done: #e7f7ee;
+  --color-primary: #e11d63;
+  --color-primary-pressed: #be1452;
+  --color-on-primary: #ffffff;
+  --color-secondary: #1d6fe0;
+  --color-tertiary: #0e7490;
+  --color-ink: #14141c;
+  --color-ink-2: #5b5b66;
+  --color-ink-3: #a0a0aa;
+  --color-hairline: #e8e8ee;
+  --color-track: #dce6fa;
+  --color-disabled: #f1f1f5;
+  --color-success: #0f9d58;
+  --color-warning: #c2410c;
+
+  --radius-panel: 18px;
+  --radius-btn: 12px;
+
+  --text-display: 2rem;
+  --text-display--line-height: 2.25rem;
+  --text-section: 1.1875rem;
+  --text-section--line-height: 1.5rem;
+  --text-body: 0.9375rem;
+  --text-body--line-height: 1.4375rem;
+
+  --font-display: var(--font-syne);
+  --font-body: var(--font-manrope);
+  --font-label: var(--font-grotesk);
+}
+
+@layer base {
+  body {
+    @apply bg-bg text-ink font-body antialiased;
+  }
+  h1,
+  h2,
+  h3 {
+    @apply font-display font-bold tracking-[-0.02em];
+  }
+  h1 {
+    @apply text-display;
+  }
+  h2,
+  h3 {
+    @apply text-section;
+  }
+}
+
+@utility eyebrow {
+  @apply font-label text-xs font-semibold uppercase tracking-[0.1em] text-tertiary;
+}
+
+@utility wordmark {
+  @apply font-display text-lg font-bold tracking-[-0.02em];
+}
+
+@utility tnum {
+  font-variant-numeric: tabular-nums;
+}

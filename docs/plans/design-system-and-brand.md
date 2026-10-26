@@ -16,8 +16,9 @@ superseded_by: null
 # Design system, brand round and the seven in-app screens
 
 **Status:** Name **decided** on 2026-10-26: **Piñata**. Theme **decided**: light-only ships. Direction
-**open** — the owner liked Midnight Spark (V4) and asked for light-theme remixes, so the round now
-runs V5 Daylight Spark / V6 Spark Panels / V7 Neon Pastel in Stitch; the pick lands the token set.
+**decided** on 2026-10-26: **V7 Neon Pastel** — the owner picked it from the light remixes. Taste document at
+`DESIGN.md`, token set committed in `src/app/globals.css` (Tailwind v4 `@theme`), root layout and self-hosted
+fonts in `src/app/layout.tsx`. What remains: the seven in-app screens and the landing page built on those tokens.
 
 ## Problem
 
@@ -38,8 +39,11 @@ picks from rendered variants rather than from adjectives.
 - **Spelling policy:** display as **Piñata** everywhere a human reads it; every URL, package name, env var and
   identifier uses `pinata`. The `ñ` must never appear in a slug, domain or filename.
 - **Tagline:** "group gifts nobody can spoil".
-- **Mark:** hand-authored SVG at `src/app/icon.svg` — a rounded five-point star piñata in the primary pink with a
-  paper-fold facet and two streamers in the two brand blues. Next serves it as favicon and app icon.
+- **Mark:** hand-authored SVG at `src/app/icon.svg` — a donkey piñata (the classic party shape, original
+  geometry, not a trace of any stock art): pink body, crepe-paper waves in white/blue/pale-blue clipped to the
+  torso, blue hooves, one blue and one teal ear, teal tail tuft, in the V7 palette. Next serves it as favicon
+  and app icon. Verified by rasterising at 16/32/64/256: at 16px it is a pink silhouette with blue feet and
+  ears, which is the correct trade for a favicon.
 - **Wordmark:** set in the self-hosted headline face (Syne 700, -0.02em), not traced paths — the ñ renders correctly
   and it stays crisp at any size. If a pure-vector lockup is ever needed for print, outline it from the OFL font
   with fontTools rather than hand-drawing letterforms.
@@ -51,7 +55,8 @@ picks from rendered variants rather than from adjectives.
   **Met** — renders live in `gifts-registry-assets/design-round/`, outside the repo.
 - Three alternative product names were offered beside "Gift Circles". **Met** — the owner chose **Piñata**.
 - One variant is chosen and becomes `DESIGN.md` (the taste document) plus a committed Tailwind token set: colour,
-  type scale, spacing, radii, component states.
+  type scale, spacing, radii, component states. **Met** — V7 Neon Pastel; `DESIGN.md` at the root, tokens in
+  `src/app/globals.css`, fonts self-hosted via `next/font` in `src/app/layout.tsx`.
 - The mark is a **hand-authored SVG** — vector, crisp on the A6 card at 300 DPI, no rights question in a public
   repo. **Met** — `src/app/icon.svg`.
 - Type is an **OFL-licensed face, self-hosted** (no Google Fonts runtime call).
