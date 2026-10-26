@@ -115,9 +115,31 @@ describe('the switch is the security boundary, not a naming convention', () => {
 
   it('cannot read a user who never joined, not even their identifier', async () => {
     const rows = await db.withActor(friend(fx.friendAUserId), (tx) =>
-      tx.user.findMany({ where: { id: fx.outsiderUserId }, select: { bsuid: true, phoneE164: true } }),
+      tx.user.findMany({ where: { id: fx.outsiderUserId }, select: { displayName: true } }),
     );
     expect(rows).toEqual([]);
+  });
+
+  // `memberships_self_join` used to be `user_id = app_user_id() AND role = 'friend' AND
+  // status = 'active'` with no circle in it, which is true for every circle at once.
+  //
+  // Raw inserts, not Prisma `create`: `create` always emits `RETURNING *`, and INSERT ... RETURNING
+  // is filtered by the table's SELECT policy. `memberships_friend_read` requires an *existing*
+  // membership, so a first join is invisible to its own RETURNING clause and Prisma reports 42501
+  // for the read, not the write — which would make both assertions below pass for the wrong reason.
+  it('joins only the circle the session names, never another one', async () => {
+    const join = (userId: string, sessionCircle: string, rowCircle: string) =>
+      db.withActor({ role: 'friend', userId, circleId: sessionCircle }, (tx) =>
+        tx.$executeRaw`INSERT INTO memberships (id, circle_id, user_id, role, status)
+                       VALUES (gen_random_uuid(), ${rowCircle}, ${userId}, 'friend', 'active')`,
+      );
+
+    // Uncorrelated, so it is true for every circle. Correlated, so it fires.
+    await expect(join(fx.friendAUserId, fx.circleId, fx.otherCircleId)).rejects.toThrow(/42501|row-level security/);
+
+    // Positive control: the identical write against the circle the session does name. Without
+    // this, a predicate nobody can satisfy looks exactly like a fix.
+    expect(await join(fx.friendBUserId, fx.otherCircleId, fx.otherCircleId)).toBe(1);
   });
 
   it('fails closed on a malformed actor id instead of returning the world', async () => {

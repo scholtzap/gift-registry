@@ -176,9 +176,25 @@ DROP POLICY IF EXISTS memberships_friend_read ON memberships;
 CREATE POLICY memberships_friend_read ON memberships FOR SELECT TO app_friend
   USING (app_actor_joined_circle(circle_id));
 
+-- `circle_id = app_circle_id()` is the conjunct that makes this a *join* rather than a
+-- global write right. Without it the predicate says "anyone may add a friend membership for
+-- themselves to any circle", which is the uncorrelated-policy bug class this repo has already
+-- been burned by once (see `app_actor_in_circle_roster` above). Today the gate writes on the
+-- login role, so this is not reachable through the route — it becomes reachable the moment
+-- anyone joins a circle while scoped, which is what an in-app "accept this invite" flow does.
+--
+-- Note for that feature: it cannot use Prisma `create` on this policy. INSERT ... RETURNING is
+-- filtered by the table's SELECT policy (`memberships_friend_read`, which needs an *existing*
+-- membership), so a first join is rejected as 42501 by the read half, not the write half. Join
+-- on the login role the way the gate does, then read it back scoped.
 DROP POLICY IF EXISTS memberships_self_join ON memberships;
 CREATE POLICY memberships_self_join ON memberships FOR INSERT TO app_friend
-  WITH CHECK (user_id = app_user_id() AND role = 'friend' AND status = 'active');
+  WITH CHECK (
+    user_id = app_user_id()
+    AND role = 'friend'
+    AND status = 'active'
+    AND circle_id = app_circle_id()
+  );
 
 -- ---------------------------------------------------------------------------
 -- items — the one table where both roles read, with different predicates.

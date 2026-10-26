@@ -28,6 +28,8 @@ function fictionalCast() {
 export interface CircleFixture {
   db: Db;
   circleId: string;
+  /** A second, unrelated circle. Pins that a circle-scoped write cannot reach into it. */
+  otherCircleId: string;
   ownerUserId: string;
   friendAUserId: string;
   friendBUserId: string;
@@ -77,6 +79,20 @@ export async function seedCircle(connectionString: string): Promise<CircleFixtur
           { phoneE164Hash: keyedHash(cast.friendB.token, PEPPER), addedBy: owner.id, status: 'accepted' },
         ],
       },
+    },
+  });
+
+  // A second circle that shares no member with the first. `memberships_self_join` is only
+  // provable against a real other circle: without a second one, an uncorrelated predicate has
+  // nowhere wrong to write.
+  const otherCircle = await db.prisma.circle.create({
+    data: {
+      name: "Thabo's housewarming",
+      occasion: 'housewarming',
+      eventDate: new Date('2027-01-16T00:00:00.000Z'),
+      ownerUserId: outsider.id,
+      shareSlug: `t-${outsider.id.slice(0, 12)}`,
+      memberships: { create: [{ userId: outsider.id, role: 'owner' }] },
     },
   });
 
@@ -173,6 +189,7 @@ export async function seedCircle(connectionString: string): Promise<CircleFixtur
   return {
     db,
     circleId: circle.id,
+    otherCircleId: otherCircle.id,
     ownerUserId: owner.id,
     friendAUserId: friendA.id,
     friendBUserId: friendB.id,
