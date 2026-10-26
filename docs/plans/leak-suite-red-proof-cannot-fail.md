@@ -1,13 +1,13 @@
 ---
 title: Leak suite cannot prove red — LEAK_SKIP_POLICIES=1 leaves the previous run's policies in place
 type: bugfix
-status: ready
+status: done
 priority: P1
 rank: 10
 updated: 2026-10-26
 apps: []
 related: [tests/leak/global-setup.ts, ARCHITECTURE.md, security_best_practices_report.md]
-evidence: null
+evidence: 2026-10-26 — pnpm leak 53/53 green; LEAK_SKIP_POLICIES=1 pnpm leak 4/4 files failed, 20/53 tests failed (pre-fix the same run was 0/53); policies restored green afterwards
 archived_date: null
 supersedes: null
 superseded_by: null
@@ -56,10 +56,22 @@ if (process.env.LEAK_SKIP_POLICIES === '1') {
 Enumerate from `pg_policies` rather than hardcoding names, so a policy added in
 `002_policies.sql` is covered by the sweep the day it lands.
 
+**Amendment made while landing it:** dropping the policies alone is not enough. `002_policies.sql`
+enables RLS on the guarded tables, and RLS *enabled with no policies* is default-deny — every
+role-scoped read returns nothing, so assertions that expect a block still pass and the skip run
+reads green for a different reason. The sweep therefore also runs
+`ALTER TABLE ... DISABLE ROW LEVEL SECURITY` over `pg_tables WHERE rowsecurity`, which
+`002_policies.sql` re-enables on the next normal run. Landed in `tests/leak/global-setup.ts`
+as one `DO` block using `format('%I')` for every identifier.
+
 ## Failure criteria
 
-- **Hard failure:** the flag is set and any leak, views, entitlements or routes test passes.
-  Response: treat the suite as unverified and fix the harness before trusting any green run.
+- **Hard failure:** the flag is set and the suite is green — no test fails. Response: treat the
+  suite as unverified and fix the harness before trusting any green run.
+- **Expected under the flag:** every access-control assertion fails (2026-10-26: 4/4 files,
+  20/53 tests). Policy-independent tests — pure `can()` gate logic, projection shape — still
+  pass under the flag; that is correct, they never depended on RLS. A skip run in which *only*
+  those pass is the red proof working.
 - **False success:** `pnpm leak` green with policies applied, then a `LEAK_SKIP_POLICIES=1` run
   that is *also* green — that is this bug, and it is the state to refuse to merge in.
 

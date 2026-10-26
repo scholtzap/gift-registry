@@ -34,7 +34,27 @@ export default async function globalSetup() {
   execFileSync(process.execPath, [prismaCli, 'migrate', 'deploy'], { env, cwd: process.cwd(), stdio: 'pipe' });
 
   if (process.env.LEAK_SKIP_POLICIES === '1') {
-    console.log('leak suite: policies SKIPPED (LEAK_SKIP_POLICIES=1) — expect red');
+    // Dropping, not skipping: the test DB is persistent, and RLS enabled with no policies denies everything, which reads green.
+    const pool = new Pool({ connectionString: testUrl, max: 1 });
+    const client = await pool.connect();
+    try {
+      await client.query(`
+        DO $sweep$
+        DECLARE r record;
+        BEGIN
+          FOR r IN SELECT schemaname, tablename, policyname FROM pg_policies LOOP
+            EXECUTE format('DROP POLICY IF EXISTS %I ON %I.%I', r.policyname, r.schemaname, r.tablename);
+          END LOOP;
+          FOR r IN SELECT schemaname, tablename FROM pg_tables WHERE schemaname = 'public' AND rowsecurity LOOP
+            EXECUTE format('ALTER TABLE %I.%I DISABLE ROW LEVEL SECURITY', r.schemaname, r.tablename);
+          END LOOP;
+        END $sweep$;
+      `);
+      console.log('leak suite: policies DROPPED (LEAK_SKIP_POLICIES=1) — expect red');
+    } finally {
+      client.release();
+      await pool.end();
+    }
     return;
   }
 
