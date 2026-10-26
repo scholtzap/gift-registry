@@ -39,11 +39,11 @@ picks from rendered variants rather than from adjectives.
 - **Spelling policy:** display as **Piñata** everywhere a human reads it; every URL, package name, env var and
   identifier uses `pinata`. The `ñ` must never appear in a slug, domain or filename.
 - **Tagline:** "group gifts nobody can spoil".
-- **Mark:** hand-authored SVG at `src/app/icon.svg` — a donkey piñata (the classic party shape, original
-  geometry, not a trace of any stock art): pink body, crepe-paper waves in white/blue/pale-blue clipped to the
-  torso, blue hooves, one blue and one teal ear, teal tail tuft, in the V7 palette. Next serves it as favicon
-  and app icon. Verified by rasterising at 16/32/64/256: at 16px it is a pink silhouette with blue feet and
-  ears, which is the correct trade for a favicon.
+- **Mark:** the donkey piñata tile the owner supplied on 2026-10-26 (a Gemini-generated render), cropped to its
+  navy rounded square and masked to transparent corners; shipped as `src/app/icon.png` (512) and
+  `src/app/apple-icon.png` (180), which Next serves as favicon and apple-touch-icon. This **supersedes** the
+  hand-authored SVG donkey committed earlier the same day — the owner picked the generated tile over it. The
+  source JPG stays out of the repo; provenance is the owner's own generation, so no third-party rights question.
 - **Wordmark:** set in the self-hosted headline face (Syne 700, -0.02em), not traced paths — the ñ renders correctly
   and it stays crisp at any size. If a pure-vector lockup is ever needed for print, outline it from the OFL font
   with fontTools rather than hand-drawing letterforms.
@@ -58,7 +58,10 @@ picks from rendered variants rather than from adjectives.
   type scale, spacing, radii, component states. **Met** — V7 Neon Pastel; `DESIGN.md` at the root, tokens in
   `src/app/globals.css`, fonts self-hosted via `next/font` in `src/app/layout.tsx`.
 - The mark is a **hand-authored SVG** — vector, crisp on the A6 card at 300 DPI, no rights question in a public
-  repo. **Met** — `src/app/icon.svg`.
+  repo. **Met with a recorded deviation:** the owner supplied a Gemini-generated donkey-piñata tile instead and
+  picked it over the hand-authored SVG. It ships as 512/180 PNGs cut from the 2048px source, which at 300 DPI
+  still covers ~17 cm — enough for the A6 card — and the rights position is the owner's own generation. If a
+  print lockup ever needs true vector, redraw the tile as SVG by hand rather than auto-tracing the raster.
 - Type is an **OFL-licensed face, self-hosted** (no Google Fonts runtime call).
 - Seven in-app screens render from those tokens: join/gate, owner ledger, friend ledger, item detail, draft confirm,
   card composer, settings/capability switches. Plus the landing page.
