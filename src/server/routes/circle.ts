@@ -160,7 +160,37 @@ export async function handleCircleGet(db: Db, request: Request, slug: string): P
   return view === null ? notFound() : renderFriend(view);
 }
 
+/**
+ * Login-CSRF guard for the one endpoint that *issues* a session.
+ *
+ * `SameSite=Lax` is a product requirement here (the click comes out of WhatsApp's in-app browser as a
+ * top-level GET), and Lax protects an existing cookie from riding on a cross-site POST — but this
+ * handler does not read a cookie to authorise anything, it mints one. A plain HTML form POST is a
+ * CORS "simple request" (no preflight) and browsers accept `Set-Cookie` from the response, so an
+ * attacker who knows an allow-listed number can log their *victim* into the attacker's circle from the
+ * victim's own browser. SameSite cannot see that, and neither can RLS: the session is genuinely the
+ * victim's.
+ *
+ * Origin (or Referer, which some browsers strip the other way round) has to name this app's own
+ * origin. Modern browsers send `Origin` on every same-origin POST, so a real form submit always
+ * passes; a non-browser caller with no header at all is refused rather than trusted.
+ */
+function isSameOrigin(request: Request): boolean {
+  const candidate = request.headers.get('origin') ?? request.headers.get('referer');
+  if (!candidate) return false;
+  try {
+    return new URL(candidate).origin === new URL(request.url).origin;
+  } catch {
+    return false;
+  }
+}
+
 export async function handleCirclePost(db: Db, request: Request, slug: string): Promise<Response> {
+  // Before the circle lookup, so a cross-site post cannot probe the allowlist either.
+  if (!isSameOrigin(request)) {
+    return gateForm('That submission could not be verified as coming from this page. Open the link again and try.');
+  }
+
   const circle = await db.prisma.circle.findUnique({ where: { shareSlug: slug }, select: { id: true } });
   if (!circle) return notFound();
 

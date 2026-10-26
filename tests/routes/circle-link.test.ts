@@ -41,18 +41,36 @@ afterAll(async () => {
 
 const url = (s = slug) => `https://circles.example.test/c/${s}`;
 
+// Generated per run rather than written down: this repo is public, and a committed number — even a
+// fake-looking one — is a number someone may be assigned. Nothing here is dialled or stored as
+// digits; only its keyed hash reaches the allowlist, which is the shape a real invite has. The
+// `+999` prefix is padding to a length `normalizeE164` accepts.
+const syntheticPhone = () => `+999${String(Math.floor(Math.random() * 1e9)).padStart(9, '0')}`;
+
 const cookieFor = (input: { userId: string; circleId?: string; role: 'owner' | 'friend' }) =>
   `${SESSION_COOKIE}=${issueSession({ userId: input.userId, circleId: input.circleId ?? fx.circleId, role: input.role })}`;
 
 const get = (s: string, cookie?: string) =>
   handleCircleGet(db, new Request(url(s), cookie ? { headers: { cookie } } : {}), s);
 
-const post = (s: string, fields: Record<string, string>) =>
+const post = (s: string, fields: Record<string, string>, origin = 'https://circles.example.test') =>
   handleCirclePost(
     db,
     new Request(url(s), {
       method: 'POST',
-      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      // Every browser sends `Origin` on a same-origin form POST, so a real submit always carries it.
+      headers: { 'content-type': 'application/x-www-form-urlencoded', origin },
+      body: new URLSearchParams(fields).toString(),
+    }),
+    s,
+  );
+
+const postWithoutOrigin = (s: string, fields: Record<string, string>, headers: Record<string, string> = {}) =>
+  handleCirclePost(
+    db,
+    new Request(url(s), {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded', ...headers },
       body: new URLSearchParams(fields).toString(),
     }),
     s,
@@ -157,12 +175,6 @@ describe('the circle link', () => {
 });
 
 describe('the allowlist gate that mints a session', () => {
-  // Generated per run rather than written down: this repo is public, and a committed number —
-  // even a fake-looking one — is a number someone may be assigned. Nothing here is dialled or
-  // stored as digits; only its keyed hash reaches the allowlist, which is the shape a real
-  // invite has. The `+999` prefix is padding to a length `normalizeE164` accepts.
-  const syntheticPhone = () => `+999${String(Math.floor(Math.random() * 1e9)).padStart(9, "0")}`;
-
   async function invite(phone: string) {
     await db.prisma.allowlistEntry.create({
       data: { circleId: fx.circleId, phoneE164Hash: hashPhone(phone, env.SESSION_SECRET), addedBy: fx.ownerUserId },
@@ -198,6 +210,47 @@ describe('the allowlist gate that mints a session', () => {
       select: { status: true },
     });
     expect(entry?.status).toBe('accepted');
+  });
+
+  // SameSite=Lax cannot protect an endpoint that *issues* a cookie: a cross-site form POST is a
+  // CORS-simple request with no preflight, and the browser accepts Set-Cookie from the response.
+  // An attacker who knows an allow-listed number can therefore log their victim into the
+  // attacker's own circle from the victim's browser, with a session that is genuinely the victim's
+  // — invisible to RLS. These assertions pin the Origin check that does see it.
+  it('refuses a cross-site post even when the number is allow-listed', async () => {
+    const phone = syntheticPhone();
+    await invite(phone);
+    const before = await db.prisma.user.count();
+
+    const res = await post(slug, { name: 'Victim Of Login CSRF', phone }, 'https://attacker.example.test');
+    expect(res.status).toBe(200);
+    expect(res.headers.get('Set-Cookie')).toBeNull();
+    expect(await db.prisma.user.count()).toBe(before);
+  });
+
+  it('refuses a post that carries no Origin and no Referer', async () => {
+    const phone = syntheticPhone();
+    await invite(phone);
+
+    const res = await postWithoutOrigin(slug, { name: 'Headerless', phone });
+    expect(res.status).toBe(200);
+    expect(res.headers.get('Set-Cookie')).toBeNull();
+  });
+
+  it('takes Referer as the fallback, and only when it names this origin', async () => {
+    const phone = syntheticPhone();
+    await invite(phone);
+
+    const fromHere = await postWithoutOrigin(slug, { name: 'Referer Friend', phone }, {
+      referer: url(slug),
+    });
+    expect(fromHere.status).toBe(303);
+
+    const fromElsewhere = await postWithoutOrigin(slug, { name: 'Referer Attacker', phone }, {
+      referer: 'https://evil.example.test/any-path',
+    });
+    expect(fromElsewhere.status).toBe(200);
+    expect(fromElsewhere.headers.get('Set-Cookie')).toBeNull();
   });
 
   it('refuses a number that is not on the list without creating anyone', async () => {
@@ -265,11 +318,12 @@ describe('the session token itself', () => {
       'utf8',
     ).toString('base64url');
     // A new payload with the old signature, and the old payload with a disturbed signature.
-    // The disturbance is deterministic rather than a slice-and-hope, so the assertion cannot
-    // pass by accident on the run where the last characters already match.
+    // The disturbance goes on the FIRST signature character, not the last: a 32-byte HMAC is 43
+    // base64url characters, so the 43rd carries only 4 real bits and the two low padding bits are
+    // discarded on decode — 'A' and 'B' there are the same bytes, and flipping it verifies.
     expect(readSession(`${forged}.${sig}`)).toBeNull();
-    const last = sig.slice(-1);
-    expect(readSession(`${token.slice(0, dot)}.${sig.slice(0, -1)}${last === 'A' ? 'B' : 'A'}`)).toBeNull();
+    const first = sig.slice(0, 1);
+    expect(readSession(`${token.slice(0, dot)}.${first === 'A' ? 'B' : 'A'}${sig.slice(1)}`)).toBeNull();
   });
 
   it('rejects garbage without throwing', () => {
