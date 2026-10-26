@@ -21,6 +21,13 @@ vision segmentation, deal discovery on the open web, and group coordination.
 - **The reveal is a human act.** The system generates the gift card (contributor names + their own messages) and
   never delivers it: no send, no notification, no `og:` preview, no cacheable response on any card route. The circle
   link lives in a WhatsApp group that contains the owner, so a preview image is rendered *for the owner*.
+- **No model call without passing `can(actor, capability)` first.** One gate, every spending path. A capability that
+  runs after the user switched it off is a consent failure and ranks with a privacy leak, not with a bug.
+- **No person pixels in a cutout.** The person-box pre-check runs before a SAM mask is stored, and the fixture set
+  includes a photo with a person in it so the guard is proven to fire.
+- **The assistant never decides what happens next.** It may generate copy for a status answer or a card message; it
+  may not choose a task, change state, or answer anything outside the six bounded tasks. Fixed menu or nothing.
+- **`/c/<slug>` never moves.** That URL is pasted into a WhatsApp group; a test asserts it resolves.
 
 ## Verified platform constraints (do not re-litigate; re-verify before changing)
 
@@ -33,6 +40,13 @@ vision segmentation, deal discovery on the open web, and group coordination.
 - **Key users on Business-Scoped User IDs**, with phone number as fallback. Phone is omitted from webhooks for users with usernames.
 - **Muse Spark 1.3 audio understanding is degraded** — use 1.2 for voice-note intake.
 - **WhatsApp `.ogg/opus` must be converted** to RIFF/WAVE mono 16-bit PCM 16 kHz before Muse Voice Transcribe.
+- **General-purpose AI chatbots are banned on the WhatsApp Business Platform** by the Business Solution Terms from
+  **2026-01-15**, immediately for accounts registered on/after **2025-10-15** — ours will be new. Task-specific
+  assistants (customer service, orders, appointments) remain permitted, so the assistant is task-scoped by design.
+  The hackathon separately disqualifies platform-policy violations, so free-form chat is a submission risk, not a
+  style choice. Verified 2026-10-26 against the Business Solution Terms and secondary coverage.
+- **Interactive messages cannot be notifications** and only work inside the 24-hour customer-service window; outside
+  it you need an approved template. Reply buttons max 3, list messages ≤10 sections / 24 rows.
 
 ## Documentation KB skills
 

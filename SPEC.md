@@ -3,6 +3,13 @@
 Locked 2026-10-26. Implementation happens in a fresh session against this file.
 Architecture and data model: `ARCHITECTURE.md`. Day-by-day build: `docs/plans/PLANS_INDEX.md`.
 
+**Amended 2026-10-26 (v1.1)** after a second interview round. Added: the per-user AI-capability gate
+(free/premium foundation), the photo → cutout vision path on SAM 3.1, the bounded WhatsApp task-bot
+surface, the design system and brand round, the post-event reveal, and a public landing page.
+New decisions are marked **v1.1**; new flows are F11–F15; new build steps are 16–22. Nothing in the
+original v1 spine was weakened by this amendment — the two non-negotiable failure states (a privacy
+leak, no live Meta model in the demo) still outrank every feature added here.
+
 ## Problem
 
 Group gifting breaks on two things at once. The gift-target either gets asked the awkward "what do you want?"
@@ -44,6 +51,29 @@ Verifiable on submission day (2026-11-04):
 - **Deployed and reachable** at the Cloudflare-TLS'd URL on the Oracle VM, still up during Nov 5–8 judging.
 - **Repo public**, with a README that lets a judge `docker compose up` and reproduce it.
 
+Added by the v1.1 amendment — each is observable in the 3-minute video, not just present in code:
+
+- **A branded product, not a bootstrap scaffold.** `DESIGN.md` plus one committed Tailwind token set
+  (colour, type scale, spacing, radii, component states) render the seven in-app screens and the
+  landing page consistently; the video shows at least three of them and the screenshot strip on the
+  landing page matches what the app actually looks like.
+- **Photo → cutout candidates.** One user-submitted photo containing two or more gifts yields at least
+  two transparent-background cutouts via `sam-3.1`, each landing as its own confirmable draft item with
+  the cutout as its image. The ingest row records `model_used = sam-3.1`.
+- **The same cutout code closes the loop on the card.** The gift card renders the product cut out of its
+  own image, placed on the card art — one pipeline, two visible payoffs.
+- **Capability switches are real and demoable.** At least one seeded user has a capability OFF and takes
+  the degraded manual path on camera; the switch screen lists every model-spending capability by name.
+  A missing entitlement row fails **closed**, and a test asserts it.
+- **The assistant stays inside its task set.** In WhatsApp it handles exactly the six bounded tasks and
+  answers anything else with the same fixed menu; the join page and the first reply both label it as AI.
+  No free-form conversation exists anywhere in the product.
+- **Post-event reveal works and stays honest.** After `event_date`, a friend reveals a secret suggestion;
+  it enters the owner projection with `revealed_by` attribution in the ledger, no notification is sent,
+  and an item the author flagged `reveal_ok = false` never becomes owner-visible.
+- **The public landing page is live at `/`** with the story, the screenshot strip and the demo video
+  embed, and it renders no circle data at all.
+
 ## Failure criteria
 
 Non-negotiable, in the order I would protect them if the schedule collapses.
@@ -70,8 +100,38 @@ Non-negotiable, in the order I would protect them if the schedule collapses.
   pool shows funded because contributions were seeded, not marked. (d) The demo is recorded against localhost.
   Detection: every ingest row records `model_used` and token counts; the leak suite asserts on the *role* it set,
   not just the absence of rows; the seed script and the live path write different `ingest_events.status` values.
-- **DETECTION.** CI runs typecheck + leak suite + view-projection unit tests on every push. A manual 9-point
-  checklist is run before recording, and again before submission.
+
+Added by the v1.1 amendment:
+
+- **HARD FAILURE — a model call runs for a user who switched that capability off.** This is a consent failure,
+  not a billing one, and in a product whose whole pitch is "the system never shows you what you did not agree to"
+  it undercuts the core claim. Response: **refuse the call, log the attempt, add the regression test that would
+  have caught it, then reassess scope.** Same cut-list-inverted status as a privacy leak.
+- **HARD FAILURE — a cutout contains a person.** A face, a body, a hand holding the product, or any pixel from a
+  photo the uploader did not supply. Response: **refuse to render the cutout, keep the source photo, escalate.**
+  The pre-check that catches this (a Spark vision pass returning person boxes) is part of the pipeline, not a
+  later refinement, and the fixture set must include at least one photo with a person in it so the guard is proven
+  to fire.
+- **HARD FAILURE — the assistant replies free-form or off-task in WhatsApp.** Meta's Business Solution Terms ban
+  general-purpose AI chatbots on the Business Platform from 2026-01-15, immediately for accounts registered after
+  2025-10-15 — ours will be new — and the hackathon disqualifies projects that violate platform policies.
+  Response: **stop, remove the generative reply path, ship the fixed menu.**
+- **HARD FAILURE — design work is still open at the day-7 leak gate.** Response: **roll back to the token set
+  only** (palette, type, spacing applied to unstyled-but-correct screens) and let the video carry the product
+  story rather than the polish.
+- **SOFT FAILURE — vision yields one candidate where the photo held three.** Acceptable for v1: degrade to
+  single-item intake and say so in the video. Not acceptable: silently presenting the one cutout as "the items in
+  your photo".
+- **SOFT FAILURE — unanimous early-unlock does not ship.** The date gate alone satisfies the product promise;
+  early unlock is a convenience. Cut it at the day-7 gate without discussion.
+- **FALSE SUCCESS additions.** (e) "The toggle works" because the gate defaults to ON when the entitlement row is
+  missing — the gate must fail closed and a test must assert the missing-row case. (f) The landing page is
+  "static" but queries a circle to render an example — it must render zero circle data. (g) The reveal "works"
+  because the test set the item to `revealed` directly instead of going through the guarded transition.
+- **DETECTION.** CI runs typecheck + leak suite + view-projection unit tests on every push. The leak suite gains a
+  row per new surface: entitlement rows are never cross-readable between actors, multi-candidate photo drafts stay
+  inside the adder's projection, revealed items appear to the owner only through the guarded transition, and `/`
+  contains no circle identifier. A manual 9-point checklist is run before recording, and again before submission.
 
 ## Decisions & rationale
 
@@ -219,6 +279,154 @@ Non-negotiable, in the order I would protect them if the schedule collapses.
   **Status:** decided. **Revisit if:** never; if a share feature is wanted later it must be an explicit gifter
   action on a flattened image, not a server-rendered preview.
 
+### v1.1 decisions (amended 2026-10-26)
+
+- **Decision:** the 25% *Use of Meta AI Tooling* category is carried by **product-deep usage plus one documented
+  dev-time thread**. Every model call on a user-facing path records model, tokens and latency in `ingest_events`
+  and is surfaced in a "model evidence" view; separately, the coding agent is pointed at `https://api.meta.ai`
+  (documented by Meta for Claude Code, Codex and OpenCode) and that thread is named in the README and given ~15 s
+  of the video.
+  **Why:** Stage 1 is pass/fail on whether the project "reasonably use[s] the Meta Model API and/or Meta open-weight
+  models to build it", and the scored category asks how creatively Meta's AI was used "to go beyond a basic
+  integration". Product evidence is what Impact (30%) and Demo (25%) are judged on, so it stays load-bearing; the
+  dev thread is nearly free and is a second, verifiable answer to the same question.
+  **Alternatives rejected:** *product-deep only* — forfeits the cheapest available point on a 25% category;
+  *also chasing the $10K open-weight bonus (Muse Spark Open / Glimmer via Baseten or Modal)* — partner credits are
+  not guaranteed and are reviewed per applicant, and serving an 816B-A42B model off someone else's GPU is not a
+  nine-day side quest.
+  **Status:** decided. **Revisit if:** partner inference credits land early and the day-7 gate is green, in which
+  case the open-weight bonus becomes a real option rather than a hope.
+
+- **Decision:** the WhatsApp assistant is **task-scoped with no free-form chat**. Every inbound message routes to
+  one of six bounded tasks (add by voice, add by photo, add by link, status query, claim-or-pool via a 3-button
+  reply, write your card message); anything unrecognised receives the same fixed menu. The assistant is labelled as
+  AI on the join page and in its first reply.
+  **Why:** Meta's WhatsApp Business Solution Terms prohibit general-purpose AI chatbots on the Business Platform
+  from 2026-01-15, with accounts registered on or after 2025-10-15 subject immediately. Task-specific assistants
+  (customer service, order management, appointments) remain permitted, and a registry assistant that can only do
+  six things is squarely that shape. The hackathon separately disqualifies projects that violate platform policies,
+  so this is a submission risk, not just a ToS risk.
+  **Alternatives rejected:** *free-form Spark chat with a guard prompt* — that is exactly the banned shape, and a
+  system prompt is not a compliance control; *no conversational surface at all* — loses the "paste a link into your
+  group and talk to it" headline and the Best Agentic Use-Case angle; *the six tasks plus a reveal trigger* — the
+  reveal trigger **is** in scope (below) but as an in-app action and a bounded WhatsApp task, not as a conversation.
+  **Status:** decided. **Revisit if:** Meta publishes a compliant pattern for bounded generative replies inside a
+  task assistant, in which case the fixed menu copy may become model-drafted — never model-decided.
+
+- **Decision:** the UX is a **hybrid split with no WhatsApp Flows in v1**. WhatsApp carries intake (voice, photo,
+  link), 3-button choices, list menus and template notifications; the web app carries the ledger, claims and pools,
+  attributes, the owner dashboard, capability switches and the card download.
+  **Why:** interactive messages are limited to reply buttons (max 3), list messages (≤10 sections / 24 rows), CTA
+  buttons, product messages, location requests and Flows, they **cannot be used as notifications**, and they only
+  work inside the 24-hour customer-service window. The two screens that carry our score — owner blindness and the
+  no-preview card download — cannot be built as WhatsApp message types at all, so a web surface exists regardless.
+  **Alternatives rejected:** *Flows for join, attribute onboarding and contribution entry* — a native in-chat form
+  is better UX but adds a separate JSON spec plus app-review surface in a nine-day window; *web-first with
+  WhatsApp as a pipe* — least WhatsApp-native and weakens the Impact claim that friends install nothing.
+  **Status:** decided. **Revisit if:** Flows turn out to need no additional review for our app, post-hackathon.
+
+- **Decision:** per-user AI capability switches are **rows plus one gate, failing closed**. An `entitlements` table
+  holds one row per `(user, capability)` with `enabled`; `users.plan` (`free | premium | internal`) supplies the
+  default when a row is absent; a single server-side `can(actor, capability)` is called by every model-spending path
+  **before** it spends a token. When a capability is off the flow degrades to manual entry with a visible reason —
+  never a silent no-op, never a 500 carrying a model error. The capability list is one switch per model-spending
+  path: `voice_transcribe`, `photo_extract`, `link_expand`, `card_pun`, `card_art`, `assistant_reply`,
+  `deal_search` (the switch exists before the feature does, so reviving the deferred deal spike needs no migration).
+  **Why:** you asked for per-feature, per-user on/off that can carry free/premium later. Rows mean a new capability
+  or tier is data, not a deploy; one gate means there is a single place to be wrong; failing closed means a missing
+  row can never become an unintended model call, which is the same reasoning as `demoMode` in `src/lib/env.ts`.
+  **Alternatives rejected:** *plan enum with a hardcoded capability map* — fastest, but every tier change is a
+  deploy and you cannot demo "this user turned transcription off" without editing code; *per-circle entitlements* —
+  matches who pays but breaks the per-user requirement, since a friend could not refuse transcription of their own
+  voice note; *metering and quotas now* — the right long-term shape, but not judgeable in three minutes and it
+  competes with the leak suite for the same days.
+  **Status:** decided. **Revisit if:** a paid tier needs quotas, at which point usage counters attach to the same
+  rows rather than replacing them.
+
+- **Decision:** **consent is the actor's, budget is the circle owner's.** The switch that gates a call is always the
+  person who triggered it — a friend who turned transcription off never has their voice note transcribed, even
+  inside someone else's circle. Tier limits and quotas key off the circle owner's plan, because the owner is the one
+  who would pay.
+  **Why:** consent and budget are different axes and conflating them is how a friend's private setting ends up
+  governed by someone else. It is also the POPIA-correct reading: the data subject of a voice note is the person who
+  spoke it, not the person whose birthday it is.
+  **Alternatives rejected:** *owner governs the circle* — simplest and matches who pays, but a friend could not
+  refuse transcription of their own voice; *both must allow* — most conservative, but it makes the degraded path
+  unexplainable ("why did this not work?") and doubles the states the leak suite must cover.
+  **Status:** decided. **Revisit if:** a real paying customer asks for circle-level policy control, which is an
+  admin feature, not a v1 one.
+
+- **Decision:** computer vision is **SAM 3.1 masks composited by us**, used for both intake and card art. A
+  submitted photo is segmented with a generic noun-phrase prompt; masks are ranked by area, capped at six, and each
+  becomes a **draft** the user confirms. `sharp` turns each mask into a transparent PNG at a deterministic path. The
+  card reuses the same function to place the product on generated art. Before any cutout is kept, a Spark vision
+  pass returns person boxes and every overlapping mask is discarded.
+  **Why:** you asked for gift options cut out of photos users submit, and SAM 3.1 is hosted on the Model API
+  ($2.50 per 1k images) returning boxes and pixel masks parsed by `@meta-sam/parser`. Muse Image does **not**
+  document transparent-background cutout, so compositing is ours either way; doing it once and using it twice is
+  what makes it a pipeline rather than a demo trick. Drafts-not-commits reuses the existing intake decision, so
+  nothing hallucinated reaches the ledger or the pool maths.
+  **Alternatives rejected:** *one best mask only* — cannot show "the gifts in your photo" when the photo holds
+  three; *tap-to-select regions* — needs an in-app image-annotation UI we do not have, in the week the leak suite and
+  the card renderer also land; *reviving SAM duplicate detection too* — its own kill criterion says ship URL/GTIN
+  matching below ~85% precision, and it is a third vision feature in nine days; *Muse Image as the cutout engine* —
+  undocumented for transparency, and generated pixels are not the user's product.
+  **Status:** decided. **Revisit if:** cutouts are not visually clean on ≥80% of a ten-image fixture set, in which
+  case ship text-only intake and describe the feature accurately.
+
+- **Decision:** the **post-event reveal** is in v1.1: any friend in the circle may reveal a secret suggestion, only
+  after `circles.event_date` has passed, only when the author left `reveal_ok = true`, and only through a guarded
+  transition that writes `revealed_at` and `revealed_by_user_id` to the item and a ledger event. No notification is
+  sent — the reveal stays a human act. Reveal covers secret **suggestions** only; claims, pools and contributor
+  amounts never enter the owner projection. Early unlock before the event date requires the approval of every active
+  friend membership.
+  **Why:** the surprise has a natural end, and "look what we almost got you" is a real beat the product currently
+  drops on the floor. Keeping the veto with the author is what makes "any friend can reveal" safe: a candid note
+  ("she said 43 might be tight") can be marked never-reveal at the moment it is written, by the only person who knows
+  whether it was candid. `items_owner_read` already admits `status = 'revealed'`, so the RLS spine needed no change —
+  the gate is the date, the veto and the guarded transition.
+  **Alternatives rejected:** *adder-only reveal* — most protective and my recommendation, but you chose the communal
+  version, and the veto preserves the part of it that matters; *owner-initiated bulk reveal* — one tap for the owner
+  to see everything friends said about them, with no author consent; *no time gate* — makes the surprise destructible
+  by a single tap before the event; *24-hour hold with author objection* — needs a scheduler and a half-visible state
+  to design and test in the last days.
+  **Status:** date gate, veto and attribution **decided**; unanimous early unlock **provisional** — cut it at the
+  day-7 gate without discussion if anything else is red. **Revisit if:** a real group asks to reveal before the date,
+  which is the only evidence that the unanimous-unlock machinery was worth building.
+
+- **Decision:** brand and design come from a **Stitch preview round, then a committed token set**. Four Stitch
+  design-system variants are generated against the brief — hot pink plus electric blue, gender-neutral, sparky,
+  modern, no cursive or script faces — each with palette, type pairing, button and card treatment, and one rendered
+  screen (the friend ledger, being the densest). Three alternative product names sit beside "Gift Circles" so naming
+  is decided against the visuals. The chosen variant becomes `DESIGN.md` plus Tailwind tokens; the logo is a
+  hand-authored SVG wordmark and mark; type is an OFL-licensed face, self-hosted. Only the light theme ships, but the
+  tokens must be dark-mode-ready.
+  **Why:** you want to choose the look rather than inherit it, and Stitch is preview-first, so the choice is made
+  against rendered screens instead of adjectives. Hand-authored SVG and OFL type keep the public repo clean under the
+  hackathon rule against using assets you lack rights to, and a vector mark stays crisp on the A6 card at 300 DPI
+  where a generated raster would not.
+  **Alternatives rejected:** *Muse Image generates the brand* — a stronger Best Creative Build story, but a raster
+  logo, a 150 RPM cap that makes iteration slow, and a rights question on generated brand assets in a public repo
+  (Muse Image stays in scope for card backgrounds and item art, where it is a feature rather than an identity);
+  *shipping dark mode too* — nearly free once tokens exist, but it doubles visual QA on seven screens in the week
+  before recording.
+  **Status:** **provisional** until you pick a variant — the process is decided, the palette and name are not.
+  **Revisit if:** the Stitch round produces nothing that beats a hand-authored token set, in which case the tokens
+  ship without it and the video does not linger on the UI.
+
+- **Decision:** the public landing page is **static, at `/`, with the app screens under `/app` and the circle join
+  link unchanged at `/c/<slug>`**. It carries the two-line problem, the three-step story, a screenshot strip from the
+  seeded fictional cast, the demo video embed and a CTA into the app. `Cache-Control: public, max-age=300`. It
+  renders no circle data and no path from it reaches a card route.
+  **Why:** the Community Vote gallery ($10K) sends strangers to a URL, and a judge or voter who lands on a login
+  screen bounces. Keeping `/c/<slug>` exactly where it is matters more than tidiness: that link is pasted into a
+  WhatsApp group, and moving it would break every circle already shared.
+  **Alternatives rejected:** *a public gallery of demo circles* — every public render of a ledger is a new leak
+  surface in the week before recording; *headline-and-CTA only* — wastes the page the vote actually points at;
+  *moving the app to `/` and the marketing page elsewhere* — inverts what a voter expects and risks the share link.
+  **Status:** decided. **Revisit if:** the leak matrix cannot cover the page cheaply, in which case it ships without
+  the screenshot strip.
+
 ### Rollback path (per state-changing operation)
 
 - **Deploy:** tagged images; rollback = `docker compose up -d app:<previous-tag>`. No redeploy rebuild.
@@ -233,6 +441,22 @@ Non-negotiable, in the order I would protect them if the schedule collapses.
 - **Seed/demo data:** the fictional cast is generated by an idempotent seed script into a disposable database, so a
   corrupted demo state is `docker compose down -v && seed`, never a repair.
 
+Added by the v1.1 amendment:
+
+- **Capability gate:** the gate *is* the feature flag. A capability that misbehaves in the demo is turned off in the
+  switch screen and the flow degrades to manual — no redeploy, no migration, no code path removed.
+- **Entitlements migration:** expand-only (new `entitlements` table, nullable-then-defaulted `users.plan`, new
+  nullable `items.reveal_ok | revealed_at | revealed_by_user_id`), so the previous image tag still runs against the
+  newer schema. Recovery is the previous tag; nothing is dropped during the hackathon.
+- **Design system:** pure additive CSS and tokens, no migration. Rollback is `git revert` of the token commit; the
+  screens keep working unstyled because correctness never depended on the theme.
+- **Vision path:** artifacts are written under `MEDIA_DIR/cutouts/…` and referenced from the draft JSON, so removing
+  the feature leaves orphan files, not orphan rows. Turning `photo_extract` off removes it from the product
+  instantly.
+- **Reveal:** a reveal is a guarded one-way transition, so the rollback for a mistaken reveal is a ledger-visible
+  admin action, not a silent un-write. Early unlock rows are additive and can be deleted without touching items.
+- **Landing page:** static route; rollback is deleting it, and `/c/<slug>` never depended on it.
+
 ### Deploy order / cutover
 
 Day 1: DNS record → Caddy (TLS must validate before anything else) → Postgres container → app container.
@@ -242,6 +466,20 @@ Day 3: vertical slice recorded as a screen capture, which doubles as the day-9 d
 Every later change: staging = the same VM on a second compose project and a second path prefix, verified before
 promoting. There is no dual-write window; the single Postgres is the source of truth and nothing else holds state.
 **Freeze deploys after Nov 3.** Submission artifacts (video, repo, live URL) are cut from the Nov 3 build.
+
+Added by the v1.1 amendment — the order matters, because a gate retrofitted after five model paths exist is how one
+path gets missed:
+
+1. **Entitlements table + `can()` gate first**, before any new model-spending path is written, and retrofitted onto
+   the three existing ones (voice, link, screenshot) in the same commit. Verify gate: a test that a missing
+   entitlement row fails closed, and a test that an off capability produces the degraded reply rather than a call.
+2. **Design tokens second** (`DESIGN.md` → Tailwind theme), so every screen built afterwards is already branded and
+   the Stitch round does not block a feature.
+3. **Vision third**, written already gated on `photo_extract`.
+4. **Reveal and landing page fourth** — both are additive surfaces with no dependency on the above.
+5. The route move (`/` → landing, app under `/app`) ships in one commit **with** the landing page, and
+   `/c/<slug>` is asserted unchanged by a test in the same commit, because that URL is already pasted into a
+   WhatsApp group.
 
 ### Idempotency / dedup strategy
 
@@ -256,6 +494,25 @@ promoting. There is no dual-write window; the single Postgres is the source of t
 - **Claim/pool writes use explicit state transitions**, not read-modify-write: `claimed → fulfilled` and
   `open → funded → purchased` each update `WHERE status = <expected>`, so a double tap cannot double-count money.
 - **Seed script is idempotent** by deterministic slugs/ids on the fictional cast.
+
+Added by the v1.1 amendment:
+
+- **Cutout artifacts are idempotent by deterministic path:** `MEDIA_DIR/cutouts/<wa_message_id>/<index>.png`. A
+  webhook redelivery re-derives the same paths and reuses bytes already on disk instead of re-calling SAM, so a retry
+  costs nothing and cannot produce a second set of candidates.
+- **Multi-candidate drafts live in `ingest_events.draft` as an array** with per-candidate state
+  (`pending | confirmed | dismissed`) and the created `item_id` once confirmed. One ingest event, one photo, N
+  candidates — the `item_id` column stays null for multi-candidate events, because a single FK cannot point at six
+  items and inventing a seventh table for ephemeral drafts is not worth it. The ledger holds the real state from the
+  moment an item exists.
+- **Entitlement writes are upserts on `(user_id, capability)`**, so a double tap on a switch cannot create two
+  conflicting rows.
+- **Reveal is a guarded transition:** `UPDATE … SET status='revealed' WHERE id=$1 AND status='active' AND
+  visibility='friend_only' AND reveal_ok`. Zero rows affected means someone already revealed it, or the veto was set,
+  or the date gate is closed — all three render the same 404, so the response cannot be used to probe.
+- **Early-unlock approvals are unique per `(request, user)`** and the reveal gate counts distinct approvals against
+  active friend memberships at read time, so a member who leaves the circle cannot keep the unlock permanently
+  blocked.
 
 ## User flows
 
@@ -321,16 +578,86 @@ template approves and the sandbox lets it through.
 6. The gifter downloads and sends or prints and attaches it. The reveal happens off-platform, by hand.
 7. If the item was tombstoned but the pool funded anyway, the card still renders: the ledger survives the delete,
    so the keepsake survives it too.
+8. **v1.1:** the product image on the card is the cutout from F11 (or from the retailer's `og:image`), composited
+   over the `muse-image` background by the same function that produces intake cutouts.
+
+### F11 · Photo → cutout candidates (v1.1)
+1. Owner or friend sends a photo to the business number — a store shelf, a catalogue page, a screenshot, or gifts
+   already bought. Webhook receives `image` (≤5 MB), dedupes on message id, downloads the bytes inside the
+   5-minute URL window, stores them under `MEDIA_DIR`.
+2. **Gate:** `can(actor, 'photo_extract')`. Off → the fixed menu plus "photo extraction is off in your settings" and
+   a link to the switch screen. No model call is made.
+3. Spark vision pass over the source photo with a flat `json_schema` returning person boxes. Any mask overlapping a
+   person is discarded before it is stored — this is the person-pixel hard failure guard, and the fixture set
+   includes a photo with a person in it so the guard is proven to fire.
+4. `POST /v1/responses` with model `sam-3.1`, a generic noun-phrase prompt and `input_image`; parse boxes and masks
+   with `@meta-sam/parser`.
+5. Rank by area, cap at six, drop masks below a minimum area. Composite each to a transparent PNG with `sharp` at
+   `MEDIA_DIR/cutouts/<wa_message_id>/<index>.png`.
+6. Write the candidate array into `ingest_events.draft` with per-candidate state. Each candidate becomes a **draft**
+   card in the adder's screen with the cutout as its image, and a title the model guessed.
+7. The adder confirms, edits or dismisses each draft. Confirmed drafts create `items` rows through the same
+   transition F2 uses; dismissed ones never touch the ledger. Nothing auto-commits.
+8. Projection: a friend's photo drafts are `friend_only` until confirmed, exactly like F7's secret suggestions.
+
+### F12 · Per-user capability switches (v1.1)
+1. Any signed-in user opens Settings → AI capabilities. One row per capability, each with a plain-language
+   description of what it does and what happens when it is off.
+2. Toggling writes an `entitlements` upsert. A capability with no row inherits the plan default; the gate fails
+   closed on error.
+3. When a capability is off, every path that would have used it degrades visibly: voice intake becomes "type it
+   instead", photo intake becomes the fixed menu, card art becomes the plain card, card puns become a hand-written
+   line. The reason is shown, never inferred.
+4. These switches are the actor's own rows and are never rendered into another actor's projection — a friend cannot
+   see the owner's settings and the owner cannot see anyone's.
+
+### F13 · The WhatsApp task-bot surface (v1.1)
+Six bounded tasks, and nothing else:
+1. **Add by voice** → F2. 2. **Add by photo** → F11. 3. **Add by link** → F3.
+4. **Status query** — owner hears "you have 3 wants, 1 unconfirmed"; friend hears "these are still unclaimed".
+   Both answers come from the caller's own projection, so the owner's answer cannot contain a claim.
+5. **Claim or join a pool** — a 3-button reply (`Claim it` / `Join a pool` / `Not now`) inside the 24-hour window.
+6. **Write your card message** — the contributor replies with one line; it is stored as their `card_entry` with the
+   same ≤200-char and no-URL rules as the web composer, and echoed back for confirmation.
+7. Anything unrecognised gets the same fixed menu every time. The assistant is labelled as AI in its first reply and
+   on the join page. It never generates a reply that decides what happens next — it generates copy at most, and only
+   for tasks 4 and 6, both gated on `assistant_reply`.
+
+### F14 · Post-event reveal (v1.1)
+1. After `circles.event_date` has passed, a friend's item sheet shows "Reveal to Nadia" on secret suggestions where
+   the author left `reveal_ok = true`. Before the date the button does not render and the route 404s.
+2. Tapping it runs the guarded transition: `status → revealed`, `revealed_at`, `revealed_by_user_id`, plus a ledger
+   event. Zero rows affected renders the same 404 as "not yours".
+3. **No notification is sent.** The reveal is a human act; the owner sees it the next time they open the app.
+4. The owner projection now includes the item, attributed to whoever revealed it. Claims, pools and contributor
+   amounts stay out permanently.
+5. An author who set `reveal_ok = false` when adding the suggestion is never revealed, by anyone, at any time.
+6. Early unlock (provisional, cut at the day-7 gate): any friend may request it; every active friend membership must
+   approve; approvals are counted at read time.
+
+### F15 · Public landing page (v1.1)
+1. `/` is static: the two-line problem, the three-step story, a screenshot strip from the seeded fictional cast, the
+   demo video embed, and a CTA into the app. `Cache-Control: public, max-age=300`.
+2. It renders no circle data and no dynamic query, and there is no path from it to a card route.
+3. The app screens move under `/app`. **`/c/<slug>` does not move** — that URL is already pasted into a WhatsApp
+   group, and a test asserts it still resolves.
 
 ## Out of scope for v1
 
 Holding money, escrow, Stripe Connect, KYC. Native iOS/Android. Facebook/Messenger/Instagram surfaces. Facebook
 Login. Marketplace scraping in any form. The coordination/nudge **agent** (pool maths and state are in; LLM
-negotiation is not). SAM 3.1 duplicate detection. `web_search` deal-finding. Post-event reveal. Public discovery of
+negotiation is not). SAM 3.1 **duplicate detection** (cutout extraction is in scope as of v1.1; similarity matching
+between two screenshots is not). `web_search` deal-finding. Public discovery of
 strangers by phone number, and the contact-sync mitigation the competitor doc suggested — both deferred, because
 public lookup is a scraping surface we don't need for a gated-circle demo. Multi-currency beyond ZAR. Real user
 accounts, password login, email. Search, filters, analytics dashboards. Mobile-app install flows. Automated
 template re-rolls after rejection.
+
+Still out after the v1.1 amendment: payments, metered billing, quota counters and any pricing page (the entitlement
+rows are the foundation, not the shop); WhatsApp **Flows**; native apps; a shipped dark theme (tokens must be
+dark-ready, only light ships); tap-to-select segmentation regions; a public gallery of demo circles; i18n beyond
+English; free-form or generative conversation in WhatsApp under any circumstances; and revealing claims, pools or
+contributor amounts to the owner, which no flag or date gate can turn on.
 
 ## Open questions
 
@@ -348,6 +675,24 @@ template re-rolls after rejection.
   API sandbox? Verify before promising the 3-device story; if it conflicts, the demo uses the sandbox number only.
   **Real numbers stay out of the repo regardless.**
 - Is a `muse-image-1.0`-generated registry cover image worth the 150 RPM budget for the Best Creative Build angle?
+
+Added by the v1.1 amendment:
+
+- **[TODO: needs your pick] Brand variant and product name.** Four Stitch variants and three alternative names are
+  generated against the brief (hot pink + electric blue, gender-neutral, sparky, modern, no cursive); the choice is
+  yours and the decision stays **provisional** until you make it. Blocking for step 17 only.
+- **[TODO: needs your OAuth] Stitch MCP access.** The server config is registered locally
+  (`npx -y @_davideast/stitch-mcp proxy`); the OAuth browser step is yours. If it is not working by day 5, the token
+  set ships hand-authored and the video simply does not linger on the UI.
+- **[TODO: verify on the fixture set] Does one generic SAM noun phrase segment gifts well enough?** "gift" versus
+  "product" versus per-category phrasing is an empirical question; the ten-image fixture set answers it, and the
+  ≥80%-clean kill criterion decides whether the feature ships at all.
+- **[TODO: verify] Is the person-box pre-check reliable enough to be the guard?** If Spark's person boxes miss a face
+  in the fixture set, the fallback is to refuse cutouts from any photo the classifier marks as containing a person at
+  all — coarser, but it fails closed.
+- **[TODO: decide by day 8] Demo video embed on the landing page:** unlisted YouTube (needs network during judging,
+  which Nov 5–8 does not guarantee) or a self-hosted MP4 on the VM (uses bandwidth we do not have much of).
+- **Unanimous early-unlock** stays provisional until the day-7 gate; it is the first thing cut.
 
 ## Implementation steps
 
@@ -376,6 +721,38 @@ Ordered; each phase ends with something demonstrable. Details and daily gates in
 14. **Record (day 9).** 3-minute video from the checklist; freeze deploys Nov 3.
 15. **Submit (day 10).** Video, live URL, public repo, all contributors listed.
 
+### v1.1 additions (amended 2026-10-26)
+
+**Schedule honesty:** these steps add roughly three and a half days of work to a nine-day plan that was already
+full. They are listed in dependency order, not wishful order, and the cut list below is decided *now* rather than at
+2 a.m. on day 8.
+
+16. **Entitlements + the `can()` gate (day 3, before the voice path is written).** `entitlements` table,
+    `AiCapability` enum, `users.plan`, `src/server/entitlements.ts` with `can()` / `assertCan()`, retrofitted onto the
+    three existing model paths in the same commit. Non-negotiable: it is the guard for a hard failure, and a gate
+    retrofitted after five paths exist is how one path gets missed.
+17. **Brand round (day 4, half a day).** Register Stitch MCP → generate four design-system variants plus three name
+    options → you pick → write `DESIGN.md` → Tailwind token set. If Stitch is not working by day 5, the tokens ship
+    hand-authored from the brief.
+18. **Screens built styled (day 4–8, incremental).** Join/gate, owner ledger, friend ledger, item detail, draft
+    confirm, card composer, settings/switches, plus the landing page. Each screen is styled as it is built; there is
+    no "styling pass" at the end, because that pass never happens.
+19. **Vision cutout path (day 6–7, F11).** Person-box pre-check, `sam-3.1` call, `@meta-sam/parser`, `sharp`
+    compositing to deterministic paths, candidate array in `ingest_events.draft`, confirm/dismiss UI. Then reuse the
+    same function for the card art (F10 step 8). Gated on `photo_extract` from the first commit.
+20. **WhatsApp task-bot surface (day 6–8, F13).** The **fixed menu ships first** — it is the compliance floor and it
+    is what every unrecognised message hits. Then the six tasks in the order they already exist server-side: voice,
+    photo, link, status query, claim/pool buttons, card message capture.
+21. **Post-event reveal (day 8, F14).** Date gate + `reveal_ok` veto + guarded transition + attribution. Unanimous
+    early unlock is built only if everything above is green.
+22. **Landing page + route move (day 8, F15).** Static `/`, app under `/app`, `/c/<slug>` asserted unchanged by a test
+    in the same commit.
+
+**Cut order when the schedule collapses** (first cut first): unanimous early unlock → landing-page screenshot strip
+(video embed only) → card-art cutout (text-only card, still honest) → photo intake beyond one best mask → the reveal
+entirely → the landing page. **Never cut:** the capability gate, the leak suite, the voice path, the fixed-menu
+compliance floor, or the `/c/<slug>` URL.
+
 ## Guardrails
 
 - Only two real failure states exist: a privacy leak, and no live Meta model in the demo. Everything else is
@@ -385,3 +762,17 @@ Ordered; each phase ends with something demonstrable. Details and daily gates in
 - Every live API call gets a deterministic fallback path before it appears in the demo script.
 - No real names, phone numbers, or gift conversations in any committed file, fixture, screenshot or video.
 - The demo is recorded from the deployed URL, never from localhost, or it doesn't count.
+
+Added by the v1.1 amendment:
+
+- **No model call without passing `can(actor, capability)` first.** There is one gate and every spending path goes
+  through it; a capability that runs after being switched off ranks with a privacy leak, not with a bug.
+- **No person pixels in a cutout, ever.** The person-box pre-check runs before the mask is stored, and the fixture set
+  includes a photo with a person in it so the guard is proven to fire rather than assumed to.
+- **The assistant never decides what happens next.** It may generate copy for a status answer or a card message; it
+  may not choose a task, change state, or reply to anything outside the six. Fixed menu or nothing.
+- **Every new screen declares two things in writing:** which projection renders its data, and its `Cache-Control`.
+  Public, friend-only and owner-only surfaces do not share a cache key or a route prefix.
+- **`/c/<slug>` never moves.** It is already pasted into a WhatsApp group; a test asserts it resolves.
+- **Degraded means explained.** When a capability is off, the user is told which one and why the flow changed. A
+  silent no-op is a support ticket we cannot answer.
