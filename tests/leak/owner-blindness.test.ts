@@ -97,6 +97,29 @@ describe('the switch is the security boundary, not a naming convention', () => {
     expect(items).toBe(0);
   });
 
+  // Being allowed to see *someone* is not the same as being allowed to see everyone. A roster
+  // policy written as "the session names a circle I belong to" without correlating the row
+  // returns the whole `users` table — including `phone_e164` and `bsuid` for people in other
+  // circles. The predicate has to be about *this* row's membership.
+  it('reads only the roster of the circle the session names, on both sides', async () => {
+    const roster = [fx.ownerUserId, fx.friendAUserId, fx.friendBUserId].sort();
+
+    const asFriend = await db.withActor(friend(fx.friendAUserId), (tx) =>
+      tx.user.findMany({ select: { id: true } }),
+    );
+    expect(asFriend.map((u) => u.id).sort()).toEqual(roster);
+
+    const asOwner = await db.withActor(owner(), (tx) => tx.user.findMany({ select: { id: true } }));
+    expect(asOwner.map((u) => u.id).sort()).toEqual(roster);
+  });
+
+  it('cannot read a user who never joined, not even their identifier', async () => {
+    const rows = await db.withActor(friend(fx.friendAUserId), (tx) =>
+      tx.user.findMany({ where: { id: fx.outsiderUserId }, select: { bsuid: true, phoneE164: true } }),
+    );
+    expect(rows).toEqual([]);
+  });
+
   it('fails closed on a malformed actor id instead of returning the world', async () => {
     await expect(
       db.withActor(

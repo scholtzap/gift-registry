@@ -50,6 +50,21 @@ CREATE OR REPLACE FUNCTION app_circle_of_gift_target(u uuid) RETURNS uuid
   LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS
 $$ SELECT id FROM circles WHERE owner_user_id = u $$;
 
+-- Roster scope, and the one predicate in this file that is easiest to get catastrophically
+-- wrong. It must be about *this row's* membership. An earlier version asked only "is the
+-- session scoped to a circle the actor belongs to", which is true for every row at once and
+-- so returned the entire `users` table — `phone_e164` and `bsuid` for people in other circles
+-- included. `tests/leak/owner-blindness.test.ts` pins both readings.
+CREATE OR REPLACE FUNCTION app_actor_in_circle_roster(u uuid) RETURNS boolean
+  LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS
+$$ SELECT app_circle_id() IS NOT NULL
+     AND (app_actor_owns_circle(app_circle_id()) OR app_actor_joined_circle(app_circle_id()))
+     AND (
+       u = (SELECT ci.owner_user_id FROM circles ci WHERE ci.id = app_circle_id())
+       OR EXISTS (SELECT 1 FROM memberships m
+                  WHERE m.circle_id = app_circle_id() AND m.user_id = u AND m.status = 'active')
+     ) $$;
+
 -- The gate compares hashes, never numbers: the app hashes the caller's own E.164 phone
 -- and this session's hash is the only one a friend role is allowed to match against.
 CREATE OR REPLACE FUNCTION app_phone_hash() RETURNS text
@@ -80,12 +95,7 @@ CREATE POLICY users_self ON users FOR SELECT TO app_owned, app_friend
 
 DROP POLICY IF EXISTS users_circle_roster ON users;
 CREATE POLICY users_circle_roster ON users FOR SELECT TO app_owned, app_friend
-  USING (
-    app_circle_id() IS NOT NULL AND (
-      app_actor_owns_circle(app_circle_id())
-      OR app_actor_joined_circle(app_circle_id())
-    )
-  );
+  USING (app_actor_in_circle_roster(id));
 
 DROP POLICY IF EXISTS users_self_update ON users;
 CREATE POLICY users_self_update ON users FOR UPDATE TO app_owned, app_friend
