@@ -223,6 +223,26 @@ it set:
 | agent context builder, owner role | any friend-scoped row it could paraphrase back |
 | error bodies, response headers, `Cache-Control` on card artefacts | existence, via message text or a shared cache entry |
 
+Commands:
+
+```bash
+pnpm db:policies   # roles + policies, then a hard check that no app table is left uncovered
+pnpm leak          # the matrix above, against a separate `gifts_test` database
+```
+
+The suite creates `gifts_test`, migrates it, then applies the same SQL the deploy runs — never the dev database.
+To see it fail on purpose (the only evidence that these assertions *can* fail), drop the database and skip the
+policies:
+
+```bash
+docker exec gifts-pg psql -U gifts -d postgres -c 'DROP DATABASE gifts_test'
+LEAK_SKIP_POLICIES=1 pnpm leak    # 7 red: the owner can see the whole ledger
+pnpm leak                         # 10 green
+```
+
+`GET /health` returns 500 when any app table has no policy: an app that is up but unguarded is the failure this
+deployment actually fears, so it does not get to look healthy.
+
 
 ## 9. Future Considerations
 

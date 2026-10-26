@@ -8,13 +8,13 @@
 python scripts/ops/refresh_plans_index.py --write
 ```
 
-Generated: 2026-10-26 15:45 · repo: `gifts-registry`
+Generated: 2026-10-26 17:07 · repo: `gifts-registry`
 
 ## P1
 
 | Rank | Title | Status | Path | Next |
 |------|-------|--------|------|------|
-| 1 | Gift Circles ten-day build plan | ready | `gift-circles-ten-day-build-plan.md` |  |
+| 1 | Gift Circles ten-day build plan | implementing | `gift-circles-ten-day-build-plan.md` |  |
 
 ## P2
 

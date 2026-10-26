@@ -2,6 +2,32 @@
 
 Agent error log. Newest entry first. No secrets, tokens, env dumps, or credentialed URLs.
 
+## 2026-10-26 — Wrote an RLS policy without a `FOR` clause and it silently became a SELECT policy
+**What happened:** `CREATE POLICY items_owner_write ON items TO app_owned USING (app_actor_owns_circle(circle_id))`
+read as "the owner may write their own items". With no command clause, PostgreSQL applies a policy to **all**
+commands, including SELECT — and permissive policies are OR-ed, so that broad `USING` clause was enough to return
+every row in the circle.
+**Impact:** The owner projection came back with the friend's secret suggestion *and* the owner's own tombstone: the
+two rows whose hiding is the entire product rule. Nothing errored. The migration was fine, the file applied, the
+role switched. Had the leak suite not existed this shipped, and it would have shipped as "privacy by construction".
+**Fix:** every policy in `src/server/db/policies/002_policies.sql` now carries an explicit command clause;
+`items_owner_write` became `items_owner_update` + `items_owner_insert`. The assertion that caught it is
+`sees only their own confirmed, un-tombstoned items` in `tests/leak/owner-blindness.test.ts`.
+**Do not repeat:** An absent `FOR` is not "unspecified", it is "everything". Write the command clause on every
+policy, and treat a policy whose `USING` clause does not mention the column that must stay hidden as a bug you have
+not found yet.
+
+## 2026-10-26 — Passed `{ pool }` to `PrismaPg` and it connected to a different database
+**What happened:** the adapter's first parameter is `pg.Pool | PoolConfig | string`. I passed `{ pool }`, which is a
+valid-looking object, so TypeScript said nothing and the adapter read it as a `PoolConfig` with one unknown key.
+**Impact:** every query went to `localhost:5432` with default credentials instead of the URL under test, and the
+error surfaced as `ECONNREFUSED` on the first insert. In production the same mistake points at whatever happens to
+be listening locally — a silently wrong DSN is a data-exposure bug, not just a crash.
+**Fix:** `src/server/db/client.ts` passes the `Pool` instance itself and says why in one line; the dev URL and the
+test URL now both resolve through `createDb(connectionString)`.
+**Do not repeat:** After wiring an adapter or driver, prove the connection lands where you think by reading it back
+(`SELECT current_database()`), not by trusting that the constructor accepted the object.
+
 ## 2026-10-26 — Proposed a share-card link preview without asking who else sees a preview
 **What happened:** While ideating the gift-card feature, I recommended making the generated card the Open Graph
 preview image of the share link, because "the link preview *is* the artefact". The card carries every

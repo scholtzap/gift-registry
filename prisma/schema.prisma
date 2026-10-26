@@ -1,0 +1,359 @@
+// Gift Circles — single system of record is Postgres 16.
+// Money is always integer minor units + an explicit currency; never a float.
+// RLS is NOT expressible here — it lives in server/db/policies/*.sql (see ARCHITECTURE §4).
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum AttributeKind {
+  ring_size
+  shoe_size
+  top
+  bottom
+  colour
+  other
+}
+
+enum AttributeVisibility {
+  friends
+  private
+}
+
+enum CircleStatus {
+  active
+  closed
+}
+
+enum AllowlistStatus {
+  pending
+  accepted
+  removed
+}
+
+enum MembershipRole {
+  owner
+  friend
+}
+
+enum MembershipStatus {
+  active
+  removed
+}
+
+enum ItemVisibility {
+  owner_visible
+  friend_only
+}
+
+enum ItemStatus {
+  active
+  tombstoned
+  revealed
+}
+
+enum TombstoneReason {
+  bought_self
+  no_longer_wants
+  duplicate
+}
+
+enum ClaimKind {
+  solo
+  pool_member
+}
+
+enum ClaimStatus {
+  claimed
+  fulfilled
+  released
+}
+
+enum PoolStatus {
+  open
+  funded
+  purchased
+  pivot_needed
+}
+
+enum ContributionStatus {
+  promised
+  marked_paid
+  settled
+}
+
+enum IngestKind {
+  audio
+  image
+  text
+  url
+}
+
+enum IngestStatus {
+  received
+  converted
+  transcribed
+  parsed
+  confirmed
+  failed
+}
+
+model User {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  bsuid       String?   @unique
+  phoneE164   String?   @unique @map("phone_e164")
+  displayName String    @map("display_name")
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  attributes      Attribute[]
+  ownedCircles    Circle[]
+  addedAllowlist  AllowlistEntry[]
+  memberships     Membership[]
+  addedItems      Item[]
+  claims          Claim[]
+  poolsAsBuyer    Pool[]
+  contributions   Contribution[]
+  ingestEvents    IngestEvent[]
+  ledgerEvents    LedgerEvent[]
+  cardEntries     CardEntry[]
+  giftCards       GiftCard[]
+
+  @@map("users")
+}
+
+model Attribute {
+  id        String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String              @map("user_id") @db.Uuid
+  kind      AttributeKind
+  valueText String              @map("value_text")
+  unit      String?
+  visibility AttributeVisibility @default(friends)
+  updatedAt DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, kind, valueText])
+  @@index([userId])
+  @@map("attributes")
+}
+
+model Circle {
+  id          String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String
+  occasion    String
+  eventDate   DateTime      @map("event_date") @db.Date
+  ownerUserId String        @map("owner_user_id") @db.Uuid
+  shareSlug   String        @unique @map("share_slug")
+  status      CircleStatus  @default(active)
+  createdAt   DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  owner          User             @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
+  allowlist      AllowlistEntry[]
+  memberships    Membership[]
+  items          Item[]
+  ingestEvents   IngestEvent[]
+  ledgerEvents   LedgerEvent[]
+
+  @@index([ownerUserId])
+  @@map("circles")
+}
+
+model AllowlistEntry {
+  id            String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  circleId      String          @map("circle_id") @db.Uuid
+  phoneE164Hash String          @map("phone_e164_hash")
+  addedBy       String          @map("added_by") @db.Uuid
+  status        AllowlistStatus @default(pending)
+  createdAt     DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  circle Circle @relation(fields: [circleId], references: [id], onDelete: Cascade)
+  addUser User  @relation(fields: [addedBy], references: [id], onDelete: Cascade)
+
+  @@unique([circleId, phoneE164Hash])
+  @@index([circleId, status])
+  @@map("allowlist_entries")
+}
+
+model Membership {
+  id        String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  circleId  String           @map("circle_id") @db.Uuid
+  userId    String           @map("user_id") @db.Uuid
+  role      MembershipRole   @default(friend)
+  status    MembershipStatus @default(active)
+  joinedAt  DateTime         @default(now()) @map("joined_at") @db.Timestamptz(6)
+
+  circle Circle @relation(fields: [circleId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([circleId, userId])
+  @@index([userId, status])
+  @@map("memberships")
+}
+
+model Item {
+  id             String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  circleId       String           @map("circle_id") @db.Uuid
+  title          String
+  canonicalUrl   String?          @map("canonical_url")
+  retailer       String?
+  priceMinor     Int?             @map("price_minor")
+  currency       String           @default("ZAR") @db.Char(3)
+  imagePath      String?          @map("image_path")
+  addedByUserId  String           @map("added_by_user_id") @db.Uuid
+  visibility     ItemVisibility   @default(owner_visible)
+  status         ItemStatus       @default(active)
+  tombstoneReason TombstoneReason? @map("tombstone_reason")
+  confirmed      Boolean          @default(false)
+  createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  tombstonedAt   DateTime?        @map("tombstoned_at") @db.Timestamptz(6)
+
+  circle       Circle        @relation(fields: [circleId], references: [id], onDelete: Cascade)
+  addedBy      User          @relation(fields: [addedByUserId], references: [id], onDelete: Cascade)
+  claims       Claim[]
+  pools        Pool[]
+  ingestEvents IngestEvent[]
+  cardEntries  CardEntry[]
+  giftCard     GiftCard?
+
+  @@index([circleId, status])
+  @@index([circleId, visibility])
+  @@map("items")
+}
+
+model Claim {
+  id        String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  itemId    String      @map("item_id") @db.Uuid
+  userId    String      @map("user_id") @db.Uuid
+  poolId    String?     @map("pool_id") @db.Uuid
+  kind      ClaimKind
+  status    ClaimStatus @default(claimed)
+  createdAt DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  item Item  @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  user User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pool Pool? @relation(fields: [poolId], references: [id], onDelete: SetNull)
+
+  @@unique([itemId, userId])
+  @@index([poolId])
+  @@map("claims")
+}
+
+model Pool {
+  id          String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  itemId      String     @map("item_id") @db.Uuid
+  buyerUserId String     @map("buyer_user_id") @db.Uuid
+  targetMinor Int        @map("target_minor")
+  currency    String     @default("ZAR") @db.Char(3)
+  status      PoolStatus @default(open)
+  createdAt   DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  item          Item           @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  buyer         User           @relation(fields: [buyerUserId], references: [id], onDelete: Cascade)
+  claims        Claim[]
+  contributions Contribution[]
+
+  @@index([itemId, status])
+  @@map("pools")
+}
+
+model Contribution {
+  id          String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  poolId      String             @map("pool_id") @db.Uuid
+  userId      String             @map("user_id") @db.Uuid
+  amountMinor Int                @map("amount_minor")
+  currency    String             @default("ZAR") @db.Char(3)
+  status      ContributionStatus @default(promised)
+  paidAt      DateTime?          @map("paid_at") @db.Timestamptz(6)
+  note        String?
+  createdAt   DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  pool Pool @relation(fields: [poolId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([poolId, userId])
+  @@map("contributions")
+}
+
+model IngestEvent {
+  id             String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  waMessageId    String       @unique @map("wa_message_id")
+  circleId       String       @map("circle_id") @db.Uuid
+  userId         String       @map("user_id") @db.Uuid
+  kind           IngestKind
+  mediaPath      String?      @map("media_path")
+  mediaExpiresAt DateTime?    @map("media_expires_at") @db.Timestamptz(6)
+  modelUsed      String?      @map("model_used")
+  draft          Json?
+  itemId         String?      @map("item_id") @db.Uuid
+  status         IngestStatus @default(received)
+  error          String?
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  circle Circle @relation(fields: [circleId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  item   Item?  @relation(fields: [itemId], references: [id], onDelete: SetNull)
+
+  @@index([circleId, status])
+  @@map("ingest_events")
+}
+
+model LedgerEvent {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  circleId    String   @map("circle_id") @db.Uuid
+  entity      String
+  entityId    String   @map("entity_id")
+  actorUserId String?  @map("actor_user_id") @db.Uuid
+  action      String
+  payload     Json?
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  circle Circle @relation(fields: [circleId], references: [id], onDelete: Cascade)
+  actor  User?  @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([circleId, createdAt])
+  @@map("ledger_events")
+}
+
+/// One row per gift-giver. The card is composed from these, never stored as one blob.
+model CardEntry {
+  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  itemId            String   @map("item_id") @db.Uuid
+  contributorUserId String   @map("contributor_user_id") @db.Uuid
+  displayNameShown  String   @map("display_name_shown")
+  anonymous         Boolean  @default(false)
+  message           String
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  item        Item @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  contributor User @relation(fields: [contributorUserId], references: [id], onDelete: Cascade)
+
+  @@unique([itemId, contributorUserId])
+  @@map("card_entries")
+  // A card is handed to the gift target in a WhatsApp group: a runaway message would
+  // turn a keepsake into a wall of text, and a URL would smuggle a retailer to the owner.
+}
+
+/// Derived state, not ledger state: deleting a card never touches contributions.
+model GiftCard {
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  itemId           String   @unique @map("item_id") @db.Uuid
+  pun              String
+  tagline          String
+  modelUsed        String?  @map("model_used")
+  artPath          String?  @map("art_path")
+  artPrompt        String?  @map("art_prompt")
+  renderedPngPath  String?  @map("rendered_png_path")
+  renderedAt       DateTime? @map("rendered_at") @db.Timestamptz(6)
+  createdByUserId  String   @map("created_by_user_id") @db.Uuid
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  item      Item @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  createdBy User @relation(fields: [createdByUserId], references: [id], onDelete: Cascade)
+
+  @@map("gift_cards")
+}

@@ -1,7 +1,7 @@
 ---
 title: Gift Circles ten-day build plan
 type: spec
-status: ready
+status: implementing
 priority: P1
 rank: 1
 updated: 2026-10-26
@@ -16,6 +16,12 @@ superseded_by: null
 # Gift Circles — ten-day build plan (Oct 26 → Nov 4 2026)
 
 **Status:** Active. Gates are the contract; if a gate fails, apply the cut list rather than absorbing the slip.
+
+**Progress (26 Oct, part of days 1–2):** all §4 tables in Prisma with two expand-only migrations; `app_owned` /
+`app_friend` roles and the policy set; `withActor` as the only door to friend-scoped data; fictional-cast seed;
+`GET /health` that answers 500 when a table has no policy; leak suite green on 10 assertions, 7 of them proven red
+first. Still open on day 1: VM, TLS, Meta key, WhatsApp webhook verify, auth template. Still open on day 2:
+nightly `pg_dump`, session cookie, role-split routes, ingest webhook + dedupe.
 
 Deadline **Wed 4 Nov 21:00 ET**. Nine usable days after today. Solo. Judging uses a 3-minute video, the public
 repo, and the live product, and top-5 teams have judges watching the video **live** on Nov 9, so the URL must

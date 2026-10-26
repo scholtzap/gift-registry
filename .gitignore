@@ -52,3 +52,13 @@ docs/strategy/hackathon/*.pdf
 # Generated plans-registry reports (regenerate with audit_plans.py)
 docs/plans/PLANS_AUDIT_REPORT.md
 docs/plans/RELOCATION_MAP.md
+
+/src/generated/prisma
+
+# Vendor agent skills some CLIs install into the repo (Prisma 7 does this on `init`).
+# This repo is public and the submitted product must be your own build; never track tool-supplied skills.
+.agents/skills/
+.claude/skills/
+.windsurf/
+skills-lock.json
+.media/
