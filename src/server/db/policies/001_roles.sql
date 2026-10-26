@@ -35,3 +35,29 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO app_owned
 
 ALTER DEFAULT PRIVILEGES IN SCHEMA public
   GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO app_owned, app_friend;
+
+-- The one deliberate exception to the symmetry above, and it is not about rows.
+--
+-- RLS filters *rows*, never *columns*, and the grant above is table-wide — so a role legitimately
+-- allowed to read its circle's roster reads every column of those rows too, which is
+-- `phone_e164` and `bsuid` for the whole group. `users_circle_roster` is correct and this still
+-- leaks: the roster is the row set a friend may see, and a phone number is not.
+--
+-- It has to be done by narrowing the grant, not by revoking afterwards: a table-level SELECT
+-- implies SELECT on every column of it, so `REVOKE SELECT (phone_e164) ON users` executes cleanly
+-- and changes nothing (verified — `attacl` stays NULL and `has_column_privilege` stays true).
+--
+-- `phone_e164` stays plaintext in the column, contrary to the security report's proposed fix: the
+-- WhatsApp Cloud API addresses recipients by number, so the send path must read it. It reads it on
+-- the login role, because service paths (webhook, gate, sender) have no session to switch out of.
+--
+-- Two consequences to respect rather than "fix":
+--   * a bare `include`/`select: {}` of a user relation now raises 42501, because Prisma expands it
+--     into every column. Name the columns. Failing closed on a query that asks for too much is the
+--     point — re-granting the column is not the answer.
+--   * a column added to `users` by a later migration is invisible to both roles until it is added
+--     to the list below. Also the point.
+REVOKE SELECT, INSERT, UPDATE ON users FROM app_owned, app_friend;
+GRANT SELECT (id, display_name, plan, created_at),
+      INSERT (id, display_name, plan),
+      UPDATE (id, display_name, plan) ON users TO app_owned, app_friend;

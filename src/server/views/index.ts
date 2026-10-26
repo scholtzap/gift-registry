@@ -61,7 +61,10 @@ export async function ownerCircleView(tx: Tx, circleId: string): Promise<OwnerCi
     where: { id: circleId },
     include: {
       items: { orderBy: { createdAt: 'asc' } },
-      owner: { include: { attributes: { orderBy: { kind: 'asc' } } } },
+      // `select`, not a bare `include`: Prisma expands an included relation into every column of
+      // the table, and `users.phone_e164` / `users.bsuid` are revoked from the app roles on
+      // purpose (001_roles.sql). A bare include here would raise 42501 at the first read.
+      owner: { select: { attributes: { orderBy: { kind: 'asc' } } } },
     },
   });
   if (circle === null) return null;
@@ -94,7 +97,7 @@ export async function friendCircleView(tx: Tx, circleId: string, viewerUserId: s
           pools: { include: { contributions: true } },
         },
       },
-      owner: { include: { attributes: { orderBy: { kind: 'asc' } } } },
+      owner: { select: { attributes: { orderBy: { kind: 'asc' } } } },
     },
   });
   if (circle === null) return null;

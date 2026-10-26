@@ -157,3 +157,40 @@ describe('the switch is the security boundary, not a naming convention', () => {
     expect(await db.prisma.contribution.count()).toBeGreaterThan(0);
   });
 });
+
+// RLS decides which *rows* a role may see and has no notion of columns, so the blanket table grant
+// in 001_roles.sql is the exposure: `users_circle_roster` correctly hands a friend the roster and
+// the roster's `phone_e164` / `bsuid` ride along inside it. Row policies cannot express "not those
+// two columns"; privileges can.
+describe('a roster read is a row right, not a column right', () => {
+  it('revokes both identifier columns from both app roles', async () => {
+    const flags = await db.prisma.$queryRaw<{ owner_phone: boolean; friend_phone: boolean; owner_bsuid: boolean }[]>`
+      SELECT has_column_privilege('app_owned',  'users', 'phone_e164', 'SELECT') AS owner_phone,
+             has_column_privilege('app_friend', 'users', 'phone_e164', 'SELECT') AS friend_phone,
+             has_column_privilege('app_owned',  'users', 'bsuid',      'SELECT') AS owner_bsuid`;
+
+    expect(flags[0]).toEqual({ owner_phone: false, friend_phone: false, owner_bsuid: false });
+  });
+
+  it('fails closed rather than quietly handing a friend the group phone list', async () => {
+    await expect(
+      db.withActor(friend(fx.friendAUserId), (tx) => tx.$queryRaw`SELECT phone_e164 FROM users`),
+    ).rejects.toThrow();
+
+    // Same role, same table, a column it was always entitled to: narrow, not broken.
+    const names = await db.withActor(friend(fx.friendAUserId), (tx) =>
+      tx.$queryRaw<{ display_name: string }[]>`SELECT display_name FROM users ORDER BY display_name`,
+    );
+    expect(names).toHaveLength(3);
+  });
+
+  it('leaves the columns readable for the service path that has to address by number', async () => {
+    // The send path runs on the login role: WhatsApp Cloud API takes a number, not a hash, so this
+    // read is a product requirement and not an oversight to close later.
+    const row = await db.prisma.user.findUnique({
+      where: { id: fx.friendAUserId },
+      select: { bsuid: true, phoneE164: true },
+    });
+    expect(row?.bsuid).toMatch(/^AAfictional/);
+  });
+});
