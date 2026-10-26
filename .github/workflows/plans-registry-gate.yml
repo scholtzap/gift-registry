@@ -1,0 +1,44 @@
+name: plans-registry-gate
+
+on:
+  push:
+    branches: [master, main, dev]
+    paths:
+      - "docs/plans/**"
+      - "scripts/ops/plans_registry/**"
+      - "scripts/ops/audit_plans.py"
+      - "scripts/ops/refresh_plans_index.py"
+      - "scripts/ops/apply_plans_batch.py"
+      - "scripts/ops/reprioritize_plans.py"
+      - "scripts/ops/apply_frontmatter.py"
+      - ".github/workflows/plans-registry-gate.yml"
+  pull_request:
+    paths:
+      - "docs/plans/**"
+      - "scripts/ops/plans_registry/**"
+      - "scripts/ops/audit_plans.py"
+      - "scripts/ops/refresh_plans_index.py"
+      - "scripts/ops/apply_plans_batch.py"
+      - "scripts/ops/reprioritize_plans.py"
+      - "scripts/ops/apply_frontmatter.py"
+      - ".github/workflows/plans-registry-gate.yml"
+  workflow_dispatch:
+
+jobs:
+  index-fresh:
+    name: PLANS_INDEX.md freshness
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+
+      - name: Install PyYAML
+        run: pip install pyyaml
+
+      - name: Verify generated index matches scan
+        run: python scripts/ops/refresh_plans_index.py --check

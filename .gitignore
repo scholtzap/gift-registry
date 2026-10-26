@@ -1,0 +1,50 @@
+# Not tracked: local secrets. CI owns docs KB sync (see .github/workflows/sync-notion-docs.yml),
+# so NOTION_API_KEY lives only as a GitHub Actions secret, never in this file.
+.env
+.env.local
+.env.*.local
+
+# Node / Next.js
+node_modules/
+.next/
+out/
+build/
+dist/
+*.tsbuildinfo
+next-env.d.ts
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Local data / scratch
+.scratch/
+*.log
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editors
+.idea/
+.vscode/*
+!.vscode/settings.json
+
+# Agent runtime state (repo-memory keeps project_memory.json tracked, not the sqlite blob)
+.memory/*.sqlite
+.memory/*.sqlite-journal
+.memory/*.sqlite-wal
+.memory/*.sqlite-shm
+.omc/sessions/
+.omc/state/
+
+# Diagram/tool output
+graphify-out/
+
+# Third-party page prints (event rules pages) - kept locally for reference, not redistributed
+# in a public repo; docs/strategy/hackathon-rules-and-rubric.md is our own summary.
+docs/strategy/hackathon/*.pdf

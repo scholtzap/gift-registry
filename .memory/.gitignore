@@ -1,0 +1,5 @@
+﻿# Local SQLite brain - commit this file, not the database
+*.sqlite
+*.sqlite-journal
+*.sqlite-wal
+*.sqlite-shm

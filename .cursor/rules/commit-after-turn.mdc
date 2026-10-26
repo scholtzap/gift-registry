@@ -1,0 +1,20 @@
+---
+description: Commit durable git changes at the end of every agent turn (do not wait to be asked).
+alwaysApply: true
+---
+
+# Commit after each turn (required)
+
+If this turn changed durable files in this git repo, **commit before ending**. Do not wait for the user to ask.
+
+## Commit
+
+- Product, ops, docs, agent-knowledge files (`ARCHITECTURE.md`, `WISHLIST.md`, `MISTAKES.md`, Cursor rules/hooks)
+
+## Skip / ask first
+
+- Secrets (`.env`, credentials, MCP JSON with tokens)
+- Throwaway debug (`127.0.0.1` ingest logs, `#region agent log`)
+- Other-agent dirty trees, binaries, `node_modules`, `__pycache__`, generated `version.ts` unless the task owns them
+
+Global Cursor rule: `~/.cursor/rules/commit-after-turn.mdc`

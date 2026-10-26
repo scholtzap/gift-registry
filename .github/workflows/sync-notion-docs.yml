@@ -1,0 +1,30 @@
+name: Sync docs to Notion
+
+on:
+  push:
+    branches: [main]
+    paths: ["docs/**"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sync-notion-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install --no-cache-dir httpx notion-client
+      - name: Sync docs/ to Notion hub
+        env:
+          NOTION_API_KEY: ${{ secrets.NOTION_API_KEY }}
+          NOTION_ROOT_PAGE_ID: "405e495d9bdc80a4827cc83e7d9e9019"
+          NOTION_EXPECTED_ROOT_TITLE: "Gift Registry"
+        run: |
+          python scripts/ops/sync_docs_to_notion.py \
+            --docs-dir docs/ \
+            --root-page-id "$NOTION_ROOT_PAGE_ID" \
+            --expect-root-title "$NOTION_EXPECTED_ROOT_TITLE"

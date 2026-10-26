@@ -1,0 +1,28 @@
+---
+description: Read and keep git-root ARCHITECTURE.md current; do not re-explore from scratch; complements graphify.
+alwaysApply: true
+---
+
+# Architecture map (required)
+
+Keep `ARCHITECTURE.md` at this **git repository root**. Create it if missing (skill `repo-architecture`).
+
+## Session start
+
+If the file exists and is not a stub, read **§§1–3 and §10** before a wide glob/grep of the repo. Use graphify (`GRAPH_REPORT.md`) for edge questions, not as a substitute for this map.
+
+## Update when
+
+- You add/remove a service, data store, host, CI path, or major directory
+- A wishlist `quickref` / `inefficiency` is "I had to explore to find X" — put X here
+- Deploy or integration topology changes
+
+## Do not
+
+- Duplicate `AGENTS.md` behaviour, `MISTAKES.md` postmortems, or `docs/plans/` SPECs — pointer only
+- Paste `graphify-out/graph.json` into this file
+- Invent folders that do not exist (replace the template tree with the real one)
+- Put secrets here
+
+Skill: `repo-architecture` · Template headings must stay 1–11.  
+Ops: `bike-tracker/docs/operations/AGENT_KNOWLEDGE_ECOSYSTEM.md` · Graphify: `docs/strategy/GRAPHIFY.md`

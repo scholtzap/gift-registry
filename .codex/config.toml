@@ -1,0 +1,3 @@
+﻿[mcp_servers.project-memory]
+command = "npx"
+args = ["-y", "mcp-sqlite", "./.memory/main.sqlite"]

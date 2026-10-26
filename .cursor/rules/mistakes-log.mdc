@@ -1,0 +1,50 @@
+---
+description: Append git-root MISTAKES.md whenever the agent makes a mistake; session-end audit hook.
+alwaysApply: true
+---
+
+# Mistakes log (required)
+
+Keep `MISTAKES.md` at this **git repository root** (`gifts-registry/`). Create it if missing.
+
+Append a dated entry **every time a mistake is made**. Do not wait for the user to ask. Newest
+first. **No secrets, tokens, env dumps, or credentialed URLs.**
+
+## Format
+
+```markdown
+## YYYY-MM-DD — short title
+**What happened:**
+**Impact:**
+**Fix:**
+**Do not repeat:**
+```
+
+## Append when
+
+- A wrong assumption was baked into code, a doc, or an inherited brief — especially a third-party
+  platform claim (Meta Model API, WhatsApp Cloud API) that verification later contradicted
+- A deploy, `next build`, `prisma migrate`, CI workflow, or Notion doc sync failed
+- A webhook, template, rate limit, or media-expiry behaviour behaved differently from the doc
+- A scraped or unlicensed data asset nearly entered the repo (hackathon disqualifier)
+- A tool/command was run destructively or a git rule was broken
+
+## Do not append when
+
+- Missing tooling, access, or a discovery-tax pointer → `WISHLIST.md`
+- Product or feature work → `docs/plans/`
+- Duplicate of an existing entry (add a note to it instead)
+
+## Hooks
+
+- **Cursor:** `.cursor/hooks/mistakes_audit.py` on `stop` (returns `followup_message`) and
+  `sessionEnd` (stderr audit only). Patterns are split into `GENERIC_FAILURE_RE`,
+  `REPO_FAILURE_RE` (Next.js/TS, Prisma/Postgres, WhatsApp webhooks, Meta Model API), and
+  `FALSE_POSITIVE_RE` filtering.
+- **Claude Code:** the same script on the `Stop` event via `.claude/settings.local.json`, using
+  `python` (not `python3`) and returning `decision=block` with the reminder as `reason`.
+
+After editing `MISTAKES.md`, **commit it — CI owns the KB sync**
+(`.github/workflows/sync-notion-docs.yml`). Do not run `/doc-kb-save` by hand.
+
+Full rule: `~/.claude/AGENTS.md` § 5 · Ops: `AGENT_KNOWLEDGE_ECOSYSTEM.md` (3BO)

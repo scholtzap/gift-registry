@@ -1,0 +1,35 @@
+---
+description: Append git-root WISHLIST.md for tooling gaps and discovery-tax inefficiencies.
+alwaysApply: true
+---
+
+# Agent wishlist (required)
+
+Keep `WISHLIST.md` at this **git repository root**. Create it if missing. **Not a human task list.**
+
+## Append when
+
+- Missing CLI, MCP, API scope, GitHub secret name, skill, hook, or CI
+- A repeated manual step should be automated
+- **Discovery tax:** you had to explore the codebase, AWS, Mongo, WP, or deploy consoles to find a fact that should be a one-line pointer in `ARCHITECTURE.md` or a runbook
+- A dedicated skill would cut tokens on a recurring task class
+
+Append **even if you finished the hunt this session**. Install a CLI you can install now, then still log if others will hit the same undocumented gap.
+
+## Do not append when
+
+- Agent error → `MISTAKES.md`
+- Product/ops work → `docs/plans/`
+- Duplicate of an **open** item (bump date or add a note)
+- Secrets / tokens / credentialed URLs
+
+## Routing
+
+- This repo → git-root `WISHLIST.md`
+- Workspace-wide MCP/CLI/Cursor+Claude skills → umbrella `Documents/3bo/WISHLIST.md`
+
+Newest first. Template in `WISHLIST.md`. Prefer fulfilling `quickref` by editing `ARCHITECTURE.md` the same turn.
+
+Digest: `python bike-tracker/scripts/ops/wishlist_session_digest.py`  
+Hook: `.cursor/hooks/wishlist_audit.py`  
+Skill: `repo-wishlist` · Ops: `bike-tracker/docs/operations/AGENT_KNOWLEDGE_ECOSYSTEM.md`

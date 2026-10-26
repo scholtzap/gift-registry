@@ -1,0 +1,5 @@
+#!/bin/sh
+# Plans registry: stale PLANS_INDEX check when docs/plans/ is in the commit.
+# Installed by install_plans_registry.py → git config core.hooksPath .githooks
+ROOT="$(git rev-parse --show-toplevel)"
+exec python "$ROOT/scripts/ops/hooks/pre_commit_plans_index.py"
