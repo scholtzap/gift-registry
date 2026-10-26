@@ -16,20 +16,34 @@ gifts-registry/
   .github/workflows/      # sync-notion-docs.yml, plans-registry-gate.yml, + CI test gate
   docker-compose.yml      # app + postgres + caddy (identical local and on the Oracle VM)
   src/
-    app/                  # Next.js App Router: (owner)/, (friend)/, api/
+    app/                  # Next.js App Router. Built: health/, c/[slug]/ (thin adapter).
+                          #   Planned: (owner)/, (friend)/, api/, landing page at /
+    lib/                  # env contract (zod, fails at boot), money formatting
     server/
-      db/                 # Prisma schema, migrations, RLS policy SQL
-      wa/                 # WhatsApp Cloud API client + webhook handler + media store
-      models/             # Meta Model API client: spark, transcribe, image, sam, web_search
-      intake/             # ingest pipeline: dedupe -> fetch media -> convert -> parse -> draft item
-      ledger/             # circles, members, items, claims, pools, contributions
+      db/                 # client.ts (withActor — the only door), policies.ts, policy SQL
+      auth/               # phone-hash.ts (keyed E.164 hash), session.ts (signed cookie)
+      routes/             # framework-free route logic; circle.ts is the /c/<slug> role split
       views/              # role-scoped projection builders (the privacy boundary)
-      agent/              # role-specific toolsets + context builder
-  worker/                 # pg-boss consumer for ingest jobs
-  fixtures/               # fictional cast seed + hand-checked SA retailer product fixtures + SOURCES.md
-  scripts/ops/            # sync_docs_to_notion.py, plans registry tooling, seed scripts
+      entitlements.ts     # can() / assertCan() — the single gate on every model-spending path
+      wa/                 # PLANNED: WhatsApp Cloud API client + webhook handler + media store
+      models/             # PLANNED: Meta Model API client — spark, transcribe, image, sam
+      intake/             # PLANNED: dedupe -> fetch media -> convert -> parse -> draft item
+      ledger/             # PLANNED: circles, members, items, claims, pools, contributions
+      agent/              # PLANNED: role-specific toolsets + context builder
+    generated/prisma/     # generated client; gitignored
+  tests/                  # leak/ (RLS), views/ (projections), entitlements/ (gate), routes/
+                          #   (HTTP layer). `pnpm leak` runs all four; globalSetup applies the
+                          #   migrations and the policies to DATABASE_URL_TEST every run.
+  worker/                 # PLANNED: pg-boss consumer for ingest jobs
+  fixtures/               # PLANNED: hand-checked SA retailer product fixtures + SOURCES.md
+  scripts/                # seed.ts (fictional cast), apply_policies.ts
+  scripts/ops/            # sync_docs_to_notion.py, plans registry tooling
   docs/                   # strategy / plans / investigations / operations / deployment
 ```
+
+A row marked PLANNED is a module that does not exist yet. It stays in this map because the shape
+is agreed, and it loses the marker the day the directory appears — a map that cannot tell you
+which half is real is a map that becomes a lie.
 
 ## 2. High-Level System Diagram
 
