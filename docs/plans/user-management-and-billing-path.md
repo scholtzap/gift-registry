@@ -102,12 +102,23 @@ privacy model.
 - **Status:** open.
 - **Revisit if:** the task bot lands first (likely), which closes it properly.
 
-### D5 — No payment integration before submission. Paddle is the post-hackathon merchant of record.
+### D5 — No payment integration before submission. PayFast is the ZA rail; a merchant of record only once non-ZA revenue exists.
 
-- **Decision:** for the nine days to submission, **build nothing**. `users.plan` and `entitlements.source =
-  'subscription'` already reserve the seam, and the seeded cast is `internal` so the recording never meets a tier wall.
-  After submission: **Paddle** as primary merchant of record; **Paystack subscriptions** later only if a ZAR local rail
-  is wanted.
+- **Decision (owner, 2026-10-26):** for the nine days to submission, **build nothing**. `users.plan` and
+  `entitlements.source = 'subscription'` already reserve the seam, and the seeded cast is `internal` so the recording
+  never meets a tier wall. After submission: **PayFast** as the payment provider for a ZA-first launch. A merchant of
+  record (Paddle first choice) is adopted **only when there is material non-ZA revenue** — not before.
+- **Why PayFast and not a MoR first:** the product's first circles are South African WhatsApp groups, PayFast settles
+  ZAR into a ZA bank account, and it covers the local methods ZA users actually reach for (Instant EFT, SnapScan,
+  Zapper, Mobicred, Payflex) with no setup or monthly fee — only per-transaction. Published rates, Oct 2026, excl. VAT:
+  credit/cheque card **3.2% + R2.00**, Instant EFT **2.0% (min R2.00)**, with volume pricing above R50,000/month.
+  Buying a MoR on day one would pay a larger cut to solve a tax problem that does not exist yet.
+- **PayFast's two real constraints — both change the design, so they are written down:**
+  1. **Recurring billing is credit-card only.** PayFast's own developer docs: "For Recurring Billing only the credit
+     card option can be used", via either *Subscriptions* or *Tokenization*. So a subscriber on Instant EFT cannot
+     recur — the subscription flow must collect a card, and the free tier must not imply otherwise.
+  2. **PayFast is a gateway, not a merchant of record.** It does not become the seller, so the cross-border tax
+     position below stays entirely ours. This is the whole reason the MoR decision is deferred rather than dropped.
 - **Why:** **Stripe does not onboard South African entities.** `stripe.com/global` lists South Africa only under an
   "Extended network" badge whose href is `paystack.com/stripe/south-africa` — a ZA entity registers with Paystack, not
   with Stripe (verified 2026-10-26 by pulling the raw HTML, not the rendered page). Separately: MoR KYC approval alone
@@ -119,7 +130,8 @@ privacy model.
   taxable turnover" for overseas sellers, and US states have post-*Wayfair* economic nexus. A merchant of record absorbs
   all three. A solo dev registering for VAT in three jurisdictions to charge R99 a month is the definition of wasted
   effort.
-- **Alternatives rejected:**
+- **Alternatives rejected as the ZA rail** (PayFast won on local method coverage + no monthly fee + a first-party
+  Subscriptions API):
   - **Polar.sh** — MoR, but payouts go *"to your Stripe account"*, which makes it effectively unavailable to a ZA
     resident.
   - **Lemon Squeezy** — Stripe-owned, ZA appears in its supported bank-payout countries, and it is MoR, so it is the
@@ -127,16 +139,23 @@ privacy model.
     which is the wrong moment to build on it.
   - **Paystack** — serves ZA businesses and has a Subscriptions/Plans API, but international cards are "charged and
     settled… in your local currency" (ZAR), so there is no USD pricing, and it is **not** MoR — the tax problem stays
-    ours.
+    ours. Same shape as PayFast with fewer local methods, so it loses the ZA-rail choice.
   - **Stripe Atlas US LLC / UK Ltd** — unlocks Stripe Billing and 135+ currencies, but adds an entity, Form 5472 and
     bookkeeping. Only worth it if gift-pool payouts later force Stripe Connect, at which point one US entity serves
     both.
   - **Flutterwave / Peach Payments / Netcash** — recurring and ZA-capable, ZAR-centric, not MoR.
   - **Yoco** — no native recurring; needs a third-party wrapper.
   - **PayPal** — Subscriptions API exists but ZA receiving for subscriptions is unverified. Secondary rail at best.
-- **Status:** provisional. The **timing** is decided (nothing before 4 Nov); the **provider** is not contracted.
-- **Revisit if:** Stripe opens ZA directly; Lemon Squeezy finishes its Stripe migration and undercuts Paddle; or
-  gift-pool payouts force a US entity anyway, which would make Stripe Billing the cheaper second step.
+- **Deferred, not rejected: Paddle.** It remains the first-choice merchant of record, and it is what gets adopted the
+  day the product sells to a non-ZA consumer. PayFast and a MoR are not mutually exclusive — the usual end state is
+  PayFast for ZA and a MoR for everywhere else, both writing the same `subscriptions` rows (D6 is deliberately
+  provider-agnostic: `provider` + `provider_subscription_id` + `billing_customer`).
+- **Status:** the **timing** is decided (nothing before 4 Nov 2026) and the **ZA provider** is decided (PayFast, not yet
+  contracted). The **MoR** decision stays open until non-ZA revenue is material.
+- **Revisit if:** Stripe opens ZA directly; Lemon Squeezy finishes its Stripe migration and undercuts Paddle;
+  gift-pool payouts force a US entity anyway, which would make Stripe Billing the cheaper second step; the first
+  non-ZA subscriber appears, which triggers the MoR immediately; or PayFast's recurring support stops being
+  card-only, which would remove constraint 1 above.
 
 ### D6 — The billing schema, decided now so it is additive later
 
@@ -280,6 +299,11 @@ privacy model.
 
 ## Sources (all checked 2026-10-26)
 
+PayFast: [fees](https://payfast.io/fees/),
+[subscriptions feature](https://payfast.io/features/subscriptions/),
+[developer docs — recurring](https://developers.payfast.co.za/) ("For Recurring Billing only the credit card option can
+be used"), [selling to international customers](https://payfast.io/blog/how-south-african-merchants-can-sell-online-to-international-customers/),
+[rate card, Oct 2026](https://smesouthafrica.co.za/brands/payfast/) ·
 Stripe availability: [stripe.com/global](https://stripe.com/global) · Paddle:
 [supported countries](https://www.paddle.com/help/start/intro-to-paddle/which-countries-are-supported-by-paddle),
 [supported currencies](https://developer.paddle.com/concepts/sell/supported-currencies) · Lemon Squeezy:

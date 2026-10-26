@@ -63,8 +63,10 @@ vision segmentation, deal discovery on the open web, and group coordination.
   allow-listed number", which Better Auth / Auth.js / Supabase / Clerk do not model, and each of them either ignores
   WhatsApp delivery or owns identity tables outside the RLS boundary. Sessions are a signed cookie
   (`src/server/auth/session.ts`), `SameSite=Lax` because `Strict` breaks the click out of WhatsApp's in-app browser.
-- **No payment integration before submission.** Stripe does not onboard South African entities; the post-hackathon path
-  is a merchant of record (Paddle first choice) so EU/UK/US digital-services tax is not ours to register for.
+- **No payment integration before submission.** Stripe does not onboard South African entities. The post-hackathon ZA
+  rail is **PayFast** (ZAR into a ZA bank, no monthly fee, first-party Subscriptions API); two constraints shape the
+  design — **recurring is credit-card only**, and **PayFast is a gateway, not a merchant of record**, so EU/UK/US
+  digital-services tax stays ours until a MoR (Paddle first choice) is adopted on the first non-ZA subscriber.
   `users.plan` and `entitlements.source = 'subscription'` are the seam — nothing else is needed now.
 - **Card rendering is satori + resvg, not Puppeteer.** MPL-2.0 is file-level copyleft, so unmodified npm packages in a
   public repo carry no obligation, and no Chromium binary goes on the Oracle VM.

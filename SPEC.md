@@ -460,14 +460,22 @@ Full rationale, every rejected alternative and all sources live in
    with a local script calling `issueSession(...)` — a build-time tool, **not** a deployed endpoint.
    **Status:** open. Decide bot-path vs minted-cookie with the cast on day 7.
 5. **No payment integration before submission.** **Stripe does not onboard South African entities** — stripe.com/global
-   lists ZA only under an "Extended network" badge pointing at Paystack. Post-submission the path is a **merchant of
+   lists ZA only under an "Extended network" badge pointing at Paystack. Post-submission the ZA rail is **PayFast**
+   (owner decision 2026-10-26): ZAR settlement into a ZA bank, no setup or monthly fee, published Oct 2026 rates of
+   3.2% + R2.00 on cards and 2.0% (min R2.00) on Instant EFT, and a first-party Subscriptions API. Two constraints
+   shape the design: **recurring is credit-card only** ("For Recurring Billing only the credit card option can be used"
+   — PayFast developer docs), so a subscription flow must collect a card even though the free tier does not; and
+   **PayFast is a gateway, not a merchant of record**, so the cross-border tax position is unchanged. A **merchant of
    record** (Paddle first choice; Lemon Squeezy the backup, rejected for now because it is mid-migration to Stripe
-   Managed Payments; Polar pays out *to your Stripe account* so it is effectively unavailable to a ZA resident). The
-   reason to buy rather than build is tax, not fees: ZA's VAT threshold is R2.3m so domestic VAT is not the problem,
-   but EU digital B2C has **no** threshold for non-EU sellers, the UK requires registration regardless of turnover for
-   overseas sellers, and US states have post-*Wayfair* economic nexus. An MoR absorbs all three.
-   **Status:** timing decided, provider provisional. **Revisit if:** Stripe opens ZA, or gift-pool payouts force a US
-   entity anyway.
+   Managed Payments; Polar pays out *to your Stripe account* so it is effectively unavailable to a ZA resident) is
+   therefore deferred until non-ZA revenue is material, not dropped. The reason to buy rather than build is tax, not
+   fees: ZA's VAT threshold is R2.3m so domestic VAT is not the problem, but EU digital B2C has **no** threshold for
+   non-EU sellers, the UK requires registration regardless of turnover for overseas sellers, and US states have
+   post-*Wayfair* economic nexus. An MoR absorbs all three. The likely end state is both: PayFast for ZA, an MoR for
+   everywhere else, writing the same `subscriptions` rows.
+   **Status:** timing decided (nothing before 4 Nov), ZA provider decided (PayFast, uncontracted), MoR open.
+   **Revisit if:** Stripe opens ZA; the first non-ZA subscriber appears, which triggers the MoR immediately; gift-pool
+   payouts force a US entity anyway; or PayFast recurring stops being card-only.
 6. **The billing schema shape is fixed now so it stays additive:** `plans`, `subscriptions`, `billing_customer`,
    `webhook_events` (idempotency). The provider is the source of truth and `users.plan` is a **derived cache** — safe
    only if the webhook handler is its sole writer and updates `plan` and the `entitlements` rows **in one

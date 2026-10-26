@@ -204,6 +204,12 @@ through the Nov 5–8 judging window without a free tier that sleeps.
 1. **Privacy is the product.** Any path where an owner can observe a claim, pool, contribution, secret suggestion
    or deal is a hard failure. Enforced in three places on purpose — RLS, the view builder, and role-scoped agent
    toolsets — so one developer's mistake in one place is not a leak.
+   **Correction from a red-proof, 2026-10-26:** those three layers are *not* independently sufficient for the
+   friend projection. The owner is a member of their own circle, so `friendCircleView` legitimately returns rows for
+   them; a proof that mounted the friend builder on the owner's session rendered the secret suggestion and the pool
+   straight into the owner's HTML. **The route is what keeps the owner out of the friend projection** — hence
+   `src/server/routes/circle.ts` uses two explicit branches rather than one ternary over the role. Do not "simplify"
+   that branch, and do not treat the view builder as the boundary.
 2. **Prompt-injection resistance by construction.** The intake pipeline parses untrusted user text. Parsing uses
    `json_schema` constrained decoding; the resulting draft is data, never instructions.
 3. **Public repo hygiene.** No real phone numbers, names or gift conversations in fixtures, docs, screenshots or
