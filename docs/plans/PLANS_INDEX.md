@@ -8,7 +8,7 @@
 python scripts/ops/refresh_plans_index.py --write
 ```
 
-Generated: 2026-10-26 20:13 · repo: `gifts-registry`
+Generated: 2026-10-26 20:32 · repo: `gifts-registry`
 
 ## P1
 
@@ -26,6 +26,7 @@ Generated: 2026-10-26 20:13 · repo: `gifts-registry`
 | 3 | Gift card (F10) — group card with every gift-giver's name and message | ready | `gift-card-f10.md` |  |
 | 6 | Photo to cutout candidates on SAM 3.1 (intake and card art) | ready | `vision-cutout-intake.md` |  |
 | 7 | Post-event reveal of secret suggestions (F14) | ready | `post-event-reveal.md` |  |
+| 8 | User management, the path to paid, and which open source to adopt | ready | `user-management-and-billing-path.md` | 1. **D4, the owner session.** Bot-minted or script-minted for the recording? Decide with the cast on day 7. |
 
 ## P3
 

@@ -10,6 +10,13 @@ New decisions are marked **v1.1**; new flows are F11–F15; new build steps are 
 original v1 spine was weakened by this amendment — the two non-negotiable failure states (a privacy
 leak, no live Meta model in the demo) still outrank every feature added here.
 
+**Amended 2026-10-26 (v1.2)** after a third round, on identity, the path to paid, and which open
+source to adopt. No new features and no new flows: this round decides what **not** to build, and
+records the seams that keep the post-hackathon work additive. F4 is corrected to match the gate
+that was built. New decisions are marked **v1.2** and are summarised in §Decisions; the full
+rationale, every rejected alternative and all sources are in
+`docs/plans/user-management-and-billing-path.md`.
+
 ## Problem
 
 Group gifting breaks on two things at once. The gift-target either gets asked the awkward "what do you want?"
@@ -427,6 +434,70 @@ Added by the v1.1 amendment:
   **Status:** decided. **Revisit if:** the leak matrix cannot cover the page cheaply, in which case it ships without
   the screenshot strip.
 
+### v1.2 decisions (amended 2026-10-26, third round — identity, billing path, dependencies)
+
+Asked as *"post-hackathon thoughts, but the architectural decisions have to be made early to avoid refactoring"*.
+Full rationale, every rejected alternative and all sources live in
+`docs/plans/user-management-and-billing-path.md`; these are the decisions themselves.
+
+1. **Identity is hand-rolled. No auth framework.** The credential is *"Meta already verified this BSUID"* or *"this
+   person proved possession of an allow-listed number"* — neither of which Better Auth, Auth.js, Supabase Auth or Clerk
+   models. Each candidate either ignores WhatsApp as a delivery channel or owns identity tables queried through its own
+   connection, which would put an unscoped identity path alongside a privacy model that assumes exactly one scoped path
+   (`withActor`). The web session is an HMAC-signed httpOnly cookie over `{userId, circleId, role}`.
+   **Status:** decided, built. **Revisit if:** browser OAuth, multi-device revocation or SSO becomes a requirement.
+2. **`SameSite=Lax` is a product requirement.** The circle link arrives as a top-level GET navigation out of WhatsApp's
+   in-app browser; `Strict` drops the cookie there, so every shared link would render logged-out on the product's only
+   distribution channel. Asserted by a test, because the failure looks like a database problem from the inside.
+   **Status:** decided.
+3. **Friends join through the allowlist hash; OTP is an upgrade, not a dependency.** The authentication template is
+   always charged, takes ≤24 h and can be rejected. `POST /c/<slug>` matches a keyed hash of the submitted number
+   against that circle's `allowlist_entries` and writes nothing before the match. **Status:** decided for the
+   hackathon, provisional after it.
+4. **The owner's web session is an open gap, recorded rather than discovered on day 9.** The owner is not on their own
+   allowlist and the seeded cast deliberately contains no phone numbers, so the phone gate cannot admit them. Their
+   natural credential is the BSUID from the task bot (F13). Interim for the recording: the operator mints the cookie
+   with a local script calling `issueSession(...)` — a build-time tool, **not** a deployed endpoint.
+   **Status:** open. Decide bot-path vs minted-cookie with the cast on day 7.
+5. **No payment integration before submission.** **Stripe does not onboard South African entities** — stripe.com/global
+   lists ZA only under an "Extended network" badge pointing at Paystack. Post-submission the path is a **merchant of
+   record** (Paddle first choice; Lemon Squeezy the backup, rejected for now because it is mid-migration to Stripe
+   Managed Payments; Polar pays out *to your Stripe account* so it is effectively unavailable to a ZA resident). The
+   reason to buy rather than build is tax, not fees: ZA's VAT threshold is R2.3m so domestic VAT is not the problem,
+   but EU digital B2C has **no** threshold for non-EU sellers, the UK requires registration regardless of turnover for
+   overseas sellers, and US states have post-*Wayfair* economic nexus. An MoR absorbs all three.
+   **Status:** timing decided, provider provisional. **Revisit if:** Stripe opens ZA, or gift-pool payouts force a US
+   entity anyway.
+6. **The billing schema shape is fixed now so it stays additive:** `plans`, `subscriptions`, `billing_customer`,
+   `webhook_events` (idempotency). The provider is the source of truth and `users.plan` is a **derived cache** — safe
+   only if the webhook handler is its sole writer and updates `plan` and the `entitlements` rows **in one
+   transaction**. Written separately, a request can land between the two. **Status:** decided as a shape, not
+   scheduled.
+7. **Adopt `Secreto31126/whatsapp-api-js` (MIT).** Worth it specifically for webhook `x-hub-signature-256`
+   verification and media download by media-id — the two places where a subtle bug is a security hole rather than a
+   cosmetic one. **Never** adopt an unofficial WhatsApp client (`whatsapp-web.js`, Baileys, `wa-automate-nodejs`,
+   wppconnect, Evolution API): Business Solution Terms violation, and the hackathon disqualifies platform-policy
+   violations. Star count is not evidence of permission. **Status:** decided.
+8. **No flag or entitlement service.** Flags are deployment-scoped booleans; entitlements are per-user private rows
+   under RLS. A flag service would evaluate them outside RLS — shipping user entitlement state to a sidecar for seven
+   booleans. Unleash is AGPL-3.0, Flipt fair-core, PostHog mixed-licence, Flagsmith heavy. **Status:** decided.
+9. **Card rendering is `satori` + `@resvg/resvg-js` (or `@vercel/og`), not Puppeteer.** MPL-2.0 is file-level copyleft,
+   so unmodified npm packages in a public repo carry no obligation, and no Chromium binary goes on the Oracle VM.
+   **Status:** decided.
+10. **Meta Model API needs no bespoke SDK** — Meta documents it as drop-in compatible with the OpenAI SDK at
+    `https://api.meta.ai/v1` with bearer auth. **Provisional:** that claim comes from reading the quickstart on
+    2026-10-26, not from a call we have made, and it is re-verified by the day-1 exit gate (`GET /v1/models`) at no
+    extra cost.
+
+**New hard failures added by this round** (all pinned by tests in `tests/routes/circle-link.test.ts`, each proven red
+first): a session accepted for a circle it was not minted for; the owner's HTML containing a claim, pool, contributor
+name or message; any `/c/<slug>` response being cacheable; the allowlist gate creating a user before it authorised.
+
+**Architectural fact discovered while proving the fourth one:** the friend projection is **not** itself owner-blind.
+The owner is a member, so `friendCircleView` returns rows for them — routing an owner session down the friend branch
+rendered the secret suggestion and the pool. **The route is what keeps the owner out of it.** That is now asserted
+rather than assumed, and it is the reason the two branches are separate code paths and not a ternary over the role.
+
 ### Rollback path (per state-changing operation)
 
 - **Deploy:** tagged images; rollback = `docker compose up -d app:<previous-tag>`. No redeploy rebuild.
@@ -536,10 +607,16 @@ Same pipeline; link path fetches the user-supplied URL and reads `og:*` + JSON-L
 when metadata is missing. Screenshot path goes straight to Spark vision.
 
 ### F4 · Friend joins and views
-1. Friend taps the link on their phone, enters their number.
-2. Hash matches an `accepted` allowlist entry → session created (OTP if the template got approved).
+1. Friend taps the link on their phone and enters the name they want on the card plus their number.
+2. A keyed hash of the number matches an allowlist entry for that circle whose status is **not** `removed` → the user
+   and an active `friend` membership are created, the entry flips `pending → accepted`, and a signed session cookie is
+   issued. **Nothing is written before the match.** An owner-added invite starts `pending`, so requiring `accepted`
+   first would mean nobody could ever join; `removed` is the only refusal. OTP becomes a second door if and when the
+   authentication template is approved — it is an upgrade, not a dependency.
 3. Friend sees `friend` projection: all `owner_visible` items **plus** friends' secret suggestions, claims, pools,
    contributor amounts, and the owner's shareable attributes on the item sheet.
+4. A session minted for a different circle is not a session for this one, and a caller with no session gets the gate —
+   never circle content. Both are asserted in `tests/routes/circle-link.test.ts`.
 
 ### F5 · Friend claims solo
 1. Friend taps Claim → `claims(kind=solo)`; the item shows "claimed by Thabo" to friends, nothing to the owner.
@@ -681,9 +758,12 @@ Added by the v1.1 amendment:
 - **[TODO: needs your pick] Brand variant and product name.** Four Stitch variants and three alternative names are
   generated against the brief (hot pink + electric blue, gender-neutral, sparky, modern, no cursive); the choice is
   yours and the decision stays **provisional** until you make it. Blocking for step 17 only.
-- **[TODO: needs your OAuth] Stitch MCP access.** The server config is registered locally
-  (`npx -y @_davideast/stitch-mcp proxy`); the OAuth browser step is yours. If it is not working by day 5, the token
-  set ships hand-authored and the video simply does not linger on the UI.
+- **[TODO: needs your restart, not your OAuth] Stitch MCP access.** The server config is registered locally
+  (`npx -y @_davideast/stitch-mcp proxy`) and `STITCH_API_KEY` is persisted in `HKCU\Environment`. The server still
+  exits 1 because Qoder Desktop was launched **before** that variable existed, so the spawned process never inherits
+  it — restarting the app is the fix, and no browser OAuth step is involved. The `init` wizard's client list does not
+  include Qoder and does not need to: it only chooses which config file to write, and ours is already written. If it
+  is not working by day 5, the token set ships hand-authored and the video simply does not linger on the UI.
 - **[TODO: verify on the fixture set] Does one generic SAM noun phrase segment gifts well enough?** "gift" versus
   "product" versus per-category phrasing is an empirical question; the ten-image fixture set answers it, and the
   ≥80%-clean kill criterion decides whether the feature ships at all.
@@ -693,6 +773,23 @@ Added by the v1.1 amendment:
 - **[TODO: decide by day 8] Demo video embed on the landing page:** unlisted YouTube (needs network during judging,
   which Nov 5–8 does not guarantee) or a self-hosted MP4 on the VM (uses bandwidth we do not have much of).
 - **Unanimous early-unlock** stays provisional until the day-7 gate; it is the first thing cut.
+
+Added by the v1.2 amendment:
+
+- **[TODO: decide by day 7] How does the *owner* get a web session?** The allowlist gate admits friends only, and the
+  seeded cast deliberately has no phone numbers. Either the WhatsApp task bot mints it from the BSUID (F13, the proper
+  answer) or the operator mints it locally for the recording. Decide with the cast, not on day 9.
+- **[TODO: verify on day 1] Is the Model API really OpenAI-SDK compatible?** Decision 10 rests on Meta's quickstart
+  wording, read 2026-10-26 rather than exercised. The day-1 `GET /v1/models` exit gate settles it for free; if the
+  shape does not survive the OpenAI SDK — particularly for `web_search` grounding and flat `json_schema` — the ingest
+  layer calls it with `fetch` + zod instead, which was always the fallback.
+- **[TODO: revisit when F14 is built] Is a 14-day session TTL right when the event may be months away?** Re-clicking
+  the WhatsApp link re-mints, so probably yes — but the post-event reveal happens *after* the event, and a stale cookie
+  there means the reveal needs its own re-entry path.
+- **Does `users.phone_e164` need to stay plaintext?** It is the fallback identity and is unique-indexed, so it is
+  queryable as-is, and RLS keeps it out of every projection except the roster read. Hashing it would turn cross-circle
+  identity resolution into a lookup problem. Current answer: keep it. It is the first thing to revisit if a real
+  deployment ever sits behind this public repo.
 
 ## Implementation steps
 

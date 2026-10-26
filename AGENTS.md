@@ -48,6 +48,27 @@ vision segmentation, deal discovery on the open web, and group coordination.
 - **Interactive messages cannot be notifications** and only work inside the 24-hour customer-service window; outside
   it you need an approved template. Reply buttons max 3, list messages ≤10 sections / 24 rows.
 
+## Dependency rules (decided, with the reasoning in `docs/plans/user-management-and-billing-path.md`)
+
+- **Never adopt an unofficial WhatsApp client** — `whatsapp-web.js`, Baileys, `wa-automate-nodejs`, wppconnect,
+  Evolution API. They drive WhatsApp Web or reverse-engineer the multi-device protocol, which violates the Business
+  Solution Terms; the hackathon disqualifies platform-policy violations. **Star count is not evidence of permission** —
+  wwebjs's own README says WhatsApp does not allow bots or unofficial clients. Use
+  `Secreto31126/whatsapp-api-js` (MIT), which covers the two places a subtle bug is a security hole: webhook signature
+  verification and media download by media-id.
+- **Never adopt a flag or entitlement service** — Unleash (AGPL-3.0), Flipt (fair-core), PostHog (mixed licence),
+  Flagsmith (heavy). Per-user capability state is private data under RLS; a flag service evaluates outside RLS, which
+  means shipping entitlement state to a sidecar. `entitlements` + `can()` already is the off switch, with no redeploy.
+- **No auth framework.** The credential is "Meta verified this BSUID" or "this person proved possession of an
+  allow-listed number", which Better Auth / Auth.js / Supabase / Clerk do not model, and each of them either ignores
+  WhatsApp delivery or owns identity tables outside the RLS boundary. Sessions are a signed cookie
+  (`src/server/auth/session.ts`), `SameSite=Lax` because `Strict` breaks the click out of WhatsApp's in-app browser.
+- **No payment integration before submission.** Stripe does not onboard South African entities; the post-hackathon path
+  is a merchant of record (Paddle first choice) so EU/UK/US digital-services tax is not ours to register for.
+  `users.plan` and `entitlements.source = 'subscription'` are the seam — nothing else is needed now.
+- **Card rendering is satori + resvg, not Puppeteer.** MPL-2.0 is file-level copyleft, so unmodified npm packages in a
+  public repo carry no obligation, and no Chromium binary goes on the Oracle VM.
+
 ## Documentation KB skills
 
 Skills path: `~/.claude/skills/`
