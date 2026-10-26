@@ -8,14 +8,14 @@
 python scripts/ops/refresh_plans_index.py --write
 ```
 
-Generated: 2026-10-26 19:06 · repo: `gifts-registry`
+Generated: 2026-10-26 20:13 · repo: `gifts-registry`
 
 ## P1
 
 | Rank | Title | Status | Path | Next |
 |------|-------|--------|------|------|
 | 1 | Gift Circles ten-day build plan | implementing | `gift-circles-ten-day-build-plan.md` |  |
-| 2 | AI capability entitlements and the single can() gate | ready | `entitlements-and-capability-gate.md` |  |
+| 2 | AI capability entitlements and the single can() gate | implementing | `entitlements-and-capability-gate.md` |  |
 | 4 | Design system, brand round and the seven in-app screens | ready | `design-system-and-brand.md` |  |
 | 5 | WhatsApp task-bot surface — six bounded tasks, fixed menu, no free chat | ready | `whatsapp-task-bot-surface.md` |  |
 
