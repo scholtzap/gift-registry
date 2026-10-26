@@ -32,6 +32,53 @@ Findings: **0 Critical · 2 High · 5 Medium · 8 Low · 6 Info.**
 
 ---
 
+## Remediation status (same day, after the review was read)
+
+Three findings are fixed, one proposed fix was **rejected as wrong**, and the review produced three
+follow-ups of its own. Verified red-to-green in each case, not asserted.
+
+| Finding | Status | Commit |
+|---|---|---|
+| H-01 uncorrelated `memberships_self_join` | **Fixed** — `circle_id = app_circle_id()` added, plus a leak assertion with a positive control | `a0968df` |
+| H-02 plaintext `users.phone_e164` | **Diagnosis kept, fix rejected** — see below | `0f4cc51` |
+| M-01 no CSRF on `POST /c/<slug>` | **Fixed** by Origin/Referer verification instead of a double-submit token | `a3dc155` |
+
+**Why the H-02 fix was rejected.** Replacing `users.phone_e164` with a hash breaks the product: the
+WhatsApp Cloud API addresses recipients **by phone number**, so the send path must be able to read the
+number. It also mislocates the exposure. The column was never readable by the wrong *rows* — it was
+readable by the wrong **columns**: `001_roles.sql` granted `SELECT ... ON ALL TABLES`, and RLS filters
+rows and has no notion of columns, so `users_circle_roster` (a correct row policy) handed every friend
+the whole group's numbers and BSUIDs inside the roster they were entitled to see. Fixing that by
+revoking afterwards does not work either — a table-level `SELECT` implies every column, so
+`REVOKE SELECT (phone_e164)` executes cleanly and changes nothing (`attacl` stays `NULL`,
+`has_column_privilege` stays `true`). The grant on `users` is now an explicit column list. Post-fix,
+verified on the test database: `SELECT phone_e164` and `SELECT *` as `app_friend` → `42501`,
+`display_name` and `plan` still read, `count(*)` still works, and the login role still reads the number
+for the send path. Plaintext at rest is now a *documented, accepted* residual rather than an invariant
+violation, and the leak test says so.
+
+**Three follow-ups the review missed** (all found while applying the fixes above):
+
+- **F-01 — column exposure via the blanket grant.** The above. The report found the roster bug class but
+  not the one grant that made a correct row policy leak a column anyway.
+- **F-02 — `LEAK_SKIP_POLICIES=1` cannot prove red.** `tests/leak/global-setup.ts` runs
+  `prisma migrate deploy` and then *returns* — it never drops the policies a previous run applied, so the
+  whole suite passes with the flag set and looks like a green run. The suite's stated red-proof mechanism
+  is therefore unreliable. The H-01 proof was done differently: the pre-fix predicate re-applied inside a
+  transaction that rolled back (`cross-circle insert ACCEPTED` before, `REJECTED 42501` after). Fixing the
+  flag is open — it needs a `DROP POLICY` sweep, not a skip.
+- **F-03 — a session test that could pass or fail by luck.** `readSession` compares decoded HMAC bytes, and
+  a 43-character base64url string for 32 bytes leaves the last character's two low bits as padding that is
+  discarded on decode. The test flipped that character `'A'`↔`'B'` — same bytes, so the "forged" token
+  verified roughly 1 run in 16. Now flips the first character, which always changes a byte.
+
+**Residual risk after these three:** H-02's plaintext-at-rest (accepted, needs an encryption-at-rest or
+deletion-path story before the first real user), and the un-throttled gate (M-02) — the Origin check stops
+a cross-site form but not a direct scripted caller, which is now a POST to a public URL with no rate limit.
+Still 0 Critical.
+
+---
+
 ## Critical
 
 None.
@@ -75,7 +122,7 @@ None.
   South African mobile numbers, which is precisely what the hashing design and the public-repo rule exist to
   prevent. It also makes `users` the highest-value target in the schema while the roster policy that guards
   it is one predicate away from leaking it again.
-- **Fix:** Replace `users.phone_e164` with `users.phone_hash` (keyed HMAC under a dedicated pepper, see
+- **Fix (REJECTED after review — see Remediation status):** Replace `users.phone_e164` with `users.phone_hash` (keyed HMAC under a dedicated pepper, see
   L-01) and key the gate upsert on the hash — the plaintext number is then never persisted anywhere; the gate
   already computes the hash before the upsert (`circle.ts:183`). Expand-only migration: add the column,
   backfill `hashPhone(phone_e164)`, then drop the plaintext column in a later release.

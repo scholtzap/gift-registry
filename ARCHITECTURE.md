@@ -96,7 +96,7 @@ Postgres, but through different view builders, and RLS denies the owner's role a
 | `intake` | Normalise audio/image/text/url into a **draft** item | Drafts require human confirm; never auto-commit a model-guessed price |
 | `models` | Single client for `POST /v1/responses`, `/v1/chat/completions`, `/v1/asr/transcribe` | `json_schema` output must be **flat** — recursive schemas return HTTP 400 |
 | `ledger` | Items, claims, pools, contributions, tombstones | Append-only `ledger_events` gives the friend side a provable history |
-| `views` | Build owner vs friend projection from one ledger | Only place that knows which columns a role may see |
+| `views` | Build owner vs friend projection from one ledger | Chooses which rows and fields to render; the **columns** a role may read at all are decided by the grants in `001_roles.sql`, and a projection that asks for more than the grant allows raises 42501 |
 | `agent` | Role-specific toolsets + context builder | The model is never *handed* data the requester cannot see |
 
 ## 4. Data Stores
@@ -210,13 +210,26 @@ through the Nov 5–8 judging window without a free tier that sleeps.
    straight into the owner's HTML. **The route is what keeps the owner out of the friend projection** — hence
    `src/server/routes/circle.ts` uses two explicit branches rather than one ternary over the role. Do not "simplify"
    that branch, and do not treat the view builder as the boundary.
+   **Second correction, same day:** RLS filters **rows** and has no notion of **columns**, so a policy that is
+   correct about the row set can still leak a column. `001_roles.sql` grants `SELECT ON ALL TABLES` (deliberately,
+   so an ungranted table reads as zero rows and the route can 404), which meant the correct
+   `users_circle_roster` handed every friend the whole group's `phone_e164` and `bsuid` inside the roster they were
+   allowed to see. `users` is therefore granted column-by-column, and `phone_e164` stays plaintext on purpose —
+   the WhatsApp Cloud API addresses by number, so the send path reads it on the login role. Two things follow:
+   a bare Prisma `include` of a user relation now raises 42501 (name the columns), and a column added to `users`
+   by a later migration is invisible to both roles until it is added to that grant list. Both are the intended
+   failure direction; do not re-grant the column to make a query go green.
 2. **Prompt-injection resistance by construction.** The intake pipeline parses untrusted user text. Parsing uses
    `json_schema` constrained decoding; the resulting draft is data, never instructions.
 3. **Public repo hygiene.** No real phone numbers, names or gift conversations in fixtures, docs, screenshots or
    git history. Fictional cast only. `.env` untracked; Notion sync secret-scans before writing.
 4. **POPIA.** Size attributes are personal information: owner-authored, `private` by default, explicit per-attribute
    opt-in to share with friends, and deletable — deletion cascades to tombstone the attribute and keep the ledger.
-5. Webhook signature verification on every request; app screensharing tokens short-lived; sessions HttpOnly + SameSite.
+5. Webhook signature verification on every request; app screensharing tokens short-lived; sessions HttpOnly +
+   SameSite. `SameSite=Lax` does **not** protect `POST /c/<slug>`, because that endpoint issues a cookie rather than
+   reading one, so it verifies `Origin` (Referer as fallback) against its own origin before touching the database —
+   login-CSRF is a privacy failure here, not just an integrity one: the victim's gifts and card messages land in a
+   circle the attacker owns and reads.
 6. Model API key lives in the compose environment from the vault, never in the image or the repo.
 7. **Hook chain (verify, do not assume).** `core.hooksPath` is *global* (`~/.config/git/hooks` → `_dispatch`), which
    runs gitleaks on the staged diff then chains to a repo hook only if `git config hooks.chainDir` is set. This repo
