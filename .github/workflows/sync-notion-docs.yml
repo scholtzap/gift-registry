@@ -21,7 +21,7 @@ jobs:
       - name: Sync docs/ to Notion hub
         env:
           NOTION_API_KEY: ${{ secrets.NOTION_API_KEY }}
-          NOTION_ROOT_PAGE_ID: "405e495d9bdc80a4827cc83e7d9e9019"
+          NOTION_ROOT_PAGE_ID: ${{ vars.NOTION_ROOT_PAGE_ID }}
           NOTION_EXPECTED_ROOT_TITLE: "Gift Registry"
         run: |
           python scripts/ops/sync_docs_to_notion.py \

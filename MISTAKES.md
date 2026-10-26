@@ -2,6 +2,24 @@
 
 Agent error log. Newest entry first. No secrets, tokens, env dumps, or credentialed URLs.
 
+## 2026-10-26 — Reported a hook as "installed" without ever proving it fired
+**What happened:** The plans-registry installer wrote `.githooks/pre-commit`, and the setup was reported as
+complete because the file existed. `core.hooksPath` is set *globally* to `~/.config/git/hooks`, so that repo
+hook was never on git's path; the dispatcher only reaches it when `git config hooks.chainDir` points at it,
+and that was unset. Every commit in this session passed an index-freshness gate that did not run.
+**Impact:** A safety check was believed present while absent — the same class of false success as a leak suite
+that passes for the wrong reason. The `PLANS_INDEX.md` staleness rule in the global instructions is enforced
+only by this hook plus CI, and CI is currently blocked by Actions billing, so for this repo the gate was
+purely imaginary.
+**Fix:** `git config --local hooks.chainDir .githooks`, the chained hook executed, and `ARCHITECTURE.md` §7
+now records the chain and says to verify by execution. Documented in
+`security_best_practices_report.md` (F6) with the note that git config is machine-local, so a fresh clone
+still relies on CI.
+**Do not repeat:** Prove a guard runs, then prove it fails. For any hook, gate or scan, execute it once and
+see it refuse a bad input — file existence and installer output are not evidence. This is the second time
+this session that "the tool said Installed" was the wrong stop: read the actual resolution path
+(`git config --get core.hooksPath`, `git config --get hooks.chainDir`) before believing the claim.
+
 ## 2026-10-26 — Planning handover carried three wrong API assumptions
 **What happened:** The pre-session handover specified WhatsApp OTP for friend auth, ~30-day
 webhook media retention, phone numbers as the primary user key, and "search Meta Marketplace"

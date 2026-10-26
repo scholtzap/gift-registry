@@ -2,7 +2,7 @@
 type: investigation
 status: reference
 priority: high
-source: Gemini chat export
+source: Gemini chat export (conversation link and account identity redacted before this repo went public)
 captured: 2026-10-26
 title: Gift Wishlist App Competitor Analysis
 ---
@@ -22,8 +22,6 @@ number enumeration and scraping risks, and names three open-source starting poin
 (cmintey/wishlist, Reggio-Digital/wishlist, secret-santa repos). Read this before changing the
 claim model, the owner/friend projections, the join flow, or the deal-suggestion visibility
 rule.
-
-[https\://gemini.google.com/app/d0cef1e03123117b](https://gemini.google.com/app/d0cef1e03123117b)
 
 *User prompt: So, I have an app idea where the person can load up the gifts that they want. Um, just like an indication or even a specific link of, hey, I want cycling shoes or I want a new helmet or I want this dress or I want this painting or mirror or whatever. Um, and then people they add their friends. Friends invite each other. You don't get to see on the other side who's viewing your wanted gifts and stuff. Um, but all the friends can see what it is that you want and they can form um, groups that volunteer to buy a specific thing. There's one buyer assigned and those friends all band together to buy this person what is usually more an expensive gift. This way it takes the awkwardness out of asking, hey, what do you want? Gives the person whose birthday or Christmas present it is the opportunity to influence what it is that they get. There's still an element of surprise and there's coordination between the friends so that um, they can see who's buying what and not buying two of the same thing or yeah, not knowing that they can band together to buy something. Does something like this already exist? If so, list those competitors, say how they differ from what my idea is, maybe what's better, what's worse. Um, and then let me know whether you think that's a good idea.*
 

@@ -31,8 +31,9 @@ deliberate: everything with an external approval clock goes first so it runs whi
       call, so this is a prerequisite, not a risk.
 - [ ] Submit the credits form for the $150 grant; distribution is batched, so do it today.
 - [ ] Set a **Spend Limit** notification on the Billing page.
-- [ ] Create an API key (prefixed `LLM_`). Store it in the vault under `meta/model-api` with `envvar=MODEL_API_KEY`.
-      Never in `.env` in a public repo, never in the image.
+- [ ] Create an API key (prefixed `LLM_`). Store it in your secrets manager under the Meta entry, exposed to the
+      app as `MODEL_API_KEY`. Do not write the vault item name or folder path into this repo. Never in `.env` in a
+      public repo, never in the image.
 - [ ] `GET https://api.meta.ai/v1/models` — **GATE:** returns a non-empty list **from your South African account**.
       Record which of `muse-spark-1.3`, `muse-spark-1.2`, `muse-wonder-1.0`, `muse-image-1.0`,
       `muse-voice-transcribe-1.0`, `sam-3.1` are actually enabled for your team.
@@ -76,11 +77,14 @@ deliberate: everything with an external approval clock goes first so it runs whi
 ## D. Repo and KB
 
 - [ ] GitHub repo `scholtzap/gift-registry`, **public**, with LICENSE and a judge-runnable README.
-- [ ] Add `NOTION_API_KEY` as a repo Actions **secret** (not a variable). `NOTION_ROOT_PAGE_ID` is non-secret and
-      lives in the workflow.
+- [ ] Add `NOTION_API_KEY` as a repo Actions **secret** (not a variable), and `NOTION_ROOT_PAGE_ID` as an Actions
+      **variable** — the hub page ID is not a credential but it has no reason to appear in a public workflow.
 - [ ] First Notion sync fires and the `_Sync Registry` page appears under the Gift Registry hub.
 - [ ] Pre-commit hook active; gitleaks still runs globally — never `--no-verify`.
-- [ ] Confirm no real phone numbers appear anywhere: `git grep -nE '\+27[0-9]{8,9}'`.
+- [ ] Re-run the pre-publication sweep immediately before flipping visibility (see
+      `security_best_practices_report.md`): `git grep -nE '\+27[0-9]{8,9}'`, personal-account URLs
+      (`gemini.google.com/app/`, `notion.so`, `docs.google.com`), bare emails, and `gitleaks detect --source .`.
+      Docs get edited after every review pass, so a clean grep from an earlier session is not evidence.
 
 ## E. Meta MCP (WhatsApp Business Tools)
 

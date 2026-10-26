@@ -186,6 +186,11 @@ through the Nov 5–8 judging window without a free tier that sleeps.
    opt-in to share with friends, and deletable — deletion cascades to tombstone the attribute and keep the ledger.
 5. Webhook signature verification on every request; app screensharing tokens short-lived; sessions HttpOnly + SameSite.
 6. Model API key lives in the compose environment from the vault, never in the image or the repo.
+7. **Hook chain (verify, do not assume).** `core.hooksPath` is *global* (`~/.config/git/hooks` → `_dispatch`), which
+   runs gitleaks on the staged diff then chains to a repo hook only if `git config hooks.chainDir` is set. This repo
+   needs `hooks.chainDir = .githooks` locally or `.githooks/pre-commit` (plans-index freshness) silently never fires.
+   Git config is not committed, so a fresh clone depends on CI's `plans-registry-gate.yml` instead. Pre-publication
+   review: `security_best_practices_report.md`.
 
 ## 8. Development & Testing Environment
 
