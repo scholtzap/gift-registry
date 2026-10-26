@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Piñata">
+  <!-- Star piñata: the pool stays shut until the party. Streamers are the two brand blues. -->
+  <path d="M54.8 28.6q6.2-5.8 3.1-11.8-2.1-4.6 1.9-8.6" fill="none" stroke="#2D7DFF" stroke-width="3" stroke-linecap="round"/>
+  <path d="M17.9 55.4q-6.4 3.6-4.6 9.4" fill="none" stroke="#4DA3FF" stroke-width="3" stroke-linecap="round"/>
+  <path d="M32 12l5.9 15.9 16.9.7-13.3 10.5 4.6 16.3L32 46l-14.1 9.4 4.6-16.3L9.2 28.6l16.9-.7z"
+        fill="#FF3E7F" stroke="#FF3E7F" stroke-width="6" stroke-linejoin="round"/>
+  <path d="M32 12l-5.9 15.9-16.9.7 13.3 10.5-4.6 16.3L32 46z" fill="#FFFFFF" opacity="0.22"/>
+  <circle cx="32" cy="33" r="3.2" fill="#FFFFFF" opacity="0.9"/>
+</svg>
