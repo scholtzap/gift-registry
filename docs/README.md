@@ -21,7 +21,9 @@ Repo-root files also published to this tree: `AGENTS.md`, `MISTAKES.md`, `WISHLI
 ## Key entry points
 
 - `strategy/Gift-Wishlist-App-Competitor-Analysis.md` — the original product concept and market read.
-- `strategy/hackathon-rules-and-rubric.md` — deadline, rules, disqualifiers and judging weights
-  (source PDFs in `strategy/hackathon/`).
+- `strategy/hackathon-rules-and-rubric.md` — deadline, rules, disqualifiers and judging weights. The organizer
+  page prints it was written from are kept **outside this repo** (`../gifts-registry-assets/hackathon/`): they are
+  third-party branded prints plus one of your own mailbox notifications, and a public submission repo is not where
+  they belong.
 - `strategy/investigations/Meta-Model-API-and-WhatsApp-Cloud-API-findings.md` — verified API facts the architecture rests on.
-- `operations/Meta-Integration-Setup-Checklist.md` — day-1 keys, WABA, templates, webhooks.
+- `operations/meta-integration-setup-checklist.md` — day-1 keys, WABA, templates, webhooks.

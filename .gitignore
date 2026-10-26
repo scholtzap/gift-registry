@@ -48,3 +48,7 @@ graphify-out/
 # Third-party page prints (event rules pages) - kept locally for reference, not redistributed
 # in a public repo; docs/strategy/hackathon-rules-and-rubric.md is our own summary.
 docs/strategy/hackathon/*.pdf
+
+# Generated plans-registry reports (regenerate with audit_plans.py)
+docs/plans/PLANS_AUDIT_REPORT.md
+docs/plans/RELOCATION_MAP.md

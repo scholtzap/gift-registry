@@ -115,7 +115,19 @@ ingest_events      id, wa_message_id UNIQUE, circle_id, user_id, kind audio|imag
                    media_path, media_expires_at, model_used, draft jsonb, item_id NULL,
                    status received|converted|transcribed|parsed|confirmed|failed, error
 ledger_events      id, circle_id, entity, entity_id, actor_user_id, action, payload jsonb, created_at
+card_entries       id, item_id, contributor_user_id FK, display_name_shown, anonymous bool,
+                   message text CHECK (char_length(message) <= 200), created_at
+                   -- one row per gift-giver; the card is composed from these, never stored as one blob
+gift_cards         id, item_id UNIQUE, pun, tagline, model_used, art_path NULL, art_prompt,
+                   rendered_png_path, rendered_at, created_by_user_id
 ```
+
+**`card_entries` / `gift_cards` are friend-scoped in full.** No read policy exists for `app_owned`, so an owner
+query returns zero rows and the route 404s rather than 403s — a 403 would confirm a card exists, which is the leak.
+Card rows are derived state, not ledger state: deleting a card never touches `contributions`, and a tombstoned item
+with a funded pool still renders its card, because the keepsake belongs to the gifters.
+`message` is the gifters' own words — stored verbatim, never rewritten by a model, URLs rejected on write so the
+card cannot become a channel that smuggles a retailer or a cheaper price to the owner.
 
 **Stripe-Connect-proofing without holding money:** `contributions` already separates `promised` from `paid` from
 `settled` and carries `amount_minor`/`currency`. Adding escrow later means adding a `payment_intent_id` column and
@@ -197,6 +209,20 @@ through the Nov 5–8 judging window without a free tier that sleeps.
 Docker Compose + `pnpm dev`; a `cloudflared` tunnel only for webhook dev, never for the submitted demo.
 The test suite that matters is the **leak suite**: a matrix of (actor role × query) asserting the owner cannot
 reach any friend-scoped row, through the API *and* through the agent context builder. Run in CI on every push.
+Owner-blindness rows, one per surface that can carry friend-scoped content — each asserted as **404, not 403**
+(a 403 confirms the resource exists, which is itself the leak), and each asserted for the role the test *thinks*
+it set:
+
+| Surface (owner session) | Must not reveal |
+|---|---|
+| `GET /api/circles/:id/claims` · `/pools` · `/contributions` | that anything is claimed or pooled |
+| `GET /api/items/:id/suggestions` | secret suggestions, deal prices, retailer of a cheaper option |
+| `GET /api/circles/:id/viewers` | who is looking |
+| `GET /cards/:id` and `GET /api/cards/:id.png` | the card: contributor names + messages, i.e. who bought what |
+| `GET /c/:slug` link-preview and `og:` tags on any card route | the same, rendered by WhatsApp to everyone in the group **including the owner** |
+| agent context builder, owner role | any friend-scoped row it could paraphrase back |
+| error bodies, response headers, `Cache-Control` on card artefacts | existence, via message text or a shared cache entry |
+
 
 ## 9. Future Considerations
 

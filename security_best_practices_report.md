@@ -72,16 +72,24 @@ chained hook executes. **Not closed portably:** git config is not committed, so 
 the gap. CI's `plans-registry-gate.yml` covers everyone else — which is another reason the Actions
 billing block should be resolved (flip to public: unlimited free Linux minutes).
 
-**F7 — Third-party PDFs sit inside the repo directory.**
-`docs/strategy/hackathon/*.pdf` (three, including a Gmail notification print) are correctly gitignored
-and correctly absent from history, and `.scratch/*.pdf.txt` holds their extracted text.
-*Impact:* only one sloppy step away from publication — a `git add -A` after a `.gitignore` edit, or
-zipping/copying the folder to share it. The Gmail print carries your address and inbox metadata; the
-Cerebral Valley prints are someone else's branded page material, and the hackathon rules disqualify
-using assets you have no rights to.
-*Remediation (recommended, not applied):* move both folders out of the repo, e.g.
-`Documents/personal/gifts-registry-assets/`, and keep only your own markdown in `docs/`. Say the word
-and it gets done; deleting them is not recommended since they are the source for the rubric doc.
+**F7 — Third-party and mailbox PDFs sat inside the repo directory. RESOLVED (moved out).**
+`docs/strategy/hackathon/*.pdf` (three) and `.scratch/*.pdf.txt` were correctly gitignored and correctly
+absent from history — but they were one sloppy step from publication: a `git add -A` after a `.gitignore`
+edit, or zipping/copying the folder to share it. Content audit of the three:
+- **Two organizer page prints** (event page + details page) contain no personal data — no emails, no
+  tokenised URLs (only `?utm_source=event-blast`), no Discord invite codes, no judge or organizer names, no
+  participant-only or confidentiality language. The exposure there is *rights*, not privacy: they are the
+  organizers' branded page material, and the rules disqualify using assets you have no rights to — in a repo
+  those same organizers will read.
+- **The Gmail notification print is the one that must not be published.** It carries your name and address as
+  both author and recipient, a **Gmail permalink including its per-account inbox key and the full thread and
+  message IDs**, and a per-recipient platform addressing UUID for the event sender. Those IDs are addressable
+  identifiers: the permalink shape is what a targeted spoof of "Cerebral Valley Events" replies to, and an
+  `ik=` style key plus thread IDs tie the artefact to your mailbox rather than to the event.
+*Remediation (applied):* all three PDFs and their text extracts moved to
+`Documents/personal/gifts-registry-assets/{hackathon,extracts}/`, the now-empty directories removed, and
+`docs/README.md` updated to say where the source prints live. Nothing was deleted — they are the provenance for
+`docs/strategy/hackathon-rules-and-rubric.md`, which is the file the repo actually needs.
 
 ### Low / verified-clean
 
@@ -117,10 +125,11 @@ today, and `# gitleaks:allow` handles the first one.
 ## Verdict on "is there anything sensitive in the docs?"
 
 Yes, and it was identity rather than credentials: the Gemini conversation link (F1), your email in
-`.env.example` (F2), the vault item path (F3), the Notion page ID in the workflow (F4). All four are
-removed from the tracked tree and re-grepped clean. No phone number, token, key or VM address appears
-anywhere in the repo or on disk beneath it. **Ready to flip public**, with F7 worth acting on first and
-F4's Actions variable needed before the next CI sync.
+`.env.example` (F2), the vault item path (F3), the Notion page ID in the workflow (F4), and the Gmail
+notification print inside `docs/strategy/hackathon/` (F7). All five are out of the tracked tree — F7 by
+moving the PDFs and their extracts to `../gifts-registry-assets/`. No phone number, token, key or VM
+address appears anywhere in the repo or on disk beneath it. **Ready to flip public**, with F4's Actions
+variable needed before the next CI sync run.
 
 ## Forward gates for the build (no code exists yet — these are pre-emptive)
 
@@ -137,6 +146,8 @@ vibe-coded patterns, against what SPEC.md and ARCHITECTURE.md already commit to:
 | OTP + allowlist endpoints throttled per phone and per IP | pattern 13 · NEXT-DOS-001 | Authentication templates are **charged per send**, so an unthrottled endpoint is a money leak as well as an auth bypass | D1–D2 |
 | Downloaded WhatsApp media stored by opaque id, never by a path built from webhook fields | NEXT-PATH-001 · pattern 11 | Media ids and sender fields are attacker-influenced strings that reach the filesystem | D2 |
 | Pool arithmetic: server recomputes every total; no client-supplied amount ever trusted | pattern 10 | "Pool shows funded because contributions were seeded" is a listed FALSE SUCCESS | D4 |
+| No `og:`/preview metadata and no shared-cacheable response on any route carrying contributor data; owner gets 404 not 403 | NEXT-HOST-001 · NEXT-CACHE-001 · pattern 1 | The circle link sits in a WhatsApp group containing the owner, so a server-rendered preview is delivered **to the owner** by Meta's crawler, past every in-app control (see MISTAKES.md 2026-10-26) | D6 |
+| Contributor messages are untrusted text rendered into an image: escape at SVG build, never round-trip raw user text through a headless HTML→PNG renderer, strip `<script>`/`foreignObject`/external `href` from any SVG that came from user input | NEXT-XSS-001 · NEXT-INPUT-001 · NEXT-INJECT-003 | Every gifter's message is attacker-authored string reaching a renderer that resolves external references — that is SSRF-with-a-payload and stored XSS in one field | D6 |
 | Model output validated against the flat `json_schema`, and its text treated as untrusted when rendered | NEXT-INPUT-001 | A transcribed voice note can carry injected instructions into the owner's view | D3 |
 | Error responses and logs free of phone numbers, tokens, full webhook payloads | NEXT-LOG-001 · NEXT-ERROR-001 | POPIA plus the leak definition in SPEC.md covers error text and network responses | every day |
 | `pyproject`/`package.json` lockfiles committed, deps pinned, no auto-fix gates | NEXT-SUPPLY-001 · pattern 8 | Same class as F8 | D1 |
@@ -151,9 +162,9 @@ phone numbers.
 **Not reviewed:** application code — none exists; the vibe-pattern scanner ran against the repo and
 returned **0 leads**, which reflects an empty target, not a clean app, and must be re-run on day 3
 when the vertical slice lands; the contents of the ignored `.env` and `.memory/main.sqlite` beyond the
-PII greps; the three gitignored PDFs' text (only their presence and ignore-rules were verified);
-the `.scratch/` extracts beyond the PII greps; runtime/network posture of the Oracle VM, which is
-unverified until day 1.
+PII greps; the runtime/network posture of the Oracle VM, which is unverified until day 1.
+The three former hackathon PDFs were read via their text extracts in this pass (emails, tokenised URLs,
+invite codes, names, confidentiality language) and then moved outside the repo — see F7.
 **Changes made in this pass:** four doc/config redactions (F1–F4), one workflow env change requiring a
 follow-up Actions variable (F4), one local git config (F6). No secret values are reproduced in this
 report. Regression risk: the sync workflow will fail loudly until the Actions variable is set.

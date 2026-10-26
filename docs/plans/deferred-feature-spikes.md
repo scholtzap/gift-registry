@@ -1,7 +1,7 @@
 ---
 title: Deferred feature spikes (deal-finding, coordination agent, SAM duplicates)
 type: spec
-status: deferred
+status: backlog
 priority: P3
 rank: 40
 updated: 2026-10-26

@@ -2,6 +2,24 @@
 
 Agent error log. Newest entry first. No secrets, tokens, env dumps, or credentialed URLs.
 
+## 2026-10-26 — Proposed a share-card link preview without asking who else sees a preview
+**What happened:** While ideating the gift-card feature, I recommended making the generated card the Open Graph
+preview image of the share link, because "the link preview *is* the artefact". The card carries every
+contributor's name — and the link is pasted into a WhatsApp group that **contains the gift recipient**.
+**Impact:** Had that gone into the day-6 build, every pool would have announced its contributors to the owner
+through a Meta-rendered preview, breaking the one rule the product exists to hold. RLS, the role-scoped view
+builder and role-scoped agent toolsets would all have been green while the leak happened, because none of them
+own the preview path. It is the same class as the leak the SPEC already names (browser cache, network response)
+but through a channel that is not our HTTP response at all.
+**Fix:** `AGENTS.md` now states the rule ("the reveal is a human act" — no send, no `og:` tags, no cacheable
+response on card routes, 404 not 403 for the owner); `SPEC.md` records the decision and the rejected
+alternative; `ARCHITECTURE.md` §8 adds the preview/cache rows to the leak-suite matrix;
+`docs/plans/gift-card-f10.md` and the day-9 checklist make the group-preview check a gate rather than a memory.
+**Do not repeat:** When an artefact is generated from private data, enumerate **every** channel that will render
+it — not just the routes you wrote. A link preview, a notification payload, an OS clipboard thumbnail, a CDN or
+shared cache, and an embed card are all readers you did not authorise, and social surfaces almost always include
+the person you are hiding from. "It is a beautiful share artefact" is exactly the framing that skips that step.
+
 ## 2026-10-26 — Reported a hook as "installed" without ever proving it fired
 **What happened:** The plans-registry installer wrote `.githooks/pre-commit`, and the setup was reported as
 complete because the file existed. `core.hooksPath` is set *globally* to `~/.config/git/hooks`, so that repo

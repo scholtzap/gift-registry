@@ -49,8 +49,9 @@ Verifiable on submission day (2026-11-04):
 Non-negotiable, in the order I would protect them if the schedule collapses.
 
 - **HARD FAILURE — any privacy leak.** An owner observes a claim, pool, contribution, secret suggestion, viewer
-  list or deal price through *any* path (API, agent reply, error message, network response, browser cache, Notion
-  doc). Response: **stop all feature work, fix, add the regression test that would have caught it, then reassess
+  list, deal price or **gift card** through *any* path (API, agent reply, error message, network response, browser
+  cache, **WhatsApp link preview**, Notion doc). Response: **stop all feature work, fix, add the regression test
+  that would have caught it, then reassess
   scope.** This outranks shipping features; a leaky registry is not a smaller version of the product, it is a
   different and worse product.
 - **HARD FAILURE — no live Meta model in the demo path.** Voice note stays a file, items are typed by hand.
@@ -188,6 +189,36 @@ Non-negotiable, in the order I would protect them if the schedule collapses.
   pg-boss keeps the job queue inside Postgres so there is no second infrastructure piece to install and babysit.
   **Status:** **provisional** — carried from the recommendation, not separately confirmed. Say so on day 1 if wrong.
 
+- **Decision:** the **group gift card** (F10) is in v1: when a pool is `purchased` or a claim is fulfilled, the
+  gifters get a printable card carrying the item, a Spark-generated pun, and **every contributor's first name with
+  their own message**. Text is rendered deterministically by us (SVG → A6 print PNG at 300 DPI and a screen PNG);
+  `muse-image` supplies only a background/object illustration layer and is never load-bearing for correctness.
+  **Why:** the ledger tracks the gift but nothing is *handed over* — the card is the artefact that closes the loop
+  the origin transcript describes ("takes the awkwardness out of asking"), it is the closing beat the 3-minute demo
+  lacks, and it adds a fourth Meta surface for the tooling score at roughly half a day.
+  **Alternatives rejected:** *generating a portrait of the recipient from their public profile photo* — fetching
+  Meta-platform profile data programmatically is the same Automated Data Collection clause that ruled out
+  Marketplace scraping (a stated disqualifier), plus consent and POPIA on a real identifiable person; *a
+  contribution card showing amounts* — turns a keepsake into a financial document and nobody asked for it;
+  *letting the model typeset the card* — text fidelity in generated images is unverified and an unprintable typo in
+  a printed card is a visible failure; *skipping the card* — leaves the product as a spreadsheet.
+  **Status:** decided. **Revisit if:** day 7 gates are not all green, in which case the card drops to the cut list —
+  it is the only optional feature on the "light days", and the pun/copy must still ship if the renderer does not
+  (a text-only card is honest; an empty card is not).
+
+- **Decision:** **the reveal is a human act.** The system generates the card and never delivers it: no send to the
+  recipient, no notification to the owner, no `og:` preview and no shared cacheable response on any card route.
+  **Why:** the gated circle link lives in a WhatsApp group that *contains the owner*. A link-preview image built
+  from contributor names would be rendered by WhatsApp **to the owner**, outside every control we have — RLS, view
+  builder and agent scoping all assume our own response is the only carrier. This inverts the obvious choice from
+  the design pass (make the card the link preview because it is a beautiful share artefact) because the audience
+  of a group preview is the whole group.
+  **Alternatives rejected:** *card as OG preview image* — leaks by design; *system sends the card to the recipient*
+  — destroys the surprise the product exists to protect; *403 for the owner on card routes* — a 403 confirms the
+  card exists, which is itself the leak, so the answer is 404.
+  **Status:** decided. **Revisit if:** never; if a share feature is wanted later it must be an explicit gifter
+  action on a flattened image, not a server-rendered preview.
+
 ### Rollback path (per state-changing operation)
 
 - **Deploy:** tagged images; rollback = `docker compose up -d app:<previous-tag>`. No redeploy rebuild.
@@ -277,6 +308,20 @@ when metadata is missing. Screenshot path goes straight to Spark vision.
 In-app badge on `open` pools with unmet contributions. Outbound WhatsApp send exists behind a flag only if the
 template approves and the sandbox lets it through.
 
+### F10 · The card is downloaded and handed over (the closing beat)
+1. Pool reaches `purchased` (or a solo claim is fulfilled). Nothing is sent to the owner about it.
+2. Any contributor opens the card route from the item sheet. **Friend role only.** An owner session gets 404.
+3. Each contributor writes their own one-line message (≤200 chars, URLs rejected) and chooses show-first-name or
+   `Anonymous`. No amounts appear. Their own line is previewed before it is committed.
+4. Spark proposes the pun from (item title, recipient first name, occasion) via a flat `json_schema`
+   `{pun, one_line, alternate}`; the buyer picks one. Model output is copy, never layout.
+5. The renderer composes text + optional `muse-image` background → A6 print PNG (300 DPI, bleed) and a screen PNG.
+   Both are served from the authenticated friend route with `Cache-Control: private, no-store` and **no `og:` tags**
+   — see "Reveal is a human act".
+6. The gifter downloads and sends or prints and attaches it. The reveal happens off-platform, by hand.
+7. If the item was tombstoned but the pool funded anyway, the card still renders: the ledger survives the delete,
+   so the keepsake survives it too.
+
 ## Out of scope for v1
 
 Holding money, escrow, Stripe Connect, KYC. Native iOS/Android. Facebook/Messenger/Instagram surfaces. Facebook
@@ -322,10 +367,14 @@ Ordered; each phase ends with something demonstrable. Details and daily gates in
 8. **Soft delete + pivot (day 5).** "Did you buy it yourself?" and the friends' surviving ledger.
 9. **Secret suggestions (day 5).** `friend_only` items and the reveal flag.
 10. **Attributes (day 5–6).** Owner-authored, per-attribute visibility, rendered on the friend item sheet.
-11. **Leak suite completion (day 7).** Role × query matrix, CI-gating, plus the agent-context assertion.
-12. **Polish, fixtures, screenshots (day 7–8).** Public README, LICENSE, deploy docs with no secrets.
-13. **Record (day 9).** 3-minute video from the checklist; freeze deploys Nov 3.
-14. **Submit (day 10).** Video, live URL, public repo, all contributors listed.
+11. **Gift card (day 5–6, F10).** Contributor message + name capture (per-contributor, opt-out to `Anonymous`,
+    URLs rejected), Spark pun via flat `json_schema`, SVG→PNG renderer at A6 300 DPI and screen size, optional
+    `muse-image` background layer. Friend-role route, 404 for owner, no `og:` tags, `private, no-store`.
+12. **Leak suite completion (day 7).** Role × query matrix per ARCHITECTURE §8, CI-gating, plus the agent-context
+    assertion and the card-surface rows (route, PNG, cache header, preview).
+13. **Polish, fixtures, screenshots (day 7–8).** Public README, LICENSE, deploy docs with no secrets.
+14. **Record (day 9).** 3-minute video from the checklist; freeze deploys Nov 3.
+15. **Submit (day 10).** Video, live URL, public repo, all contributors listed.
 
 ## Guardrails
 
