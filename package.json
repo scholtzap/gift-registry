@@ -24,7 +24,7 @@
     "db:deploy": "prisma migrate deploy",
     "db:policies": "tsx scripts/apply_policies.ts",
     "db:seed": "tsx scripts/seed.ts",
-    "leak": "vitest run tests/leak tests/views",
+    "leak": "vitest run tests/leak tests/views tests/entitlements",
     "test": "vitest run"
   },
   "dependencies": {

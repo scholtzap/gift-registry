@@ -103,18 +103,48 @@ enum IngestStatus {
   failed
 }
 
+enum UserPlan {
+  free
+  premium
+  internal
+}
+
+/// One switch per model-spending path (SPEC.md §Decisions v1.1). `deal_search` exists before
+/// the feature does, so reviving the deferred deal spike needs no migration.
+enum AiCapability {
+  voice_transcribe
+  photo_extract
+  link_expand
+  card_pun
+  card_art
+  assistant_reply
+  deal_search
+}
+
+/// Why a switch is in the state it is in. A row the user set must survive a plan change; a row
+/// a plan granted must not. `subscription` is here so paid tiers are data, not a migration.
+enum EntitlementSource {
+  user
+  plan_default
+  admin
+  subscription
+}
+
 model User {
   id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   bsuid       String?   @unique
   phoneE164   String?   @unique @map("phone_e164")
   displayName String    @map("display_name")
+  /// Supplies the default when a capability has no `entitlements` row. Adding it with a
+  /// non-volatile default is expand-only: the previous image tag still runs against it.
+  plan        UserPlan  @default(free)
   createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
 
   attributes      Attribute[]
   ownedCircles    Circle[]
   addedAllowlist  AllowlistEntry[]
   memberships     Membership[]
-  addedItems      Item[]
+  addedItems      Item[]          @relation("added")
   claims          Claim[]
   poolsAsBuyer    Pool[]
   contributions   Contribution[]
@@ -122,8 +152,30 @@ model User {
   ledgerEvents    LedgerEvent[]
   cardEntries     CardEntry[]
   giftCards       GiftCard[]
+  entitlements    Entitlement[]
+  revealedItems   Item[]          @relation("revealed")
 
   @@map("users")
+}
+
+/// Per-user AI capability switches: one row per `(user, capability)`, upserted so a double tap
+/// cannot create two conflicting rows. Rendered **only** in the actor's own settings screen —
+/// never in the owner projection, never in the friend projection (SPEC.md F12 step 4).
+model Entitlement {
+  id         String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId     String            @map("user_id") @db.Uuid
+  capability AiCapability
+  enabled    Boolean           @default(true)
+  source     EntitlementSource @default(user)
+  expiresAt  DateTime?         @map("expires_at") @db.Timestamptz(6)
+  createdAt  DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, capability])
+  @@index([userId])
+  @@map("entitlements")
 }
 
 model Attribute {
@@ -209,11 +261,17 @@ model Item {
   status         ItemStatus       @default(active)
   tombstoneReason TombstoneReason? @map("tombstone_reason")
   confirmed      Boolean          @default(false)
+  /// Author's veto on the post-event reveal (SPEC.md F14). `false` means never revealed, by
+  /// anyone, at any time — the reveal route 404s rather than explaining itself.
+  revealOk       Boolean          @default(true) @map("reveal_ok")
   createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
   tombstonedAt   DateTime?        @map("tombstoned_at") @db.Timestamptz(6)
+  revealedAt     DateTime?        @map("revealed_at") @db.Timestamptz(6)
+  revealedByUserId String?        @map("revealed_by_user_id") @db.Uuid
 
   circle       Circle        @relation(fields: [circleId], references: [id], onDelete: Cascade)
-  addedBy      User          @relation(fields: [addedByUserId], references: [id], onDelete: Cascade)
+  addedBy      User          @relation("added", fields: [addedByUserId], references: [id], onDelete: Cascade)
+  revealedBy   User?         @relation("revealed", fields: [revealedByUserId], references: [id], onDelete: SetNull)
   claims       Claim[]
   pools        Pool[]
   ingestEvents IngestEvent[]

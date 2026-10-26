@@ -73,6 +73,7 @@ $$ SELECT NULLIF(current_setting('app.phone_hash', true), '') $$;
 
 ALTER TABLE users             ENABLE ROW LEVEL SECURITY;
 ALTER TABLE attributes        ENABLE ROW LEVEL SECURITY;
+ALTER TABLE entitlements      ENABLE ROW LEVEL SECURITY;
 ALTER TABLE circles           ENABLE ROW LEVEL SECURITY;
 ALTER TABLE allowlist_entries ENABLE ROW LEVEL SECURITY;
 ALTER TABLE memberships       ENABLE ROW LEVEL SECURITY;
@@ -104,6 +105,31 @@ CREATE POLICY users_self_update ON users FOR UPDATE TO app_owned, app_friend
 DROP POLICY IF EXISTS users_self_insert ON users;
 CREATE POLICY users_self_insert ON users FOR INSERT TO app_owned, app_friend
   WITH CHECK (id = app_user_id());
+
+-- ---------------------------------------------------------------------------
+-- entitlements — actor-private AI switches. Self-only on every verb, and there is deliberately
+-- no owner-side or circle-side policy: absence is the mechanism again. An owner cannot read a
+-- friend's AI settings, a friend cannot read the owner's, and `can()` therefore cannot pick up
+-- a consent that is not the caller's own (SPEC.md: consent is the actor's, budget is the owner's).
+-- ---------------------------------------------------------------------------
+
+DROP POLICY IF EXISTS entitlements_self_read ON entitlements;
+CREATE POLICY entitlements_self_read ON entitlements FOR SELECT TO app_owned, app_friend
+  USING (user_id = app_user_id());
+
+DROP POLICY IF EXISTS entitlements_self_insert ON entitlements;
+CREATE POLICY entitlements_self_insert ON entitlements FOR INSERT TO app_owned, app_friend
+  WITH CHECK (user_id = app_user_id());
+
+DROP POLICY IF EXISTS entitlements_self_update ON entitlements;
+CREATE POLICY entitlements_self_update ON entitlements FOR UPDATE TO app_owned, app_friend
+  USING (user_id = app_user_id()) WITH CHECK (user_id = app_user_id());
+
+-- Deleting your own row is how a switch returns to the plan default, so it is a supported verb
+-- rather than an admin action.
+DROP POLICY IF EXISTS entitlements_self_delete ON entitlements;
+CREATE POLICY entitlements_self_delete ON entitlements FOR DELETE TO app_owned, app_friend
+  USING (user_id = app_user_id());
 
 -- ---------------------------------------------------------------------------
 -- attributes — owner-authored about themselves; friends see only `friends`-visible rows
