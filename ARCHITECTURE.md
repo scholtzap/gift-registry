@@ -168,6 +168,10 @@ through the Nov 5–8 judging window without a free tier that sleeps.
 - Caddy obtains the cert via Cloudflare DNS-01; Oracle security-list ingress opens 443 only; app and Postgres bind
   to the compose network, not the host.
 - Freeze deploys after **Nov 3** (it is also the last day for hackathon technical questions).
+- **GitHub Actions gotcha:** a workflow that fails in ~4 seconds with *no log* (`--log-failed` returns "log not
+  found") is a **billing** failure, not a YAML error. Private repos on an account without a payment method cannot
+  start `ubuntu-latest` jobs; the reason surfaces only in the check-run annotation. Public repos get unlimited free
+  Linux minutes — and this repo must be public for the hackathon anyway.
 
 ## 7. Security Considerations
 
