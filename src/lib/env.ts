@@ -24,8 +24,10 @@ const schema = z.object({
 
   MODEL_API_KEY: z.string().startsWith("LLM_").optional(),
   MODEL_API_BASE_URL: z.string().url().default("https://api.meta.ai/v1"),
+  // ARCHITECTURE §5: 1.2 takes anything with pixels or audio in it, 1.3 is text-only reasoning.
+  // Spark 1.3's audio understanding is documented as degraded, and image intake shares the path.
   MODEL_INTAKE: z.string().default("muse-spark-1.2"),
-  MODEL_VISION: z.string().default("muse-spark-1.3"),
+  MODEL_VISION: z.string().default("muse-spark-1.2"),
   MODEL_TRANSCRIBE: z.string().default("muse-voice-transcribe-1.0"),
   MODEL_IMAGE: z.string().default("muse-image-1.0"),
 

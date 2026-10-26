@@ -24,8 +24,14 @@ const CAST = {
 async function main() {
   const db = createDb(env.DATABASE_URL);
   try {
+    // `plan: "internal"` on both verbs: the demo cast and the recording must never hit a tier
+    // wall, and a dev database seeded before the entitlements table existed still needs it.
     const upsert = (p: { name: string; bsuid: string }) =>
-      db.prisma.user.upsert({ where: { bsuid: p.bsuid }, create: { bsuid: p.bsuid, displayName: p.name }, update: {} });
+      db.prisma.user.upsert({
+        where: { bsuid: p.bsuid },
+        create: { bsuid: p.bsuid, displayName: p.name, plan: "internal" },
+        update: { plan: "internal" },
+      });
 
     const nadia = await upsert(CAST.nadia);
     const thabo = await upsert(CAST.thabo);
@@ -112,25 +118,37 @@ async function main() {
       },
     });
 
+    // The pool's status is derived from its contributions, not asserted next to them. A demo
+    // pool that reads "funded" while the money behind it does not add up is exactly the false
+    // success SPEC.md warns about, and this seed is the state the video is recorded from.
+    const grinderTargetMinor = 240000;
+    const grinderShares = [
+      { userId: thabo.id, amountMinor: 90000 },
+      { userId: lerato.id, amountMinor: 75000 },
+      { userId: sibusiso.id, amountMinor: 75000 },
+    ];
+    const grinderSettled = grinderShares.reduce((sum, share) => sum + share.amountMinor, 0);
+
     await db.prisma.pool.create({
       data: {
         item: { connect: { id: grinder.id } },
         buyer: { connect: { id: thabo.id } },
-        targetMinor: 240000,
-        status: "funded",
+        targetMinor: grinderTargetMinor,
+        status: grinderSettled >= grinderTargetMinor ? "funded" : "open",
         claims: {
-          create: [
-            { user: { connect: { id: thabo.id } }, item: { connect: { id: grinder.id } }, kind: "pool_member" },
-            { user: { connect: { id: lerato.id } }, item: { connect: { id: grinder.id } }, kind: "pool_member" },
-            { user: { connect: { id: sibusiso.id } }, item: { connect: { id: grinder.id } }, kind: "pool_member" },
-          ],
+          create: grinderShares.map((share) => ({
+            user: { connect: { id: share.userId } },
+            item: { connect: { id: grinder.id } },
+            kind: "pool_member" as const,
+          })),
         },
         contributions: {
-          create: [
-            { user: { connect: { id: thabo.id } }, amountMinor: 90000, status: "marked_paid", paidAt: new Date() },
-            { user: { connect: { id: lerato.id } }, amountMinor: 75000, status: "marked_paid", paidAt: new Date() },
-            { user: { connect: { id: sibusiso.id } }, amountMinor: 75000, status: "marked_paid", paidAt: new Date() },
-          ],
+          create: grinderShares.map((share) => ({
+            user: { connect: { id: share.userId } },
+            amountMinor: share.amountMinor,
+            status: "marked_paid" as const,
+            paidAt: new Date(),
+          })),
         },
       },
     });
