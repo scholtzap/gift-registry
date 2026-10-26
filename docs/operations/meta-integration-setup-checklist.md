@@ -82,7 +82,27 @@ deliberate: everything with an external approval clock goes first so it runs whi
 - [ ] Pre-commit hook active; gitleaks still runs globally — never `--no-verify`.
 - [ ] Confirm no real phone numbers appear anywhere: `git grep -nE '\+27[0-9]{8,9}'`.
 
-## E. Explicitly not doing
+## E. Meta MCP (WhatsApp Business Tools)
+
+The Meta MCP exists to set up a WABA conversationally from an IDE agent (Cursor / Claude Code / Codex). Worth
+using **once**, on day 1, to shortcut console clicking — not as a runtime dependency.
+
+- [ ] Check whether the Meta MCP server is available to your harness and whether it authenticates via Meta account
+      OAuth (a second identity surface — decide deliberately, since it grants app-management access).
+- [ ] If used: let it create the app, enable WhatsApp, and register the webhook, then **verify each artefact in the
+      console yourself**. An agent-reported "created" is not evidence it exists with the right permissions.
+- [ ] Keep the MCP out of the submitted product. Judges score what the app does with Meta models, not what tooling
+      set it up — and the demo must show only your own build.
+- [ ] **Do not** use the MCP to attempt Marketplace or Graph commerce access. Nothing it can reach makes
+      Marketplace collection lawful.
+- [ ] If it needs a Meta Business account you do not already control, skip it and use the console directly. A
+      multi-day business-verification detour is not worth an hour of saved clicking.
+
+**Recommendation:** try it for 20 minutes on day 1 for app + webhook setup. If it does not clearly win over the
+console by then, drop it — the Claude Code path against the Model API is the documented, verifiable one, and Cursor
+is **not** mentioned in Meta's coding-agent docs despite the brief assuming it.
+
+## F. Explicitly not doing
 
 Facebook Login, Marketplace access of any kind, Meta Content Library (academic-only), Instagram/Messenger,
 Business Verification (not needed for the sandbox and it takes days), native apps, payment processing.
