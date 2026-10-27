@@ -19,6 +19,7 @@ const schema = z.object({
 
   WHATSAPP_APP_SECRET: z.string().min(32).optional(),
   WHATSAPP_VERIFY_TOKEN: z.string().min(8).optional(),
+  WHATSAPP_ACCESS_TOKEN: z.string().optional(),
   WHATSAPP_PHONE_NUMBER_ID: z.string().optional(),
   WHATSAPP_GRAPH_API_VERSION: z.string().default("v23.0"),
 

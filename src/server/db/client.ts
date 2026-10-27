@@ -24,6 +24,7 @@ export interface Actor {
 export interface Db {
   prisma: PrismaClient;
   pool: Pool;
+  advisoryPool: Pool;
   withActor: <T>(actor: Actor, fn: (tx: Tx) => Promise<T>) => Promise<T>;
   disconnect: () => Promise<void>;
 }
@@ -39,7 +40,9 @@ export interface Db {
  * RLS entirely — and every leak assertion downstream would pass for the wrong reason.
  */
 export function createDb(connectionString: string): Db {
-  const pool = new Pool({ connectionString, max: 10 });
+  const pool = new Pool({ connectionString, max: 10, connectionTimeoutMillis: 5_000 });
+  // Session locks must not consume connections needed by their actor-query callbacks.
+  const advisoryPool = new Pool({ connectionString, max: 2, connectionTimeoutMillis: 5_000 });
   // The adapter's first argument is `pg.Pool | PoolConfig | string`. Passing `{ pool }` is
   // silently read as a PoolConfig with one unknown key, and connects to localhost:5432
   // instead of the database named by the URL.
@@ -73,10 +76,11 @@ export function createDb(connectionString: string): Db {
   return {
     prisma,
     pool,
+    advisoryPool,
     withActor,
     disconnect: async () => {
       await prisma.$disconnect();
-      await pool.end();
+      await Promise.all([pool.end(), advisoryPool.end()]);
     },
   };
 }

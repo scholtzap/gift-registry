@@ -42,6 +42,11 @@ export interface FriendItemView {
     id: string;
     target: string;
     settled: string;
+    // The same amounts as integers, for the progress meter only. Both projections already see
+    // the formatted strings, so the numerics expose nothing the render does not.
+    targetMinor: number;
+    settledMinor: number;
+    currency: string;
     status: string;
     iAmBuyer: boolean;
     contributors: number;
@@ -109,6 +114,9 @@ export async function friendCircleView(tx: Tx, circleId: string, viewerUserId: s
     items: circle.items.map((item) => {
       const pool = item.pools.find((p) => p.status !== 'purchased') ?? null;
       const myClaim = item.claims.find((c) => c.userId === viewerUserId && c.status === 'claimed') ?? null;
+      const settledMinor = pool === null
+        ? 0
+        : pool.contributions.reduce((sum, c) => sum + (c.status === 'settled' ? c.amountMinor : 0), 0);
       return {
         id: item.id,
         title: item.title,
@@ -127,10 +135,10 @@ export async function friendCircleView(tx: Tx, circleId: string, viewerUserId: s
                 target: formatMinor(pool.targetMinor, pool.currency),
                 // Settled, not promised: the buyer is the one who fronted the cash, so the
                 // number next to the pool is what has actually landed, not what was pledged.
-                settled: formatMinor(
-                  pool.contributions.reduce((sum, c) => sum + (c.status === 'settled' ? c.amountMinor : 0), 0),
-                  pool.currency,
-                ),
+                settled: formatMinor(settledMinor, pool.currency),
+                targetMinor: pool.targetMinor,
+                settledMinor,
+                currency: pool.currency,
                 status: pool.status,
                 iAmBuyer: pool.buyerUserId === viewerUserId,
                 contributors: pool.contributions.length,

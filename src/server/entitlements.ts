@@ -54,13 +54,50 @@ export const PLAN_DEFAULTS: Record<UserPlan, ReadonlySet<AiCapability>> = {
  * that is the same in the UI, in the log and in the support conversation.
  */
 export const DEGRADED_COPY: Record<AiCapability, string> = {
-  [AiCapability.voice_transcribe]: 'Voice intake is off. Type the gift instead — it lands in the same place.',
-  [AiCapability.photo_extract]: 'Photo cut-outs are off. Use the menu to add the gift by hand.',
+  [AiCapability.voice_transcribe]: 'Voice intake is off. Type the gift instead.',
+  [AiCapability.photo_extract]: 'Photo details are off. Add the gift by hand from the menu.',
   [AiCapability.link_expand]: 'Link details are off. Paste the link, then fill in the title and price yourself.',
-  [AiCapability.card_pun]: 'Card wording is off. Write your own line — it is yours anyway.',
+  [AiCapability.card_pun]: 'Card wording is off. Write your own line.',
   [AiCapability.card_art]: 'Generated card art is off. The card ships as the plain version.',
   [AiCapability.assistant_reply]: 'The assistant is off. The fixed menu still works.',
   [AiCapability.deal_search]: 'Deal search is off. Friends see the link you pasted, unchanged.',
+};
+
+/**
+ * How each switch is named in the actor's own settings screen, kept beside `DEGRADED_COPY` so
+ * the row and the message it degrades to can never call the same capability two different
+ * things. Descriptions state what the switch permits and nothing else: no audience, no tier,
+ * no claim about a feature that does not exist yet.
+ */
+export const CAPABILITY_COPY: Record<AiCapability, { label: string; description: string }> = {
+  [AiCapability.voice_transcribe]: {
+    label: 'Voice intake',
+    description: 'Turn a spoken note into an item draft, which you confirm before it is added.',
+  },
+  [AiCapability.photo_extract]: {
+    label: 'Photo details',
+    description: 'Read a title and price from a product photo into the same kind of draft.',
+  },
+  [AiCapability.link_expand]: {
+    label: 'Link details',
+    description: 'Fill in the title, retailer and price from a link you paste.',
+  },
+  [AiCapability.card_pun]: {
+    label: 'Card wording',
+    description: 'Suggest the line at the top of the gift card. Your own messages are never rewritten.',
+  },
+  [AiCapability.card_art]: {
+    label: 'Card artwork',
+    description: 'Generate the artwork that sits on the gift card.',
+  },
+  [AiCapability.assistant_reply]: {
+    label: 'Assistant replies',
+    description: 'Let the assistant write the words of a status answer. It never decides what happens next.',
+  },
+  [AiCapability.deal_search]: {
+    label: 'Deal search',
+    description: 'Search the open web for a cheaper way to buy a gift.',
+  },
 };
 
 /** A capability the actor switched off. Degrade visibly; do not retry, do not spend a token. */
@@ -101,15 +138,15 @@ async function evaluate(tx: Tx, actor: Actor, capability: AiCapability): Promise
   const [row, me] = await Promise.all([
     tx.entitlement.findUnique({
       where: { userId_capability: { userId: actor.userId, capability } },
-      select: { enabled: true, expiresAt: true },
+      select: { enabled: true, expiresAt: true, source: true },
     }),
     tx.user.findUnique({ where: { id: actor.userId }, select: { plan: true } }),
   ]);
 
   if (!me) throw new Error('actor_not_visible_to_itself');
 
-  // An expired grant falls back to the plan default rather than staying on forever.
-  if (row && (row.expiresAt === null || row.expiresAt.getTime() > Date.now())) return row.enabled;
+  // User choices do not expire with the grant they replaced.
+  if (row && (row.source === 'user' || row.expiresAt === null || row.expiresAt.getTime() > Date.now())) return row.enabled;
 
   return PLAN_DEFAULTS[me.plan].has(capability);
 }
@@ -152,7 +189,7 @@ export async function setCapability(
 ): Promise<void> {
   await tx.entitlement.upsert({
     where: { userId_capability: { userId: actor.userId, capability } },
-    create: { userId: actor.userId, capability, enabled, source: 'user' },
-    update: { enabled, source: 'user' },
+    create: { userId: actor.userId, capability, enabled, source: 'user', expiresAt: null },
+    update: { enabled, source: 'user', expiresAt: null },
   });
 }

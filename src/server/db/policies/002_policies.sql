@@ -28,9 +28,11 @@ $$ SELECT c IS NOT NULL AND EXISTS (
 
 CREATE OR REPLACE FUNCTION app_actor_joined_circle(c uuid) RETURNS boolean
   LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS
-$$ SELECT c IS NOT NULL AND EXISTS (
-     SELECT 1 FROM memberships m WHERE m.circle_id = c AND m.user_id = app_user_id()
-       AND m.status = 'active') $$;
+$$ SELECT c IS NOT NULL AND c = app_circle_id() AND EXISTS (
+     SELECT 1 FROM memberships m JOIN circles ci ON ci.id = m.circle_id
+     WHERE m.circle_id = c AND m.user_id = app_user_id()
+       AND m.status = 'active' AND m.role = 'friend' AND ci.status = 'active'
+       AND ci.owner_user_id <> app_user_id()) $$;
 
 CREATE OR REPLACE FUNCTION app_circle_of_item(i uuid) RETURNS uuid
   LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS
@@ -311,6 +313,7 @@ DROP POLICY IF EXISTS ledger_owner_read ON ledger_events;
 CREATE POLICY ledger_owner_read ON ledger_events FOR SELECT TO app_owned
   USING (
     app_actor_owns_circle(circle_id)
+    AND actor_user_id = app_user_id()
     AND entity NOT IN ('claim', 'pool', 'contribution', 'card_entry', 'gift_card')
   );
 
@@ -357,6 +360,16 @@ CREATE POLICY card_entries_friend_read ON card_entries FOR SELECT TO app_friend
 DROP POLICY IF EXISTS card_entries_friend_write ON card_entries;
 CREATE POLICY card_entries_friend_write ON card_entries FOR INSERT TO app_friend
   WITH CHECK (
+    contributor_user_id = app_user_id()
+    AND app_actor_joined_circle(app_circle_of_item(item_id))
+  );
+
+DROP POLICY IF EXISTS card_entries_friend_update ON card_entries;
+CREATE POLICY card_entries_friend_update ON card_entries FOR UPDATE TO app_friend
+  USING (
+    contributor_user_id = app_user_id()
+    AND app_actor_joined_circle(app_circle_of_item(item_id))
+  ) WITH CHECK (
     contributor_user_id = app_user_id()
     AND app_actor_joined_circle(app_circle_of_item(item_id))
   );
