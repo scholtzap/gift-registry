@@ -3,7 +3,7 @@
 > A group gift list that lives in a WhatsApp group. The person getting the gift keeps a wish list; their friends claim gifts or pool money behind one buyer, and the list owner never sees those plans.
 
 - Site: https://gifts.scholtz.work/
-- Privacy notice: https://gifts.scholtz.work/privacy.html
+- Privacy notice: https://gifts.scholtz.work/privacy
 - Status: early testing; contact through the form on the home page.
 - Money: Piñata holds no money; friends pay each other directly. Prices default to US dollars, with rand, euro or pounds per gift.
 
