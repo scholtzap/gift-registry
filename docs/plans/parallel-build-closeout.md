@@ -1,6 +1,6 @@
 ---
 title: Piñata parallel build and verification closeout
-type: plan
+type: todo
 status: implementing
 priority: P1
 rank: 2
@@ -84,8 +84,8 @@ The coordinator owns package/lock, environment contract, route adapters, integra
 ## Remaining implementation and external work
 
 1. **Real Meta/WhatsApp demonstration:** configure the authorized app/WABA/phone/authentication template and credentials, verify BSUID/physical-device intake and a consent-gated model request, and implement/test outgoing task-specific replies. The current mounted webhook, queue, stored drafts and explicit-demo fixtures do not prove these external steps. Audio conversion tests fake only the process runner; an installed real FFmpeg conversion remains unverified.
-2. **Production access:** mount and exercise M-02 gate throttling; settle and positively test D4 owner credential issuance on Windows and possession-based friend access. Current allowlist matching and fixture cookies are not OTP proof.
-3. **Remaining ledger product actions:** circle creation, owner tombstone/pivot and multi-user purchase remain fail-closed/incomplete. Existing claim/contribution/payment-marker tests do not establish these actions.
+2. **Production access:** D4 owner credential issuance on Windows and possession-based friend access remain open. ~~Mount M-02 gate throttling~~ — **mounted 2026-10-27** (`feat/day-3-followups` #1: circle + phone-hash + forwarded-address, 5/min, uniform 429 before the allowlist lookup; single-process state). Current allowlist matching and fixture cookies are not OTP proof.
+3. ~~**Remaining ledger product actions:** circle creation, owner tombstone/pivot and multi-user purchase remain fail-closed/incomplete.~~ — **Creation + tombstone built 2026-10-27** (`feat/day-3-followups` #4: `memberships_owner_join` policy, `createCircle`, `app_tombstone_item` SECURITY DEFINER pivot; real-DB tests replace the two blocked-behaviour tests). Multi-user purchase still refuses unsupported operations. No creation UI yet: a pre-circle owner session is the D4 decision in `user-management-and-billing-path.md`.
 4. **Vision integration:** verify the live person/SAM protocol and bind actor-authorized ingest sources to screenshot/multicandidate intake. The default adapter refuses with `live_protocol_unverified`; no live SAM support is claimed.
 5. **Oracle delivery:** obtain VM/Cloudflare details; validate full-dependency Linux ARM64 images, private ports/media, TLS, app/worker lifecycle, migrations, backups and restore. Local artifacts are not a deployed service or tested rollback.
 6. **Publication review:** resolve historical private-account URL identifiers and complete exact-candidate asset/font/license and reachable-advisory review before an explicitly approved public flip. No history rewrite is authorized.

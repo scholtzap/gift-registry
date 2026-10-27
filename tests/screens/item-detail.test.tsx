@@ -17,6 +17,7 @@ const pivotItem: FriendItemView = {
   secret: false,
   addedByMe: false,
   claimedByMe: true,
+  canReveal: false,
   pool: {
     id: 'pool-pivot',
     target: 'R2 400.00',
@@ -42,6 +43,7 @@ const buyerItem: FriendItemView = {
   secret: true,
   addedByMe: true,
   claimedByMe: false,
+  canReveal: false,
   pool: {
     id: 'pool-buyer',
     target: 'R1 800.00',
@@ -67,6 +69,7 @@ const contributorItem: FriendItemView = {
   secret: true,
   addedByMe: false,
   claimedByMe: false,
+  canReveal: false,
   pool: {
     id: 'pool-contributor',
     target: 'R1 800.00',
@@ -92,6 +95,7 @@ const soloItem: FriendItemView = {
   secret: false,
   addedByMe: false,
   claimedByMe: false,
+  canReveal: false,
   pool: null,
 };
 
@@ -208,6 +212,14 @@ describe('ItemDetailScreen public friend render', () => {
         expect(form).not.toContain('name="status"');
       }
     }
+  });
+
+  it('offers the reveal only when the view says the day has passed (F14)', () => {
+    const revealable = render({ ...soloItem, secret: true, canReveal: true });
+    expect(formFor(revealable, 'reveal')).toContain('Reveal this suggestion');
+    expect(revealable).toContain('will not notify anyone');
+    expectNoIntent(render({ ...soloItem, secret: true, canReveal: false }), 'reveal');
+    expectNoIntent(render({ ...soloItem, status: 'revealed' }), 'reveal');
   });
 
   it('offers release, not a new claim or pool, for my existing solo claim', () => {

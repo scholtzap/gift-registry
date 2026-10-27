@@ -68,7 +68,7 @@ The config has a nonstandard filename. Package scripts and the test setup now co
 
 Policies are a **separate deployment step**, not something Prisma migrations represent. Apply them after every schema deployment. The applying login needs authority to create/grant the two roles and install policy functions. Use a controlled migration/admin account for these operations; never expose that credential to browsers.
 
-`db:seed` creates a fictional cast and `/c/nadia-30th`, with wishlist, secret suggestion, claim, and pool state. It does not erase an existing circle or reset a recording. Its allowlist hashes synthetic BSUID tokens, not phone numbers, so typing an invented number into the join form is **not** a seeded login mechanism. Do not add real subscriber numbers to make the demo work. Owner/friend demo access needs a separately verified session/bootstrap flow; route tests exercise signed sessions directly.
+`db:seed` creates a fictional cast and `/c/nadia-30th`, with wishlist, secret suggestion, claim, and pool state. It does not erase an existing circle or reset a recording. Its allowlist hashes synthetic BSUID tokens, not phone numbers, so typing an invented number into the join form is **not** a seeded login mechanism. Do not add real subscriber numbers to make the demo work. For a byte-identical demo rerun, wipe dev data first (`docker compose down -v`) and then seed; the [recording checklist](docs/operations/demo-script-and-recording-checklist.md) runs this every take. Owner/friend demo access needs a separately verified session/bootstrap flow; route tests exercise signed sessions directly.
 
 ### 3. Run
 
@@ -149,7 +149,7 @@ Do not set `LEAK_SKIP_POLICIES=1` for ordinary tests: it **drops policies and di
 
 ## Deployment and failure modes
 
-Oracle ARM deployment templates are being added under `docs/deployment/`; their existence is not evidence of an executed deployment. The root Compose file is still only the local database. Before deployment, validate native image/rendering packages on ARM64, licensed fonts, private persistent media storage, TLS, secret injection, migrations followed by policies, backups, and a restore drill. On this Google Drive-synced Windows checkout, materialize reparse-sensitive files before Docker builds.
+Oracle ARM deployment candidates live under `docs/deployment/` — app + worker + migrate one-shot + Postgres on a private network, Caddy with DNS-01 TLS — and their existence is not evidence of an executed deployment. The root Compose file is still only the local database. Before deployment, validate native image/rendering packages on ARM64, licensed fonts, private persistent media storage, TLS, secret injection, migrations followed by policies, backups, and a restore drill. On this Google Drive-synced Windows checkout, materialize reparse-sensitive files before Docker builds.
 
 Never auto-roll back production migrations. Use expand-only schema changes; recovery is the previous image tag plus a verified database restore. Keep PostgreSQL private. A live deployment should use production cookies and a reverse proxy; bind the application locally or to a private container network.
 

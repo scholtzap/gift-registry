@@ -76,6 +76,19 @@ export function LandingScreen() {
         </ol>
       </section>
 
+      <section className="pn-stack" aria-labelledby="landing-strip-title">
+        <div className="pn-stack">
+          <p className="pn-eyebrow">The product, as seeded</p>
+          <h2 id="landing-strip-title">Screenshots from the fictional demo cast</h2>
+          <p className="pn-small pn-muted">Captured from the seeded demo (tests/browser/screenshots.spec.ts). No live circle is shown.</p>
+        </div>
+        <div className="pn-grid pn-grid-3">
+          <img src="/screenshots/owner-ledger.png" alt="The recipient's wishlist view, with no sign of claims or pools" loading="lazy" />
+          <img src="/screenshots/friend-ledger.png" alt="The friends' planning view of the same circle" loading="lazy" />
+          <img src="/screenshots/gift-card.png" alt="The group gift card friends hand over themselves" loading="lazy" />
+        </div>
+      </section>
+
       <Panel as="section" className="pn-stack">
         <p>The gift recipient sees their wishlist, not who has claimed or pooled.</p>
       </Panel>

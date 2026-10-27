@@ -51,6 +51,12 @@ describe('private circle actions', () => {
     const response = await get(`/items/${fx.itemOwnId}`, cookie('friend', fx.ownerUserId));
     expect(response.status).toBe(404);
   });
+  it('hides a friend-only suggestion from the owner item route', async () => {
+    const response = await get(`/items/${fx.itemSecretId}`, cookie('owner'));
+    expect(response.status).toBe(404);
+    expect(response.headers.get('Cache-Control')).toContain('no-store');
+    expect(await response.text()).toContain('not valid');
+  });
   it('renders an owner-only item detail without coordination state', async () => {
     const response = await get(`/items/${fx.itemOwnId}`, cookie('owner'));
     expect(response.status).toBe(200);
@@ -202,5 +208,71 @@ describe('private circle actions', () => {
     expect((await fx.db.prisma.pool.findUniqueOrThrow({ where: { id: pool.id } })).status).toBe('funded');
     const contribution = await fx.db.prisma.contribution.findUniqueOrThrow({ where: { poolId_userId: { poolId: pool.id, userId: fx.friendAUserId } } });
     expect(contribution.status).toBe('marked_paid');
+  });
+
+  describe('the party date', () => {
+    const row = () => fx.db.prisma.circle.findUniqueOrThrow({ where: { id: fx.circleId } });
+    const datePost = (fields: Record<string, string>, auth = cookie('friend')) =>
+      post('/date', { intent: 'set_event_date', ...fields }, auth);
+
+    it('is a POST route only: a GET on it 404s like any other unknown subpath', async () => {
+      expect((await get('/date')).status).toBe(404);
+      expect((await get('/date', cookie('owner'))).status).toBe(404);
+    });
+
+    it('rejects a malformed date with a re-rendered ledger that keeps the draft', async () => {
+      const before = await row();
+      for (const eventDate of ['2026-02-30', '18/11/2026', '2026-11-3', '', '2026-13-01', 'everything']) {
+        const response = await datePost({ eventDate });
+        expect(response.status).toBe(422);
+        const html = await response.text();
+        expect(html).toContain('Enter a real date, in the form 2026-12-05.');
+        if (eventDate) expect(html).toContain(`value="${eventDate}"`);
+      }
+      expect((await row()).eventDate).toEqual(before.eventDate);
+      expect((await row()).eventDateSetByUserId).toBe(fx.ownerUserId);
+    });
+
+    it('rejects a form without the intent it names', async () => {
+      expect((await post('/date', { eventDate: '2027-01-09' })).status).toBe(404);
+      expect((await row()).eventDate).toEqual(new Date('2026-12-05T00:00:00.000Z'));
+    });
+
+    it('writes the session actor as the writer, never a forged field', async () => {
+      const response = await datePost({ eventDate: '2027-01-09', eventDateSetByUserId: fx.ownerUserId, userId: fx.ownerUserId });
+      expect(response.status).toBe(303);
+      expect(response.headers.get('Location')).toBe(`/c/${slug}`);
+      const after = await row();
+      expect(after.eventDate).toEqual(new Date('2027-01-09T00:00:00.000Z'));
+      expect(after.eventDateSetByUserId).toBe(fx.friendAUserId);
+
+      await datePost({ eventDate: '2026-12-05' }, cookie('owner'));
+    });
+
+    it('loses the date to the owner the turn a friend writes it, and stays visible to friends', async () => {
+      expect((await datePost({ eventDate: '2026-12-12' })).status).toBe(303);
+      const ownerHtml = await (await get('', cookie('owner'))).text();
+      expect(ownerHtml).not.toMatch(/2026-12-12|Sat 12 Dec|<time\b|days to go/);
+      expect(ownerHtml).toContain('Birthday: 3 Apr');
+
+      const friendHtml = await (await get('')).text();
+      expect(friendHtml).toContain('<time dateTime="2026-12-12">Sat 12 Dec</time>');
+
+      expect((await datePost({ eventDate: '2026-12-05' }, cookie('owner'))).status).toBe(303);
+      expect(await (await get('', cookie('owner'))).text()).toContain('Sat 5 Dec');
+    });
+
+    it('refuses a cross-origin write without moving the date', async () => {
+      for (const from of ['https://untrusted.example.test', 'null']) {
+        const response = await handleCirclePost(fx.db, new Request(`${origin}/c/${slug}/date`, {
+          method: 'POST',
+          headers: { cookie: cookie('owner'), origin: from, 'content-type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({ intent: 'set_event_date', eventDate: '2027-02-14' }),
+        }), slug);
+        expect(response.status).toBe(404);
+      }
+      expect((await row()).eventDate).toEqual(new Date('2026-12-05T00:00:00.000Z'));
+      expect((await row()).eventDateSetByUserId).toBe(fx.ownerUserId);
+    });
   });
 });

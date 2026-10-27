@@ -83,6 +83,30 @@ async function readForm(request: Request): Promise<FormData> {
   return request.formData();
 }
 
+/**
+ * The demo (and any human) starts here: a plain search form. It carries no
+ * data about anyone, so it is the same bytes for every visitor, no-store and
+ * noindex like every registry surface. The number typed here travels only in
+ * the POST body that follows, never in a URL.
+ */
+export function handleLookupGet(): Response {
+  const body = `<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow"><title>Find a gift circle</title></head>
+<body><main>
+<h1>Buying a gift for someone?</h1>
+<p>Type their number and we will help you start. Nothing about anyone is shown here.</p>
+<form method="post" action="/lookup">
+<label>Their WhatsApp number (international form) <input name="phone" type="tel" autocomplete="tel" required></label>
+<button type="submit">Continue</button>
+</form>
+</main></body></html>`;
+  return new Response(body, {
+    status: 200,
+    headers: headers({ "Content-Type": "text/html; charset=utf-8" }),
+  });
+}
+
 export async function handleLookupPost(db: Db, request: Request): Promise<Response> {
   let form: FormData;
   try {

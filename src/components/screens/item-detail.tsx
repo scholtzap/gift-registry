@@ -73,6 +73,19 @@ export function ItemDetailScreen({
         </Notice>
       )}
 
+      {item.canReveal && (
+        <Panel>
+          <section className="pn-stack" aria-labelledby="item-reveal-heading">
+            <h2 id="item-reveal-heading">The day has passed</h2>
+            <p className="pn-muted">You can show this suggestion to them now. Piñata will not notify anyone — revealing stays your act.</p>
+            <form action={itemPath} method="post" className="pn-actions">
+              <input type="hidden" name="intent" value="reveal" />
+              <Button type="submit" variant="secondary">Reveal this suggestion</Button>
+            </form>
+          </section>
+        </Panel>
+      )}
+
       <div className="pn-cols">
         <div className="pn-stack">
           <Panel>

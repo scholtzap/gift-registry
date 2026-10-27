@@ -1,4 +1,4 @@
-import { AttributeList, Badge, Cta, EmptyState, EventDate, ItemPhoto, Meter, Money, Panel, Screen } from '@/components/ui';
+import { AttributeList, Badge, Cta, DateLine, EmptyState, EventDate, EventDateForm, ItemPhoto, Meter, Money, Notice, Panel, Screen, Stat, StatList } from '@/components/ui';
 import type { NavItem } from '@/components/ui';
 import { itemStatus, poolPercent } from '@/components/status';
 import { formatMinor } from '@/lib/money';
@@ -56,7 +56,12 @@ function LedgerRow({ item, basePath }: { item: FriendItemView; basePath: string 
 }
 
 // Friend projection only; the parent route owns authentication and role selection.
-export function FriendLedgerScreen({ view, basePath }: { view: FriendCircleView; basePath: string }) {
+export function FriendLedgerScreen({ view, basePath, notice, eventDateDraft }: {
+  view: FriendCircleView;
+  basePath: string;
+  notice?: string;
+  eventDateDraft?: string | null;
+}) {
   const nav: NavItem[] = [
     { href: basePath, label: 'Gifts', icon: 'ledger', current: true },
     { href: `${basePath}/draft`, label: 'Suggest', icon: 'add' },
@@ -72,7 +77,7 @@ export function FriendLedgerScreen({ view, basePath }: { view: FriendCircleView;
       <div className="pn-cols">
         <section aria-label="Gift list" className="pn-stack">
           <Panel tone="human" className="pn-panel-tight">
-            <p className="pn-eyebrow">{view.occasion} · <EventDate iso={view.eventDate} /></p>
+            <p className="pn-eyebrow">{view.occasion}{view.eventDate !== null && <> · <EventDate iso={view.eventDate} /></>}</p>
             <p>Claims, pools and secret ideas live here. Keep this screen away from them.</p>
           </Panel>
 
@@ -99,7 +104,11 @@ export function FriendLedgerScreen({ view, basePath }: { view: FriendCircleView;
 
         {/* Rail last in the DOM so mobile reads the list first; CSS puts it on the right at desktop. */}
         <div className="pn-rail">
-          <Panel>
+          <Panel className="pn-stack">
+            <p className="pn-muted">{view.occasion}</p>
+            {view.birthday !== null && <p className="pn-small">Birthday: {view.birthday}</p>}
+            <DateLine date={view.eventDate} label={view.eventDateLabel} countdown={view.countdown} />
+            <EventDateForm basePath={basePath} defaultValue={eventDateDraft ?? view.eventDate} notice={notice} />
             <Cta href={`${basePath}/draft`}>Suggest a secret gift</Cta>
             <Cta href={`${basePath}/settings`}>Your AI settings</Cta>
           </Panel>

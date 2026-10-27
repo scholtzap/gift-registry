@@ -22,7 +22,7 @@ export type DerivedCircleStatus = "active" | "closed" | "archived" | "purged";
 export interface LifecycleCircle {
   status: string;
   createdAt: Date;
-  eventDate: Date;
+  eventDate: Date | null;
   ownerUserId: string | null;
 }
 
@@ -33,7 +33,7 @@ function endOfDay(date: Date): number {
 }
 
 export function archiveAt(circle: LifecycleCircle): number | null {
-  if (circle.ownerUserId !== null) return null;
+  if (circle.ownerUserId !== null || circle.eventDate === null) return null;
   const eventMs = circle.eventDate.getTime();
   if (eventMs < circle.createdAt.getTime() + ARCHIVE_GRACE_MS) return endOfDay(circle.eventDate);
   return eventMs + ARCHIVE_GRACE_MS;
