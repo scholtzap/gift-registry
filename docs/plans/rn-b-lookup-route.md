@@ -95,8 +95,9 @@ invalid numbers, proven byte-identical in `tests/routes/lookup.test.ts`. Prerequ
 `trustedClientAddress` (TRUSTED_PROXY default OFF) and (2) the CSPRNG slug generator
 (24 base64url chars, `src/server/auth/slug.ts`) landed with unit tests; (4) the throttle is
 mounted before any DB read, keyed on trusted address + phone hash. Still owed: (3) the
-`PHONE_HASH_PEPPER` split (RN-D Gate 5) — the lookup still peppers with `SESSION_SECRET`, as the
-gate does today.
+`PHONE_HASH_PEPPER` split (RN-D Gate 5) — **closed later the same day**: every `hashPhone` caller
+(gate, lookup, proxy create, seed) now peppers with the boot-checked
+`PHONE_HASH_PEPPER`, distinct from `SESSION_SECRET` (RN-D M6).
 
 ## Blocks / gated by
 

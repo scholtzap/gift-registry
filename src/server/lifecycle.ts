@@ -53,3 +53,19 @@ export function isArchived(circle: LifecycleCircle, now = new Date()): boolean {
   const derived = derivedCircleStatus(circle, now);
   return derived === "archived" || derived === "purged";
 }
+
+/**
+ * RN-J: a permission request dies at the earlier of 72h after it was made
+ * and the end of the event day, derived from stored dates (sharewear's
+ * earlier-of rule), never written by a job. The owner's inbox shows what is
+ * derivable, not what was stamped.
+ */
+export const REQUEST_WINDOW_MS = 72 * 60 * 60 * 1000;
+
+export function requestExpiresAt(requestedAt: Date, eventDate: Date): number {
+  return Math.min(requestedAt.getTime() + REQUEST_WINDOW_MS, endOfDay(eventDate));
+}
+
+export function isRequestLive(requestedAt: Date, eventDate: Date, now = new Date()): boolean {
+  return now.getTime() < requestExpiresAt(requestedAt, eventDate);
+}
