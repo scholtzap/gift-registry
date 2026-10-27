@@ -48,7 +48,7 @@ Agent error log. Newest entry first. No secrets, tokens, env dumps, or credentia
 
 **What happened:** the mistakes-audit hook treats MISTAKES.md as logged only while it has uncommitted changes; the git-hygiene hook demands a clean tree. Committing the log re-triggers the audit reminder on the next turn.
 **Impact:** three pushed log entries plus repeated block messages; the reminder cannot be satisfied and stay committed at the same time.
-**Fix:** this entry stays uncommitted so the audit sees it as touched, with a one-line hygiene note covering it. Longer term: the audit hook should accept recent session commits as logged.
+**Fix:** this entry stays uncommitted so the audit sees it as touched, with a one-line hygiene note covering it. Longer term: the audit hook should accept recent session commits as logged. **Done 2026-10-27:** `.cursor/hooks/mistakes_audit.py` now also counts a MISTAKES.md commit made after the session transcript was created as touched; a simulated Stop payload against this session's transcript returns `logged=True` and no block. The log may be committed normally again.
 **Do not repeat:** do not pile duplicate entries to quiet a mechanical reminder — one entry per real mistake, then note the tooling conflict once.
 
 ## 2026-10-27 — Env check leaked secret length through mask stars
