@@ -1,0 +1,120 @@
+<mxfile host="app.diagrams.net" modified="2026-10-27" agent="Qoder" version="24.7.7" type="device">
+  <diagram id="buildmap" name="Build map">
+    <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="1760" pageHeight="1400" math="0" shadow="0" defaultFontFamily="Arial">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="title" value="Pi&#241;ata &#8212; build map: the shipped spine against the registry-network layer the intended journey asks for" style="text;html=1;align=left;verticalAlign=middle;fontSize=27;fontStyle=1;fontColor=#14141C;" vertex="1" parent="1">
+          <mxGeometry x="32" y="20" width="1600" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="subtitle" value="Read top to bottom: what a person arrives through, what authorises them, what the app already guarantees, what it calls outside itself, and the new layer that does not exist yet." style="text;html=1;align=left;verticalAlign=middle;fontSize=16;fontColor=#5B5B66;" vertex="1" parent="1">
+          <mxGeometry x="32" y="58" width="1600" height="26" as="geometry" />
+        </mxCell>
+
+        <mxCell id="zbound" value="REGISTRY-NETWORK LAYER &#8212; ENTIRELY NEW  &#183;  one persistent link per person, not one gated link per event  &#183;  SPEC.md lists this as out of scope for v1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=4;fillColor=#E3EEFF;fillOpacity=35;strokeColor=#1D6FE0;strokeWidth=2;dashed=1;dashPattern=6 4;verticalAlign=top;align=left;spacingLeft=12;spacingTop=10;fontSize=16;fontStyle=1;fontColor=#1D6FE0;" vertex="1" parent="1">
+          <mxGeometry x="60" y="900" width="1668" height="360" as="geometry" />
+        </mxCell>
+
+        <mxCell id="L1" value="INGRESS" style="text;html=1;align=left;fontSize=14;fontStyle=1;fontColor=#0E7490;" vertex="1" parent="1"><mxGeometry x="32" y="92" width="160" height="20" as="geometry" /></mxCell>
+        <mxCell id="A1" value="/c/&lt;slug&gt;&#10;one gated link per circle&#10;&#10;BUILT" style="rounded=1;whiteSpace=wrap;html=1;arcSize=8;fillColor=#E7F7EE;strokeColor=#0F9D58;strokeWidth=2;fontSize=18;fontColor=#14141C;verticalAlign=top;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="120" y="116" width="240" height="104" as="geometry" />
+        </mxCell>
+        <mxCell id="A2" value="/app&#10;&quot;use your invitation link&quot;&#10;&#10;BUILT &#8212; no login, no search" style="rounded=1;whiteSpace=wrap;html=1;arcSize=8;fillColor=#FFF4DC;strokeColor=#C2410C;strokeWidth=2;fontSize=18;fontColor=#14141C;verticalAlign=top;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="440" y="116" width="240" height="104" as="geometry" />
+        </mxCell>
+        <mxCell id="A3" value="WhatsApp inbound&#10;POST /api/wa/webhook&#10;&#10;BUILT &#8212; six bounded tasks" style="rounded=1;whiteSpace=wrap;html=1;arcSize=8;fillColor=#E7F7EE;strokeColor=#0F9D58;strokeWidth=2;fontSize=18;fontColor=#14141C;verticalAlign=top;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="1400" y="116" width="240" height="104" as="geometry" />
+        </mxCell>
+
+        <mxCell id="L2" value="AUTHORISATION" style="text;html=1;align=left;fontSize=14;fontStyle=1;fontColor=#0E7490;" vertex="1" parent="1"><mxGeometry x="32" y="260" width="200" height="20" as="geometry" /></mxCell>
+        <mxCell id="B1" value="circle handler&#10;gate, role split, no-store&#10;&#10;BUILT" style="rounded=1;whiteSpace=wrap;html=1;arcSize=8;fillColor=#E7F7EE;strokeColor=#0F9D58;strokeWidth=2;fontSize=18;fontColor=#14141C;verticalAlign=top;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="120" y="284" width="240" height="104" as="geometry" />
+        </mxCell>
+        <mxCell id="B2" value="signed session cookie&#10;SameSite=Lax, 14 days&#10;&#10;BUILT &#8212; owner session is an&#10;open gap (D4)" style="rounded=1;whiteSpace=wrap;html=1;arcSize=8;fillColor=#FFF4DC;strokeColor=#C2410C;strokeWidth=2;fontSize=16;fontColor=#14141C;verticalAlign=top;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="440" y="284" width="240" height="104" as="geometry" />
+        </mxCell>
+        <mxCell id="B3" value="agent tasks&#10;voice, photo, link, status,&#10;claim or pool, card line&#10;&#10;BUILT &#8212; no find, no my registries" style="rounded=1;whiteSpace=wrap;html=1;arcSize=8;fillColor=#FFF4DC;strokeColor=#C2410C;strokeWidth=2;fontSize=16;fontColor=#14141C;verticalAlign=top;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="1400" y="284" width="240" height="104" as="geometry" />
+        </mxCell>
+
+        <mxCell id="L3" value="GUARANTEES" style="text;html=1;align=left;fontSize=14;fontStyle=1;fontColor=#0E7490;" vertex="1" parent="1"><mxGeometry x="32" y="428" width="200" height="20" as="geometry" /></mxCell>
+        <mxCell id="C1" value="RLS, two projections&#10;owner never sees claims,&#10;pools, amounts&#10;&#10;BUILT" style="rounded=1;whiteSpace=wrap;html=1;arcSize=8;fillColor=#E7F7EE;strokeColor=#0F9D58;strokeWidth=2;fontSize=16;fontColor=#14141C;verticalAlign=top;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="120" y="452" width="240" height="108" as="geometry" />
+        </mxCell>
+        <mxCell id="C2" value="can(actor, capability)&#10;one gate per spend path&#10;&#10;BUILT" style="rounded=1;whiteSpace=wrap;html=1;arcSize=8;fillColor=#E7F7EE;strokeColor=#0F9D58;strokeWidth=2;fontSize=16;fontColor=#14141C;verticalAlign=top;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="440" y="452" width="240" height="108" as="geometry" />
+        </mxCell>
+        <mxCell id="C3" value="the reveal is a human act&#10;no send, no notify,&#10;no og: preview&#10;&#10;BUILT" style="rounded=1;whiteSpace=wrap;html=1;arcSize=8;fillColor=#E7F7EE;strokeColor=#0F9D58;strokeWidth=2;fontSize=16;fontColor=#14141C;verticalAlign=top;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="760" y="452" width="240" height="108" as="geometry" />
+        </mxCell>
+        <mxCell id="C4" value="leak suite&#10;HTML assertions on every&#10;projection&#10;&#10;BUILT" style="rounded=1;whiteSpace=wrap;html=1;arcSize=8;fillColor=#E7F7EE;strokeColor=#0F9D58;strokeWidth=2;fontSize=16;fontColor=#14141C;verticalAlign=top;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="1080" y="452" width="240" height="108" as="geometry" /></mxCell>
+        <mxCell id="C5" value="noindex, no-store,&#10;hashed allowlist&#10;&#10;BUILT &#8212; and it is exactly what&#10;crawlable discovery would undo" style="rounded=1;whiteSpace=wrap;html=1;arcSize=8;fillColor=#FFF4DC;strokeColor=#C2410C;strokeWidth=2;fontSize=16;fontColor=#14141C;verticalAlign=top;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="1400" y="452" width="240" height="108" as="geometry" />
+        </mxCell>
+
+        <mxCell id="L4" value="EXTERNAL" style="text;html=1;align=left;fontSize=14;fontStyle=1;fontColor=#0E7490;" vertex="1" parent="1"><mxGeometry x="32" y="600" width="200" height="20" as="geometry" /></mxCell>
+        <mxCell id="E1" value="WhatsApp Business Platform&#10;Cloud API&#10;&#10;PARTIAL &#8212; auth template not&#10;submitted; no outbound sends" style="rounded=1;whiteSpace=wrap;html=1;arcSize=8;fillColor=#FFFFFF;strokeColor=#14141C;strokeWidth=1;dashed=1;dashPattern=4 3;fontSize=16;fontColor=#14141C;verticalAlign=top;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="120" y="624" width="280" height="112" as="geometry" />
+        </mxCell>
+        <mxCell id="E2" value="Meta Model APIs&#10;Muse Voice 1.2, image and&#10;vision reasoning&#10;&#10;BUILT" style="rounded=1;whiteSpace=wrap;html=1;arcSize=8;fillColor=#FFFFFF;strokeColor=#14141C;strokeWidth=1;dashed=1;dashPattern=4 3;fontSize=16;fontColor=#14141C;verticalAlign=top;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="480" y="624" width="240" height="112" as="geometry" />
+        </mxCell>
+        <mxCell id="E3" value="SAM 3.1&#10;segmentation to cutout&#10;&#10;BUILT" style="rounded=1;whiteSpace=wrap;html=1;arcSize=8;fillColor=#FFFFFF;strokeColor=#14141C;strokeWidth=1;dashed=1;dashPattern=4 3;fontSize=16;fontColor=#14141C;verticalAlign=top;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="800" y="624" width="240" height="112" as="geometry" />
+        </mxCell>
+        <mxCell id="E4" value="Meta Graph API&#10;friend lists, Instagram contacts&#10;&#10;BLOCKED &#8212; user_friends returns&#10;only people already using this app" style="rounded=1;whiteSpace=wrap;html=1;arcSize=8;fillColor=#FFE7F0;strokeColor=#B3261E;strokeWidth=2;fontSize=16;fontColor=#14141C;verticalAlign=top;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="1120" y="624" width="280" height="112" as="geometry" />
+        </mxCell>
+
+        <mxCell id="N1" value="Persistent profile link&#10;/r/&lt;handle&gt;&#10;constant per person&#10;&#10;NEW &#8212; no model, no route" style="rounded=1;whiteSpace=wrap;html=1;arcSize=8;fillColor=#E3EEFF;strokeColor=#1D6FE0;strokeWidth=2;dashed=1;dashPattern=6 4;fontSize=16;fontColor=#14141C;verticalAlign=top;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="120" y="960" width="240" height="128" as="geometry" />
+        </mxCell>
+        <mxCell id="N2" value="Resolution API&#10;/r/lookup?slug=&#8230;&#10;&#10;NEW &#8212; enumeration surface&#10;needs throttle plus rate cap" style="rounded=1;whiteSpace=wrap;html=1;arcSize=8;fillColor=#E3EEFF;strokeColor=#1D6FE0;strokeWidth=2;dashed=1;dashPattern=6 4;fontSize=16;fontColor=#14141C;verticalAlign=top;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="440" y="960" width="240" height="128" as="geometry" />
+        </mxCell>
+        <mxCell id="N3" value="OTP door&#10;WhatsApp auth template&#10;&#10;BLOCKED UNTIL &#8212; Meta approval&#10;plus per-message billing" style="rounded=1;whiteSpace=wrap;html=1;arcSize=8;fillColor=#FFE7F0;strokeColor=#B3261E;strokeWidth=2;fontSize=16;fontColor=#14141C;verticalAlign=top;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="760" y="960" width="240" height="128" as="geometry" />
+        </mxCell>
+        <mxCell id="N4" value="Permission request&#10;plus owner inbox&#10;&#10;NEW &#8212; cannot notify, so it waits&#10;for the owner to open their link" style="rounded=1;whiteSpace=wrap;html=1;arcSize=8;fillColor=#E3EEFF;strokeColor=#1D6FE0;strokeWidth=2;dashed=1;dashPattern=6 4;fontSize=16;fontColor=#14141C;verticalAlign=top;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="1080" y="960" width="240" height="128" as="geometry" />
+        </mxCell>
+        <mxCell id="N5" value="Visibility flag&#10;public or invite-only&#10;on registry_profile&#10;&#10;NEW &#8212; circles has none today" style="rounded=1;whiteSpace=wrap;html=1;arcSize=8;fillColor=#E3EEFF;strokeColor=#1D6FE0;strokeWidth=2;dashed=1;dashPattern=6 4;fontSize=16;fontColor=#14141C;verticalAlign=top;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="1400" y="960" width="240" height="128" as="geometry" />
+        </mxCell>
+        <mxCell id="N6" value="Contacts the owner picks themself&#10;address-book pick, or REQUEST_CONTACT_INFO&#10;&#10;VIABLE SUBSTITUTE &#8212; global, opt-in, self-declared" style="rounded=1;whiteSpace=wrap;html=1;arcSize=8;fillColor=#E7F7EE;strokeColor=#0F9D58;strokeWidth=2;fontSize=16;fontColor=#14141C;verticalAlign=top;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="440" y="1108" width="440" height="112" as="geometry" />
+        </mxCell>
+        <mxCell id="N7" value="Crawlable public registries&#10;&#10;POLICY CALL &#8212; needs noindex dropped on a public subset,&#10;which removes the leak surface the suite currently proves" style="rounded=1;whiteSpace=wrap;html=1;arcSize=8;fillColor=#FFE7F0;strokeColor=#B3261E;strokeWidth=2;fontSize=16;fontColor=#14141C;verticalAlign=top;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="920" y="1108" width="400" height="112" as="geometry" />
+        </mxCell>
+
+        <mxCell id="eA1B1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#4F5D75;strokeWidth=2;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="A1" target="B1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="eA2B2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#4F5D75;strokeWidth=2;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="A2" target="B2"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="eA3B3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#4F5D75;strokeWidth=2;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="A3" target="B3"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="eB1C1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#4F5D75;strokeWidth=2;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="B1" target="C1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="eB2C2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#4F5D75;strokeWidth=2;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="B2" target="C2"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="eB3C5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#4F5D75;strokeWidth=2;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="B3" target="C5"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="eC5E4" value="no route asks Meta for a person list today" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#B3261E;strokeWidth=2;dashed=1;dashPattern=6 4;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="C5" target="E4"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="mC5E4" value="no route asks Meta for a person list today" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=none;fontSize=12;fontStyle=1;fontColor=#B3261E;" vertex="1" parent="1"><mxGeometry x="1312" y="488" width="240" height="12" as="geometry" /></mxCell>
+        <mxCell id="eE1N3" value="the second door" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#1D6FE0;strokeWidth=2;dashed=1;dashPattern=6 4;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="E1" target="N3"><mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="260" y="800" /><mxPoint x="880" y="800" /></Array></mxGeometry></mxCell>
+        <mxCell id="mE1N3" value="the second door" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=none;fontSize=12;fontStyle=1;fontColor=#1D6FE0;" vertex="1" parent="1"><mxGeometry x="516" y="782" width="112" height="12" as="geometry" /></mxCell>
+        <mxCell id="eE4N6" value="not this" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#B3261E;strokeWidth=2;dashed=1;dashPattern=6 4;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="E4" target="N6"><mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="1260" y="824" /><mxPoint x="660" y="824" /></Array></mxGeometry></mxCell>
+        <mxCell id="mE4N6" value="not this: owner picks instead" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=none;fontSize=12;fontStyle=1;fontColor=#B3261E;" vertex="1" parent="1"><mxGeometry x="880" y="836" width="220" height="12" as="geometry" /></mxCell>
+
+        <mxCell id="legline" style="line;shape=line;direction=north;strokeColor=#E8E8EE;strokeWidth=1;" vertex="1" parent="1"><mxGeometry x="32" y="1288" width="1698" height="1" as="geometry" /></mxCell>
+        <mxCell id="lg" value="LEGEND" style="text;html=1;align=left;fontSize=14;fontColor=#5B5B66;" vertex="1" parent="1"><mxGeometry x="32" y="1304" width="90" height="20" as="geometry" /></mxCell>
+        <mxCell id="lg1" value="BUILT" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E7F7EE;strokeColor=#0F9D58;strokeWidth=2;fontSize=14;fontColor=#14141C;" vertex="1" parent="1"><mxGeometry x="130" y="1304" width="120" height="36" as="geometry" /></mxCell>
+        <mxCell id="lg2" value="PARTIAL" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF4DC;strokeColor=#C2410C;strokeWidth=2;fontSize=14;fontColor=#14141C;" vertex="1" parent="1"><mxGeometry x="266" y="1304" width="120" height="36" as="geometry" /></mxCell>
+        <mxCell id="lg3" value="NEW" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3EEFF;strokeColor=#1D6FE0;strokeWidth=2;dashed=1;dashPattern=6 4;fontSize=14;fontColor=#14141C;" vertex="1" parent="1"><mxGeometry x="402" y="1304" width="120" height="36" as="geometry" /></mxCell>
+        <mxCell id="lg4" value="BLOCKED" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFE7F0;strokeColor=#B3261E;strokeWidth=2;fontSize=14;fontColor=#14141C;" vertex="1" parent="1"><mxGeometry x="538" y="1304" width="130" height="36" as="geometry" /></mxCell>
+        <mxCell id="lg5" value="Dashed white box = external system, outside our trust boundary" style="text;html=1;align=left;fontSize=14;fontColor=#5B5B66;" vertex="1" parent="1"><mxGeometry x="690" y="1312" width="520" height="20" as="geometry" /></mxCell>
+
+        <mxCell id="colophon" value="docs/diagrams/pinata-registry-network-buildmap.drawio &#183; v1 &#183; 2026-10-27 &#183; Qoder &#183; evidence: SPEC.md Out of scope for v1, docs/plans/user-management-and-billing-path.md D3-D4, prisma/schema.prisma Circle and AllowlistEntry, src/server/wa/agent tasks.ts FIXED_MENU" style="text;html=1;align=left;fontSize=12;fontColor=#A0A0AA;" vertex="1" parent="1">
+          <mxGeometry x="32" y="1352" width="1698" height="20" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

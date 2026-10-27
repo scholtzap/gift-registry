@@ -9,6 +9,9 @@ it('PUBLIC: renders literal owner wishes and navigation without friend or intake
     name: 'The moon picnic',
     occasion: 'Birthday picnic',
     eventDate: '2026-11-03',
+    eventDateLabel: 'Tue 3 Nov',
+    countdown: '12 days to go',
+    birthday: '3 Apr',
     shareSlug: 'moon-picnic',
     items: [
       {
@@ -49,6 +52,8 @@ it('PUBLIC: renders literal owner wishes and navigation without friend or intake
     status: 'UNPROJECTED_ITEM_STATUS',
     tombstoneReason: 'UNPROJECTED_TOMBSTONE_REASON',
     intakeStatus: 'UNPROJECTED_INTAKE_STATUS',
+    eventDateSetByUserId: 'PRIVATE_DATE_WRITER',
+    eventDateSetBy: 'PRIVATE_DATE_WRITER',
   };
   // Extra runtime properties must neither be read nor be serialized into the owner page.
   for (const target of [view, ...view.items]) {
@@ -75,7 +80,8 @@ it('PUBLIC: renders literal owner wishes and navigation without friend or intake
   }
   expect(html).toMatch(/<h1\b[^>]*>Your wishes<\/h1>/);
   expect(html).toMatch(/<p class="pn-context-name">The moon picnic<\/p>/);
-  expect(html).toContain('<time dateTime="2026-11-03">2026-11-03</time>');
+  expect(html).toContain('<time dateTime="2026-11-03">Tue 3 Nov</time> · 12 days to go');
+  expect(html).toContain('Birthday: 3 Apr');
   expect(html).toMatch(/<a\b[^>]*href="\/owner\/moon-picnic\/draft"[^>]*>Add a wish<\/a>/);
   expect(html).toContain('href="/owner/moon-picnic/items/wish%2Fone"');
   expect(html).toContain('href="/owner/moon-picnic/items/wish-two"');
@@ -84,7 +90,14 @@ it('PUBLIC: renders literal owner wishes and navigation without friend or intake
   expect(html).toContain('Review a draft');
   expect(html).toContain('After a voice note becomes a draft');
   expect(html).toContain('Nothing is confirmed for you.');
-  expect(html).not.toMatch(/\bhref="#"|<button\b|<form\b|<script\b/);
+  // The owner ledger is links and display, with exactly one exception: the native party-date form.
+  expect(html).toMatch(/<form\b[^>]*action="\/owner\/moon-picnic\/date"[^>]*method="post"/);
+  expect(html.match(/<form\b/g)).toHaveLength(1);
+  expect(html.match(/<button\b/g)).toHaveLength(1);
+  expect(html).toMatch(/<button\b[^>]*type="submit"[^>]*>Save the date<\/button>/);
+  expect(html).toMatch(/<input\b[^>]*name="eventDate"[^>]*\/>/);
+  expect(html).toContain('id="event-date" type="date"');
+  expect(html).not.toMatch(/\bhref="#"|<script\b/);
   expect(html).toContain('href="#pn-content"');
   expect(html).toContain('id="pn-content"');
   expect(html).not.toMatch(/claimed|pooled|pledged|contributors|suggestions|entitlements|visitors|friends online/i);
@@ -102,11 +115,59 @@ it('PUBLIC: renders literal owner wishes and navigation without friend or intake
   expect(emptyHtml).not.toContain('Blue enamel kettle');
 });
 
+it('PUBLIC: renders no event date to the owner when a friend wrote it, and keeps the form empty', () => {
+  const blind: OwnerCircleView = {
+    name: 'The moon picnic',
+    occasion: 'Birthday picnic',
+    eventDate: null,
+    eventDateLabel: null,
+    countdown: null,
+    birthday: '3 Apr',
+    shareSlug: 'moon-picnic',
+    items: [],
+    attributes: [],
+  };
+  const markup = renderToStaticMarkup(createElement(OwnerLedgerScreen, { view: blind, basePath: '/owner/moon-picnic' }));
+  expect(markup).not.toMatch(/<time\b|days to go|>Today<|>Tomorrow<|day has passed/);
+  expect(markup).toContain('Birthday: 3 Apr');
+  // The owner can still write the date; the field just carries no value to leak.
+  expect(markup).toMatch(/<form\b[^>]*action="\/owner\/moon-picnic\/date"[^>]*method="post"/);
+  expect(markup).not.toMatch(/value="2\d{3}-\d{2}-\d{2}"/);
+});
+
+it('PUBLIC: re-renders the rejected draft instead of emptying the field', () => {
+  const markup = renderToStaticMarkup(createElement(OwnerLedgerScreen, {
+    view: { ...viewWithoutExtras(ownerView()), eventDate: null, eventDateLabel: null, countdown: null },
+    basePath: '/owner/moon-picnic',
+    notice: 'Enter a real date, in the form 2026-12-05.',
+    eventDateDraft: '18/11/2026',
+  }));
+  expect(markup).toContain('Enter a real date, in the form 2026-12-05.');
+  expect(markup).toContain('value="18/11/2026"');
+});
+
+function ownerView(): OwnerCircleView {
+  return {
+    name: 'The moon picnic',
+    occasion: 'Birthday picnic',
+    eventDate: '2026-11-03',
+    eventDateLabel: 'Tue 3 Nov',
+    countdown: '12 days to go',
+    birthday: '3 Apr',
+    shareSlug: 'moon-picnic',
+    items: [],
+    attributes: [],
+  };
+}
+
 function viewWithoutExtras(view: OwnerCircleView): OwnerCircleView {
   return {
     name: view.name,
     occasion: view.occasion,
     eventDate: view.eventDate,
+    eventDateLabel: view.eventDateLabel,
+    countdown: view.countdown,
+    birthday: view.birthday,
     shareSlug: view.shareSlug,
     items: view.items,
     attributes: view.attributes,

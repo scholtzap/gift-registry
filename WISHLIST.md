@@ -27,6 +27,17 @@ Newest first. No secrets (no tokens, passwords, or private URLs with credentials
 
 ---
 
+## 2026-10-27 — No draw.io CLI, so `.drawio` cannot be verified as a picture
+**Kind:** tooling
+**Requested by:** agent (drew the intended registry-network journey in `docs/diagrams/*.drawio`)
+**Pain:** `where drawio` finds nothing on this host, so the skill's own checklist item "visually verified PNG
+conversion" cannot be run. Connector routing had to be proved by hand — ray-tracing every edge against every
+non-endpoint tile and lane in coordinates — which is slower and far more error-prone than one screenshot.
+**What would help:** install draw.io Desktop so `drawio -x -f png -s 2 -t -o …` works, then a CI step that exports
+`docs/diagrams/*.drawio` to committed `.drawio.png` and fails when the two drift.
+**Where it should live:** global toolchain, plus `.githooks` or the docs CI job.
+**Status:** open
+
 ## 2026-10-26 — PDFs are unreadable by the Read tool on this host
 **Kind:** inefficiency
 **Requested by:** agent (had to ingest three hackathon PDFs)

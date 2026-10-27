@@ -55,6 +55,32 @@ services:
     pids_limit: 128
     logging: *bounded_logs
 
+  worker:
+    image: ${APP_IMAGE:?set immutable APP_IMAGE}
+    user: '10001:10001'
+    restart: unless-stopped
+    env_file: *app_env
+    environment:
+      NODE_ENV: production
+      MEDIA_DIR: /data/media
+      FFMPEG_PATH: ffmpeg
+    # tsx ships in the v1 image (locked dev install copied from build stage).
+    command: [node, --import, tsx, src/worker.ts]
+    depends_on:
+      postgres: {condition: service_healthy}
+    volumes: [media:/data/media]
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m,uid=10001,gid=10001,mode=1770
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    networks: [database]
+    # No ports: the ingest consumer needs none. Single replica only: the in-process
+    # throttle budget resets per process, so a second worker doubles spend.
+    mem_limit: 512m
+    pids_limit: 64
+    logging: *bounded_logs
+
   migrate:
     profiles: [ops]
     image: ${APP_IMAGE:?set immutable APP_IMAGE}

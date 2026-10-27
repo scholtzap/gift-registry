@@ -19,7 +19,7 @@ for file in database.dump media.tar SHA256SUMS; do
 done
 (cd "$bundle" && sha256sum --check --status SHA256SUMS) || fail
 running="$("${COMPOSE[@]}" ps --status running --services 2>/dev/null)"
-case $'\n'"$running"$'\n' in *$'\napp\n'*) fail ;; esac
+case $'\n'"$running"$'\n' in *$'\napp\n'*|*$'\nworker\n'*) fail ;; esac
 # The target must already exist and have no non-system relations. Never clear an existing DB.
 relation_sql="SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname NOT IN ('pg_catalog','information_schema') AND n.nspname NOT LIKE 'pg_toast%' AND c.relkind IN ('r','p','S','v','m','f');"
 relations="$("${COMPOSE[@]}" exec -T postgres sh -c 'exec psql -X -At -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$1" -c "$2"' sh "$target" "$relation_sql" 2>/dev/null)"

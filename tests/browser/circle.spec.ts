@@ -176,3 +176,38 @@ test('owner and forged friend cookies cannot discover a card', async ({ page, co
     await expect(page.locator('meta[property^="og:"]')).toHaveCount(0);
   }
 });
+
+test('a friend sets the party date with no JavaScript and the owner loses it', async ({ browser }) => {
+  // The whole countdown feature has to survive the WhatsApp in-app browser, where the page has no
+  // script: the write is a native form post and the redirect is a 303.
+  const context = await browser.newContext({ javaScriptEnabled: false });
+  await authenticate(context, 'friend');
+  const page = await context.newPage();
+
+  await page.goto(path);
+  await expect(page.getByText('Sat 5 Dec', { exact: true })).toBeVisible();
+  await expect(page.getByText('Birthday: 3 Apr', { exact: true })).toBeVisible();
+
+  await page.getByLabel('When is the party?').fill('2026-12-19');
+  const submitted = page.waitForResponse((r) => r.request().method() === 'POST');
+  await page.getByRole('button', { name: 'Save the date', exact: true }).click();
+  expect((await submitted).status()).toBe(303);
+  await expect(page.getByText('Sat 19 Dec', { exact: true })).toBeVisible();
+  await expect(page.getByText(/days to go|Tomorrow|Today|The day has passed/)).toBeVisible();
+
+  await authenticate(context, 'owner');
+  await page.goto(path);
+  await expect(page.locator('body')).not.toContainText('2026-12-19');
+  await expect(page.locator('body')).not.toContainText('Sat 19 Dec');
+  // Silence, not an error: the owner still sees the birthday, and can still write the date.
+  await expect(page.getByText('Birthday: 3 Apr', { exact: true })).toBeVisible();
+  await expect(page.locator('body')).not.toContainText('set by');
+  await expect(page.locator('body')).not.toContainText('who set');
+
+  await page.getByLabel('When is the party?').fill('2026-12-05');
+  await page.getByRole('button', { name: 'Save the date', exact: true }).click();
+  await expect(page.getByText('Sat 5 Dec', { exact: true })).toBeVisible();
+  const circle = await fixture.db.prisma.circle.findUniqueOrThrow({ where: { id: fixture.circleId } });
+  expect(circle.eventDateSetByUserId).toBe(fixture.ownerUserId);
+  await context.close();
+});

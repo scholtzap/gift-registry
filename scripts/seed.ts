@@ -49,7 +49,13 @@ async function main() {
       data: {
         name: "Nadia's 30th",
         occasion: "birthday",
+        // The real birthday is month and day only: a year here would let the page compute an age.
+        birthMonth: 12,
+        birthDay: 2,
         eventDate: new Date("2026-12-05T00:00:00.000Z"),
+        // Nadia wrote the party date, so the owner demo shows it. A friend writing it is the case
+        // the leak test covers.
+        eventDateSetByUserId: nadia.id,
         ownerUserId: nadia.id,
         shareSlug: slug,
         memberships: {
