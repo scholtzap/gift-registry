@@ -86,16 +86,20 @@ no `refresh_plans_index.py`.
 Owner notifications of any kind. Chat between owner and requester. Revoking access after granting it (post-submission).
 Requests against a proxy circle beyond the defined "nobody to ask" answer.
 
-## Implementation gate — stopped here (2026-10-27)
+## Implementation — done (2026-10-27, branch feat/rn-b-primitives)
 
-Gates are answered (RN-A and RN-D `ready`; NULL-owner answer is defined above: "nobody to ask",
-in the always-200 body). Implementation is stopped on the same database gate as RN-B/RN-C: no
-Postgres reachable from the dev machine, so the byte-identical-response test, the
-owner-projection-only render test and `pnpm leak` cannot be executed. The request expiry shape
-is settled (earlier of 72h and the event date, derived on read — RN-E's numbers). Also note
-deviation row 11: there is no owner session path yet (`session.ts` issues friend sessions only),
-so the owner inbox surface depends on that gap closing. Unblock with RN-B's helper
-(`trustedClientAddress` + mounted throttle) and a green leak suite.
+Implemented once Postgres was restored. `AllowlistEntry.requesterName` (expand-only migration)
+carries "who asked"; `createdAt` is when. A pending row with `requesterName` set is a request,
+not an invitation — the gate refuses it until the owner approves, which clears the marker
+(`POST /c/<slug>/requests`, owner-role only, idempotent; reject sets `removed`). Requests are
+submitted from the gate's second button, throttled on trusted address + phone hash, and answered
+with the gate's ordinary byte-identical "no"; on a proxy circle there is nobody to ask and no
+row is written. The owner's inbox is `OwnerCircleView.accessRequests`, rendered only in the
+owner projection, expiring by derivation at the earlier of 72h and the event day. Proven in
+`tests/routes/permission-request.test.ts` (identical answer, no gate pass before approval,
+owner-only visibility, friend cannot decide, expiry, proxy no-row). Deviation row 11 (no
+self-serve owner sign-in) remains open as a product gap, but owners holding an ops-issued owner
+session can decide requests today; nothing is ever sent.
 
 ## Blocks / gated by
 

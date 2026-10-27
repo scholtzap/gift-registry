@@ -49,7 +49,7 @@ async function main(): Promise<void> {
         where: { circleId_userId: { circleId, userId } },
         select: { role: true, status: true },
       });
-      return circle?.ownerUserId.toLowerCase() === userId.toLowerCase()
+      return circle?.ownerUserId?.toLowerCase() === userId.toLowerCase()
         && membership?.role === 'owner' && membership.status === 'active';
     });
     if (!verified) throw new Error('owner_verification_failed');

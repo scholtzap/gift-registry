@@ -51,10 +51,14 @@ export function JoinScreen({ notice, action = '' }: JoinScreenProps) {
             </p>
             <div className="pn-actions">
               <Button type="submit" variant="primary" block>Continue</Button>
+              <button type="submit" name="intent" value="request_access">
+                Ask to be added
+              </button>
             </div>
           </form>
           <p className="pn-small pn-muted">
-            Not on the list? Ask the person who shared this link to add you.
+            Not on the list? Ask to be added, and the person who shared this link will see
+            your request next time they open it. Nothing is sent to them.
           </p>
         </Panel>
 
