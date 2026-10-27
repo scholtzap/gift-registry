@@ -27,6 +27,23 @@ Newest first. No secrets (no tokens, passwords, or private URLs with credentials
 
 ---
 
+## 2026-10-27 — No draw.io CLI, so `.drawio` cannot be verified as a picture
+**Kind:** tooling
+**Requested by:** agent (drew the intended registry-network journey in `docs/diagrams/*.drawio`)
+**Pain:** `where drawio` finds nothing on this host, so the skill's own checklist item "visually verified PNG
+conversion" cannot be run. Hand ray-tracing the routing instead **failed in front of the user** — an edge ran through
+a tile whose centre-x matched a neighbour's, and a `text;html=1` block ran 4000px off canvas because that cell type
+never wraps. A geometry checker now exists at `%TEMP%\qoder-scratch\drawio_check.py` and caught 34 and 23 defects in
+the two diagrams I believed were clean; it validates polylines, tile crossings, corridor separation, label placement
+and text fit, and it is **not** the same as having seen a rendered picture.
+**What would help:** (1) install draw.io Desktop so `drawio -x -f png -s 2 -t -o …` works, then a CI step that exports
+`docs/diagrams/*.drawio` to committed `.drawio.png` and fails when the two drift; (2) promote the scratch checker into
+the `draw-io` skill's `scripts/` so it survives `%TEMP%` cleanup and every future diagram is machine-checked, and add
+the two rules it encodes to the skill body: every edge carries explicit waypoints, and prose never goes in a `text;`
+cell.
+**Where it should live:** global toolchain + the `draw-io` skill; then `.githooks` or the docs CI job for the export.
+**Status:** open (checker written, not yet promoted)
+
 ## 2026-10-26 — PDFs are unreadable by the Read tool on this host
 **Kind:** inefficiency
 **Requested by:** agent (had to ingest three hackathon PDFs)

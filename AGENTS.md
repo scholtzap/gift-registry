@@ -18,9 +18,24 @@ vision segmentation, deal discovery on the open web, and group coordination.
 - Owner "delete" is a soft delete: tombstone for the owner, ledger + money state survive for friends.
 - No money is held. Payments settle manually in v1; the schema must not need rewriting for Stripe Connect later.
 - Deal suggestions reach **friends only**. The owner must not learn a cheaper option exists — that spoils the gift.
+- **The party date is secret when a friend wrote it.** A circle holds two dates: the real birthday (month and day;
+  year optional, so no date of birth is stored) and the day the gift is handed over. Whoever last sets the event date
+  decides its secrecy. RLS filters rows, never columns, so `ownerCircleView` is the guard for a friend-set date and a
+  leak test on the rendered owner HTML is the proof. Spec: `docs/plans/birthday-and-event-countdown.md`.
 - **The reveal is a human act.** The system generates the gift card (contributor names + their own messages) and
   never delivers it: no send, no notification, no `og:` preview, no cacheable response on any card route. The circle
   link lives in a WhatsApp group that contains the owner, so a preview image is rendered *for the owner*.
+- **No model call without passing `can(actor, capability)` first.** One gate, every spending path. A capability that
+  runs after the user switched it off is a consent failure and ranks with a privacy leak, not with a bug.
+- **No person pixels in a cutout.** The person-box pre-check runs before a SAM mask is stored, and the fixture set
+  includes a photo with a person in it so the guard is proven to fire.
+- **The assistant never decides what happens next.** It may generate copy for a status answer or a card message; it
+  may not choose a task, change state, or answer anything outside the six bounded tasks. Fixed menu or nothing.
+- **`/c/<slug>` never moves.** That URL is pasted into a WhatsApp group; a test asserts it resolves.
+- **A number lookup always answers 200.** A phone number is a lookup key, never a URL segment. Found and not-found
+  are indistinguishable in status, wording and body shape, and a miss offers a proxy registry rather than reporting
+  absence — so no route in this app may confirm whether a number is registered. A bot reply counts as a lookup
+  response: same rule, including for latency and message length. Ledger: `docs/plans/registry-network-discovery-deviations.md`.
 
 ## Verified platform constraints (do not re-litigate; re-verify before changing)
 
@@ -33,6 +48,45 @@ vision segmentation, deal discovery on the open web, and group coordination.
 - **Key users on Business-Scoped User IDs**, with phone number as fallback. Phone is omitted from webhooks for users with usernames.
 - **Muse Spark 1.3 audio understanding is degraded** — use 1.2 for voice-note intake.
 - **WhatsApp `.ogg/opus` must be converted** to RIFF/WAVE mono 16-bit PCM 16 kHz before Muse Voice Transcribe.
+- **General-purpose AI chatbots are banned on the WhatsApp Business Platform** by the Business Solution Terms from
+  **2026-01-15**, immediately for accounts registered on/after **2025-10-15** — ours will be new. Task-specific
+  assistants (customer service, orders, appointments) remain permitted, so the assistant is task-scoped by design.
+  The hackathon separately disqualifies platform-policy violations, so free-form chat is a submission risk, not a
+  style choice. Verified 2026-10-26 against the Business Solution Terms and secondary coverage.
+- **Interactive messages cannot be notifications** and only work inside the 24-hour customer-service window; outside
+  it you need an approved template. Reply buttons max 3, list messages ≤10 sections / 24 rows.
+- **The Meta friend graph is not importable.** `/me/friends` needs `user_friends` and returns **only people who have
+  already used this app** via Facebook Login; Instagram exposes no contact graph at all. So "pull the owner's existing
+  friends and allow-list them" is a cold-start loop, not an integration — the compliant substitute is
+  `REQUEST_CONTACT_INFO`, where each friend self-declares their own number. Verified 2026-10-27 against
+  developers.facebook.com (`/docs/graph-api/reference/user/friends`).
+- **A BSUID cannot be reverse-resolved to a person.** Meta generates BSUIDs and never exposes a lookup by phone number
+  or username, so no Meta API can answer "find Nadia" — registry discovery has to happen on our own data. Phone is
+  further withheld from webhooks for users with a username unless we messaged them within 30 days. Same source, verified
+  2026-10-27.
+
+## Dependency rules (decided, with the reasoning in `docs/plans/user-management-and-billing-path.md`)
+
+- **Never adopt an unofficial WhatsApp client** — `whatsapp-web.js`, Baileys, `wa-automate-nodejs`, wppconnect,
+  Evolution API. They drive WhatsApp Web or reverse-engineer the multi-device protocol, which violates the Business
+  Solution Terms; the hackathon disqualifies platform-policy violations. **Star count is not evidence of permission** —
+  wwebjs's own README says WhatsApp does not allow bots or unofficial clients. Use
+  `Secreto31126/whatsapp-api-js` (MIT), which covers the two places a subtle bug is a security hole: webhook signature
+  verification and media download by media-id.
+- **Never adopt a flag or entitlement service** — Unleash (AGPL-3.0), Flipt (fair-core), PostHog (mixed licence),
+  Flagsmith (heavy). Per-user capability state is private data under RLS; a flag service evaluates outside RLS, which
+  means shipping entitlement state to a sidecar. `entitlements` + `can()` already is the off switch, with no redeploy.
+- **No auth framework.** The credential is "Meta verified this BSUID" or "this person proved possession of an
+  allow-listed number", which Better Auth / Auth.js / Supabase / Clerk do not model, and each of them either ignores
+  WhatsApp delivery or owns identity tables outside the RLS boundary. Sessions are a signed cookie
+  (`src/server/auth/session.ts`), `SameSite=Lax` because `Strict` breaks the click out of WhatsApp's in-app browser.
+- **No payment integration before submission.** Stripe does not onboard South African entities. The post-hackathon ZA
+  rail is **PayFast** (ZAR into a ZA bank, no monthly fee, first-party Subscriptions API); two constraints shape the
+  design — **recurring is credit-card only**, and **PayFast is a gateway, not a merchant of record**, so EU/UK/US
+  digital-services tax stays ours until a MoR (Paddle first choice) is adopted on the first non-ZA subscriber.
+  `users.plan` and `entitlements.source = 'subscription'` are the seam — nothing else is needed now.
+- **Card rendering is satori + resvg, not Puppeteer.** MPL-2.0 is file-level copyleft, so unmodified npm packages in a
+  public repo carry no obligation, and no Chromium binary goes on the Oracle VM.
 
 ## Documentation KB skills
 

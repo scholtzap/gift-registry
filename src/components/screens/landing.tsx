@@ -1,0 +1,85 @@
+import { Badge, Cta, Panel, Screen } from '@/components/ui';
+
+// Public projection: authored copy only; no circle, actor, or card data.
+export function LandingScreen() {
+  return (
+    <Screen>
+      <div className="pn-hero pn-grid">
+        <div className="pn-stack">
+          <p className="pn-eyebrow">Group gifts nobody can spoil</p>
+          <h1>
+            Group gifts.<br />Surprise intact.
+          </h1>
+          <p className="pn-lede">
+            Saying what you want shouldn’t give the surprise away.
+            Friends shouldn’t have to guess who’s buying what.
+          </p>
+          <p className="pn-muted">
+            One wishlist link in your WhatsApp group. Friends plan the gift;
+            you find out when they hand it over.
+          </p>
+          <div className="pn-actions">
+            <a className="pn-button pn-button-primary" href="/app">Open Piñata</a>
+            <Cta href="#how-it-works">How it works</Cta>
+          </div>
+        </div>
+
+        <aside className="pn-measure" aria-labelledby="landing-example-title">
+          <Panel className="pn-card-preview pn-stack">
+            <div className="pn-row pn-between">
+              <h2 id="landing-example-title">Example</h2>
+              <Badge>Illustration</Badge>
+            </div>
+            <p className="pn-small pn-muted">Fictional illustration, not a live circle.</p>
+            <div className="pn-stack pn-stack-sm">
+              <p className="pn-eyebrow">A wish, in your words</p>
+              <p>A picnic blanket</p>
+              <p className="pn-quote pn-quote-human">“Something for slow afternoons in the park.”</p>
+            </div>
+            <div className="pn-stack pn-stack-sm">
+              <p className="pn-eyebrow">A card, shared by a friend</p>
+              <p className="pn-quote pn-quote-human">For the next sunny afternoon.</p>
+              <p className="pn-small pn-muted">The message and the moment are yours.</p>
+            </div>
+          </Panel>
+        </aside>
+      </div>
+
+      <section id="how-it-works" className="pn-stack" aria-labelledby="landing-story-title">
+        <div className="pn-stack">
+          <p className="pn-eyebrow">From a wish to a wrapped gift</p>
+          <h2 id="landing-story-title">You choose the wish. Friends keep the surprise.</h2>
+        </div>
+        {/* Washes keyed to what each step is about: pink is a person's own wish or words,
+            blue is the money the friends pool. Not an alternating pattern. */}
+        <ol className="pn-list pn-grid pn-grid-3">
+          <li className="pn-item pn-feature pn-feature-human pn-stack">
+            <h3>Say it. Then confirm it.</h3>
+            <p>
+              Start with a voice note about what you’d like. Check the draft before
+              adding it to your wishlist.
+            </p>
+          </li>
+          <li className="pn-item pn-feature pn-stack">
+            <h3>Friends coordinate.</h3>
+            <p>
+              Share the circle link in your WhatsApp group. Friends choose a gift or
+              pool together behind one buyer, and arrange payment themselves.
+            </p>
+          </li>
+          <li className="pn-item pn-feature pn-feature-human pn-stack">
+            <h3>Share the card yourself.</h3>
+            <p>
+              Friends add their own messages. A friend chooses when to hand over or
+              share the gift card. Piñata never sends the card for you.
+            </p>
+          </li>
+        </ol>
+      </section>
+
+      <Panel as="section" className="pn-stack">
+        <p>The gift recipient sees their wishlist, not who has claimed or pooled.</p>
+      </Panel>
+    </Screen>
+  );
+}

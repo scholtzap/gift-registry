@@ -1,0 +1,48 @@
+@import "tailwindcss";
+
+/* /pinata.css is the standalone source of tokens and semantic component styles. */
+@theme inline {
+  --color-bg: var(--pn-bg);
+  --color-wash-pink: var(--pn-wash-pink);
+  --color-wash-blue: var(--pn-wash-blue);
+  --color-wash-done: var(--pn-wash-done);
+  --color-primary: var(--pn-primary);
+  --color-primary-pressed: var(--pn-primary-pressed);
+  --color-on-primary: var(--pn-on-primary);
+  --color-secondary: var(--pn-secondary);
+  --color-tertiary: var(--pn-tertiary);
+  --color-ink: var(--pn-ink);
+  --color-ink-2: var(--pn-ink-2);
+  --color-ink-3: var(--pn-ink-3);
+  --color-hairline: var(--pn-hairline);
+  --color-track: var(--pn-track);
+  --color-disabled: var(--pn-disabled);
+  --color-success: var(--pn-success);
+  --color-warning: var(--pn-warning);
+
+  --radius-panel: var(--pn-radius-panel);
+  --radius-btn: var(--pn-radius-button);
+
+  --text-display: 2rem;
+  --text-display--line-height: 2.25rem;
+  --text-section: 1.1875rem;
+  --text-section--line-height: 1.5rem;
+  --text-body: 0.9375rem;
+  --text-body--line-height: 1.4375rem;
+
+  --font-display: var(--pn-font-display);
+  --font-body: var(--pn-font-body);
+  --font-label: var(--pn-font-label);
+}
+
+@utility eyebrow {
+  @apply font-label text-xs font-semibold uppercase tracking-[0.1em] text-tertiary;
+}
+
+@utility wordmark {
+  @apply font-display text-lg font-bold tracking-[-0.02em];
+}
+
+@utility tnum {
+  font-variant-numeric: tabular-nums;
+}

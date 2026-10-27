@@ -11,13 +11,18 @@ title: Meta Global AI Developer Hackathon - rules, rubric and deadline constrain
 
 **Why this matters.** Every scope decision in this repo is priced against these constraints: the
 10-day window, the "new work only" rule, the public-repo requirement, and a rubric where
-Impact + Demo are 55% of the score. Source PDFs are archived alongside this doc in
-[`hackathon/`](hackathon/) — the page text was cut off in the printed tables, so where this doc
+Impact + Demo are 55% of the score.
+
+The three source PDFs this doc was written from are kept **outside the repo**, in
+`../gifts-registry-assets/hackathon/` (a sibling folder under `Documents/personal/`): two are
+third-party branded page prints and one is a notification from a personal mailbox. This repo goes
+public for the submission, so they live there and not in git — which is also why the links below
+name files rather than link them. The page text was cut off in the printed tables, so where this doc
 states a truncated fact it is marked.
 
-- `hackathon/Details – Meta Global AI Developer Hackathon – Cerebral Valley.pdf` — participant guide (rules, schedule, judging, prizes, credits).
-- `hackathon/Meta Global AI Developer Hackathon – Cerebral Valley.pdf` — public event page (themes, tracks, application criteria, eligibility).
-- `hackathon/Gmail - New Notification for Meta Global AI Developer Hackathon.pdf` — the two acceptance/credit event blasts.
+- `Details – Meta Global AI Developer Hackathon – Cerebral Valley.pdf` — participant guide (rules, schedule, judging, prizes, credits).
+- `Meta Global AI Developer Hackathon – Cerebral Valley.pdf` — public event page (themes, tracks, application criteria, eligibility).
+- `Gmail - New Notification for Meta Global AI Developer Hackathon.pdf` — the two acceptance/credit event blasts.
 
 ## Dates (all Eastern Time)
 

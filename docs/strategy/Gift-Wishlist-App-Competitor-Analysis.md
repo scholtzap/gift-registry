@@ -75,7 +75,7 @@ By pulling the concept out of a native app and putting it on the open—but gate
 
 Here is how the crossover mechanics would work:
 
-> * **The Persistent Web Link:** Instead of searching an app store, the recipient shares a simple URL (e.g., \[gifts.domain.com/arno-birthday\](https\://gifts.domain.com/arno-birthday)) directly in their friends' WhatsApp group.  
+> * **The Persistent Web Link:** Instead of searching an app store, the recipient shares a simple URL (e.g., `gifts.domain.com/arno-birthday`) directly in their friends' WhatsApp group.  
 > * **The Allowlist Gate:** Just like how fleet access is handled in 3BO via invited email addresses, the registry link is trapped behind an authentication wall. The list maker (or the friend organizing it) adds the emails or phone numbers of the allowed friends.  
 > * **Frictionless Entry:** When a friend clicks the link, they don't create a username or password. They authenticate via a quick Google OAuth or a WhatsApp magic link—leveraging the WhatsApp integrations you are already familiar with. If their email or number is on the allowlist, they are in.  
 > * **The Shared Stack:** You can deploy this as a responsive, mobile-optimized web app using the same AWS Amplify backend infrastructure you utilize for 3BO, keeping the development environment familiar and lightweight.

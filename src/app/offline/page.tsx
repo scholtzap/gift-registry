@@ -1,0 +1,38 @@
+import type { Metadata } from 'next';
+import { Cta, EmptyState, Panel, Screen } from '@/components/ui';
+
+// The offline surface is a public page: no session, no circle, no data. The service worker
+// serves the cached copy of this document for any navigation it cannot complete, including a
+// navigation to `/c/<slug>`, so this file must never name a circle, a person or an amount, and
+// must not imply that anything was saved or sent.
+export const dynamic = 'force-static';
+
+export const metadata: Metadata = {
+  title: 'You are offline',
+  description: 'Piñata could not reach the server. Nothing has been saved or sent.',
+};
+
+export default function OfflinePage() {
+  return (
+    <Screen
+      title="You are offline"
+      lede="Piñata could not reach the server, so this is the cached placeholder page."
+    >
+      <Panel className="pn-stack">
+        <h2>Nothing was saved or sent</h2>
+        <p>
+          Anything you had typed on the previous screen was not recorded, and no wish, claim or
+          contribution has changed. Reconnect and open your circle link again to pick up where
+          you left off.
+        </p>
+        <p className="pn-small pn-muted">
+          Piñata holds no money, so nothing here can have been paid or pledged while you were away.
+        </p>
+      </Panel>
+
+      <EmptyState title="Waiting for a connection" action={<Cta href="/app">Try again</Cta>}>
+        The gift plan stays on the server. This page only tells you the trip did not complete.
+      </EmptyState>
+    </Screen>
+  );
+}
