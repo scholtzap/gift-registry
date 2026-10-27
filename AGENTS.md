@@ -51,6 +51,15 @@ vision segmentation, deal discovery on the open web, and group coordination.
   style choice. Verified 2026-10-26 against the Business Solution Terms and secondary coverage.
 - **Interactive messages cannot be notifications** and only work inside the 24-hour customer-service window; outside
   it you need an approved template. Reply buttons max 3, list messages ≤10 sections / 24 rows.
+- **The Meta friend graph is not importable.** `/me/friends` needs `user_friends` and returns **only people who have
+  already used this app** via Facebook Login; Instagram exposes no contact graph at all. So "pull the owner's existing
+  friends and allow-list them" is a cold-start loop, not an integration — the compliant substitute is
+  `REQUEST_CONTACT_INFO`, where each friend self-declares their own number. Verified 2026-10-27 against
+  developers.facebook.com (`/docs/graph-api/reference/user/friends`).
+- **A BSUID cannot be reverse-resolved to a person.** Meta generates BSUIDs and never exposes a lookup by phone number
+  or username, so no Meta API can answer "find Nadia" — registry discovery has to happen on our own data. Phone is
+  further withheld from webhooks for users with a username unless we messaged them within 30 days. Same source, verified
+  2026-10-27.
 
 ## Dependency rules (decided, with the reasoning in `docs/plans/user-management-and-billing-path.md`)
 
