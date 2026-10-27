@@ -1,5 +1,6 @@
 import type { Tx } from '@/server/db/client';
 import { formatMinor } from '@/lib/money';
+import { isRequestLive } from '@/server/lifecycle';
 
 /**
  * The only place that knows which fields a role may see. RLS decides which *rows* exist for
@@ -26,6 +27,10 @@ export interface OwnerCircleView {
   shareSlug: string;
   items: OwnerItemView[];
   attributes: { kind: string; valueText: string; unit: string | null }[];
+  /** RN-J: live permission requests. Owner projection only — the requester's
+   * own untrusted words, found here when the owner next opens their link.
+   * Nothing is ever sent to the owner. */
+  accessRequests: { id: string; requesterName: string; requestedAt: string }[];
 }
 
 export interface FriendItemView {
@@ -87,8 +92,21 @@ export async function ownerCircleView(tx: Tx, circleId: string): Promise<OwnerCi
       price: item.priceMinor === null ? null : formatMinor(item.priceMinor, item.currency),
       confirmed: item.confirmed,
     })),
-    attributes: circle.owner.attributes.map((a) => ({ kind: a.kind, valueText: a.valueText, unit: a.unit })),
+    // Proxy circles have no owner, hence no owner attributes (RN-A D4).
+    attributes: (circle.owner?.attributes ?? []).map((a) => ({ kind: a.kind, valueText: a.valueText, unit: a.unit })),
+    accessRequests: await liveAccessRequests(tx, circle.id, circle.eventDate),
   };
+}
+
+async function liveAccessRequests(tx: Tx, circleId: string, eventDate: Date) {
+  const rows = await tx.allowlistEntry.findMany({
+    where: { circleId, status: 'pending', requesterName: { not: null } },
+    orderBy: { createdAt: 'asc' },
+    select: { id: true, requesterName: true, createdAt: true },
+  });
+  return rows
+    .filter((row) => row.requesterName !== null && isRequestLive(row.createdAt, eventDate))
+    .map((row) => ({ id: row.id, requesterName: row.requesterName!, requestedAt: row.createdAt.toISOString() }));
 }
 
 export async function friendCircleView(tx: Tx, circleId: string, viewerUserId: string): Promise<FriendCircleView | null> {
@@ -145,7 +163,7 @@ export async function friendCircleView(tx: Tx, circleId: string, viewerUserId: s
               },
       };
     }),
-    attributes: circle.owner.attributes
+    attributes: (circle.owner?.attributes ?? [])
       .filter((a) => a.visibility === 'friends')
       .map((a) => ({ kind: a.kind, valueText: a.valueText, unit: a.unit })),
   };

@@ -17,6 +17,9 @@ import { issueSession, sessionCookie, sessionFromRequest } from "@/server/auth/s
 import { AI_CAPABILITIES, assertCan, CAPABILITY_COPY, CapabilityOffError, setCapability } from "@/server/entitlements";
 import { addItem, claimItem, contribute, createPool, markPaid, purchasePool, releaseClaim } from '@/server/ledger';
 import { env } from "@/lib/env";
+import { isArchived } from "@/server/lifecycle";
+import { checkGateThrottle } from "@/server/auth/throttle";
+import { trustedClientAddress } from "@/server/auth/client-address";
 
 // Native-form HTML uses Node SSR, not the App Route's react-server export condition.
 const { renderToStaticMarkup } = createRequire(import.meta.url)('react-dom/server') as typeof import('react-dom/server');
@@ -291,7 +294,10 @@ async function circlePost(db: Db, request: Request, slug: string): Promise<Respo
     return pathname === basePath ? gateForm('That submission could not be verified as coming from this page. Open the link again and try.') : notFound();
   }
 
-  const circle = await db.prisma.circle.findUnique({ where: { shareSlug: slug }, select: { id: true } });
+  const circle = await db.prisma.circle.findUnique({
+    where: { shareSlug: slug },
+    select: { id: true, status: true, createdAt: true, eventDate: true, ownerUserId: true },
+  });
   if (!circle) return notFound();
   if (pathname !== basePath) {
     const actor = await privateActor(db, request, circle.id);
@@ -363,6 +369,13 @@ async function circlePost(db: Db, request: Request, slug: string): Promise<Respo
       if (moneyIntent && (!amount.success || fields.get('currency') !== 'ZAR')) {
         return screenResponse(item.title, createElement(ItemDetailScreen, { item, basePath, notice: 'Enter a whole number of cents above zero.' }), 422);
       }
+      // RN-E: an archived proxy circle stays readable but takes no new
+      // claims or pledges. Settling what already exists (release, mark
+      // paid, purchase) stays possible; the ledger is never destroyed.
+      const newMoneyIntent = ['claim', 'create_pool', 'contribute'].includes(intent.data);
+      if (newMoneyIntent && isArchived(circle)) {
+        return screenResponse(item.title, createElement(ItemDetailScreen, { item, basePath, notice: 'This circle has archived, so it is not taking new claims or pledges.' }), 409);
+      }
       const poolIntent = ['contribute', 'mark_paid', 'purchase'].includes(intent.data);
       const poolId = String(fields.get('poolId') ?? '');
       if (poolIntent && !z.uuid().safeParse(poolId).success) return notFound();
@@ -387,6 +400,34 @@ async function circlePost(db: Db, request: Request, slug: string): Promise<Respo
       }
       return new Response(null, { status: 303, headers: headers({ Location: `${basePath}/items/${itemId}` }) });
     }
+    if (pathname === `${basePath}/requests`) {
+      // RN-J: the owner decides, in their own projection, when they next
+      // open their link. Nothing was sent to get them here.
+      if (actor.role !== 'owner') return notFound();
+      const decision = z.enum(['accept', 'reject']).safeParse(fields.get('intent'));
+      const requestId = String(fields.get('requestId') ?? '');
+      if (!decision.success || !z.uuid().safeParse(requestId).success) return notFound();
+      const outcome = await db.withActor(actor, async (tx) => {
+        const row = await tx.allowlistEntry.findFirst({
+          where: { id: requestId, circleId: circle.id },
+          select: { id: true, status: true, requesterName: true },
+        });
+        if (!row) return 'missing' as const;
+        if (row.requesterName === null) return 'already' as const;
+        if (decision.data === 'accept') {
+          // Approval turns the request into an ordinary invitation: the
+          // requester can now pass the gate, which flips it to accepted.
+          await tx.allowlistEntry.update({ where: { id: row.id }, data: { requesterName: null } });
+        } else {
+          // `removed` is already the gate's word for "not an invite", and a
+          // DELETE policy for the owner role does not exist by design.
+          await tx.allowlistEntry.update({ where: { id: row.id }, data: { status: 'removed' } });
+        }
+        return 'done' as const;
+      });
+      if (outcome === 'missing') return notFound();
+      return new Response(null, { status: 303, headers: headers({ Location: basePath }) });
+    }
     if (pathname !== `${basePath}/settings`) return notFound();
     const setting = z.object({ intent: z.literal('toggle'), capability: z.enum(AI_CAPABILITIES), enabled: z.enum(['true', 'false']) }).safeParse({ intent: fields.get('intent'), capability: fields.get('capability'), enabled: fields.get('enabled') });
     if (!setting.success) return screenResponse('Settings', createElement(Screen, { title: 'Settings', backHref: `${basePath}/settings`, children: 'Choose a valid capability and on or off setting.' }), 422);
@@ -396,10 +437,12 @@ async function circlePost(db: Db, request: Request, slug: string): Promise<Respo
 
   let name = "";
   let phone = "";
+  let intent = "";
   try {
     const form = await readForm(request);
     name = String(form.get("name") ?? "").trim();
     phone = String(form.get("phone") ?? "").trim();
+    intent = String(form.get("intent") ?? "");
   } catch {
     return gateForm("That submission did not come through. Try again.");
   }
@@ -409,15 +452,45 @@ async function circlePost(db: Db, request: Request, slug: string): Promise<Respo
     return gateForm("Add the name you want on the card, and the number in full international form.");
   }
 
-  const pepper = env.SESSION_SECRET;
+  const pepper = env.PHONE_HASH_PEPPER;
   const phoneHash = hashPhone(normalized, pepper);
 
-  // Authorise before writing anything. `removed` is not an invite.
+  // RN-J: asking for access. The answer is the gate's ordinary "no" whether
+  // or not anyone is listening: a proxy circle has nobody to ask, and a real
+  // owner merely finds the request next time they open their own link.
+  // Nothing is sent. Requests are throttled like any unauthenticated write.
+  if (intent === "request_access") {
+    const gate = checkGateThrottle(`${phoneHash}:${trustedClientAddress(request)}`);
+    if (gate.allowed && circle.ownerUserId !== null) {
+      const existing = await db.prisma.allowlistEntry.findUnique({
+        where: { circleId_phoneE164Hash: { circleId: circle.id, phoneE164Hash: phoneHash } },
+        select: { id: true, status: true, requesterName: true },
+      });
+      if (!existing) {
+        await db.prisma.allowlistEntry.create({
+          data: {
+            circleId: circle.id, phoneE164Hash: phoneHash, addedBy: circle.ownerUserId,
+            status: "pending", requesterName: name,
+          },
+        });
+      } else if (existing.status !== "accepted") {
+        await db.prisma.allowlistEntry.update({
+          where: { id: existing.id },
+          data: { status: "pending", requesterName: name, createdAt: new Date() },
+        });
+      }
+    }
+    return gateForm("We could not let you in with that number.");
+  }
+
+  // Authorise before writing anything. `removed` is not an invite, and a
+  // pending *request* (requesterName set) is not an invite either: only the
+  // owner's approval, which clears that marker, makes it one.
   const invited = await db.prisma.allowlistEntry.findUnique({
     where: { circleId_phoneE164Hash: { circleId: circle.id, phoneE164Hash: phoneHash } },
-    select: { id: true, status: true },
+    select: { id: true, status: true, requesterName: true },
   });
-  if (!invited || invited.status === "removed") {
+  if (!invited || invited.status === "removed" || invited.requesterName !== null) {
     // One message for every kind of no, so this form cannot be used to walk a phone list.
     return gateForm("We could not let you in with that number.");
   }

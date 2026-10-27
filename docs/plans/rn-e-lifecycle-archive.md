@@ -106,6 +106,14 @@ Deleting a circle. Any hard purge of the ledger. Stripe-adjacent money state. Re
 Status flips to `ready` with this section; implementation (expand-only `archived` value, never
 rewriting an enum value in place) is RN-C's gate, not this file's.
 
+**Implemented 2026-10-27 (branch feat/rn-b-primitives):** migration
+`20261027193839_circle_archived_status` adds the `archived` enum value (expand-only, no value
+rewritten); `src/server/lifecycle.ts` derives the state on read in one place (72h grace,
+end-of-event-day early rule, 90-day purge of hashed lookup material, proxy circles only); the
+circle route refuses new claims, pools and contributions on an archived circle with a 409 while
+leaving reads and settlement of existing money untouched. Proven in
+`tests/routes/lifecycle.test.ts`, including that the ledger survives archiving.
+
 ## Blocks / gated by
 
 Blocks RN-C (a proxy circle needs a terminal state before it can be created at scale). Gated by RN-D for retention.

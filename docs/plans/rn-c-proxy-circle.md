@@ -74,17 +74,18 @@ by design, and a test should keep it that way.
 Does the creator gifter get any elevated right, or are they a plain member (RN-A says plain member — confirm it
 survives contact with the UI)? Is the creator's name shown on the proxy page so the group knows who made it?
 
-## Implementation gate — stopped here (2026-10-27)
+## Implementation — done (2026-10-27, branch feat/rn-b-primitives)
 
-Specs are unblocked (RN-A and RN-E are `ready`, 2026-10-27) but implementation is stopped on the
-NULL-owner audit's proof requirement: the `app_actor_joined_circle` fix
-(`(ci.owner_user_id IS NULL OR ci.owner_user_id <> app_user_id())`, plus an audit of **every**
-policy touching `owner_user_id` — `002_policies.sql:27,35,53,65,167` as re-verified 2026-10-27)
-widens access by construction and RN-A requires it to ship **with** a leak test proving both
-halves. No Postgres is reachable from the dev machine (Docker engine down, no `DATABASE_URL`),
-so no leak test can run. Do not land the migration or policy change unverified, and never make
-`owner_user_id` non-nullable with a backfill. Unblock: start Docker/Postgres, confirm
-`pnpm leak` green on the untouched tree, then implement with the leak test in the same change.
+Implemented once Postgres was restored. Expand-only migration
+`20261027191957_proxy_circle_nullable_owner` makes `owner_user_id` nullable and adds
+`recipient_label`, `recipient_phone_e164_hash`, `proxy_created_by_user_id`. The policy audit
+found exactly one NULL trap (`app_actor_joined_circle`, `002_policies.sql:35`); every other
+owner predicate uses `=` and already fails closed on NULL. The fix ships with
+`tests/leak/proxy-circle.test.ts`, which proves joined friends read a proxy circle, a
+non-member still sees nothing, and no owner surface exists — and goes red (3 failures) under
+`LEAK_SKIP_POLICIES=1`. The create path is the `intent=create` half of the RN-B lookup route,
+with the per-creator 10/24h cap counted in the database (RN-D Gate 4). Never make
+`owner_user_id` non-nullable with a backfill.
 
 ## Blocks / gated by
 

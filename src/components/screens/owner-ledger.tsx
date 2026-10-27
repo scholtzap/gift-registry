@@ -59,6 +59,26 @@ export function OwnerLedgerScreen({ view, basePath }: { view: OwnerCircleView; b
             )}
           </section>
 
+          {view.accessRequests.length > 0 && (
+            <Panel className="pn-stack">
+              <h2>People asking to join</h2>
+              <ul className="pn-list">
+                {view.accessRequests.map((request) => (
+                  <li key={request.id}>
+                    <div className="pn-between">
+                      <p>{request.requesterName}</p>
+                      <form method="post" action={`${basePath}/requests`}>
+                        <input type="hidden" name="requestId" value={request.id} />
+                        <button type="submit" name="intent" value="accept">Let them in</button>
+                        <button type="submit" name="intent" value="reject">Not now</button>
+                      </form>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </Panel>
+          )}
+
           <Panel className="pn-stack">
             <h2>Your sizes and preferences</h2>
             {view.attributes.length === 0 ? (
