@@ -2,6 +2,24 @@
 
 Agent error log. Newest entry first. No secrets, tokens, env dumps, or credentialed URLs.
 
+## 2026-10-27 — Pushed the rebrand before running the browser suite
+**What happened:** the Paper Fiesta commit was pushed after vitest, typecheck and build passed, but before `pnpm test:browser`; two Playwright flows then failed on renamed labels ("Claim this gift", "Pool target in cents").
+**Impact:** the pushed branch briefly carried a red browser suite; caught before the PR was opened and fixed in a second commit (11/11 green).
+**Fix:** browser spec updated to the new labels and the rand quick-pick flow; PR #9 opened only after the full browser run.
+**Do not repeat:** any copy or label change runs `pnpm test:browser` (with the test DB) before the first push, not after.
+
+## 2026-10-27 — Stitch mocks shipped wrong dates
+**What happened:** the round-2 Stitch prompts said "Sat 15 Nov" for 2026-11-15 (a Sunday), and the summary to the owner said "18 days" where the mocks said 19.
+**Impact:** mocks presented as reviewable carried a wrong weekday and a contradicting count; caught only when the real `<EventDate>` render printed "Sun".
+**Fix:** dates on screen now come from `<EventDate>` (UTC, computed); DESIGN.md tells agents to re-check numbers and weekdays in any mock.
+**Do not repeat:** compute weekdays and day counts with code before putting them in a prompt or a reply.
+
+## 2026-10-27 — Parallel Stitch generations in one project were silently dropped
+**What happened:** three `generate_screen_from_text` calls were fired at once into one Stitch project; all three timed out client-side and only one screen was ever created.
+**Impact:** about ten minutes of waiting on screens that did not exist; `list_screens` returning `{}` hid it.
+**Fix:** generations re-run one at a time, each confirmed by the project's `updateTime` advancing. The rule is now in the global `stitch-ui-designer` skill.
+**Do not repeat:** one Stitch generation per project at a time; treat a timeout as "still running", and verify by `updateTime`, not `list_screens`.
+
 ## 2026-10-27 — An inherited grant expiry could undo a user opt-out
 **What happened:** capability toggles changed enabled/source but retained expiresAt; the gate ignored expired user rows and fell back to the granting plan.
 **Impact:** a user's explicit refusal could later permit model spending. Three real PostgreSQL regressions reproduced the failure, including an already-expired user opt-out.

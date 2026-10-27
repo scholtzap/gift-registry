@@ -3,14 +3,20 @@
 /* /pinata.css is the standalone source of tokens and semantic component styles. */
 @theme inline {
   --color-bg: var(--pn-bg);
-  --color-wash-pink: var(--pn-wash-pink);
-  --color-wash-blue: var(--pn-wash-blue);
+  --color-surface: var(--pn-surface);
+  --color-wash-human: var(--pn-wash-human);
+  --color-wash-money: var(--pn-wash-money);
   --color-wash-done: var(--pn-wash-done);
+  --color-wash-open: var(--pn-wash-open);
+  --color-wash-alert: var(--pn-wash-alert);
   --color-primary: var(--pn-primary);
   --color-primary-pressed: var(--pn-primary-pressed);
   --color-on-primary: var(--pn-on-primary);
-  --color-secondary: var(--pn-secondary);
-  --color-tertiary: var(--pn-tertiary);
+  --color-tomato: var(--pn-tomato);
+  --color-marigold: var(--pn-marigold);
+  --color-money: var(--pn-money);
+  --color-lilac: var(--pn-lilac);
+  --color-sky: var(--pn-sky);
   --color-ink: var(--pn-ink);
   --color-ink-2: var(--pn-ink-2);
   --color-ink-3: var(--pn-ink-3);
@@ -18,7 +24,6 @@
   --color-track: var(--pn-track);
   --color-disabled: var(--pn-disabled);
   --color-success: var(--pn-success);
-  --color-warning: var(--pn-warning);
 
   --radius-panel: var(--pn-radius-panel);
   --radius-btn: var(--pn-radius-button);
@@ -36,11 +41,11 @@
 }
 
 @utility eyebrow {
-  @apply font-label text-xs font-semibold uppercase tracking-[0.1em] text-tertiary;
+  @apply font-label text-xs font-bold uppercase tracking-[0.1em] text-money;
 }
 
 @utility wordmark {
-  @apply font-display text-lg font-bold tracking-[-0.02em];
+  @apply font-display text-xl font-extrabold tracking-[-0.02em];
 }
 
 @utility tnum {

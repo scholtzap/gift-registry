@@ -50,8 +50,8 @@ export function LandingScreen() {
           <p className="pn-eyebrow">From a wish to a wrapped gift</p>
           <h2 id="landing-story-title">You choose the wish. Friends keep the surprise.</h2>
         </div>
-        {/* Washes keyed to what each step is about: pink is a person's own wish or words,
-            blue is the money the friends pool. Not an alternating pattern. */}
+        {/* Washes keyed to what each step is about: lilac is a person's own wish or words,
+            green is the money the friends pool. Not an alternating pattern. */}
         <ol className="pn-list pn-grid pn-grid-3">
           <li className="pn-item pn-feature pn-feature-human pn-stack">
             <h3>Say it. Then confirm it.</h3>

@@ -47,7 +47,7 @@ gifts-registry/
   .github/workflows/        # Existing workflow sources; execution not certified here
 ```
 
-**Ecosystem:** [AGENTS.md](AGENTS.md) governs behavior; [SPEC.md](SPEC.md) defines product requirements; [DESIGN.md](DESIGN.md) defines V7 tokens; [MISTAKES.md](MISTAKES.md) and [WISHLIST.md](WISHLIST.md) record incidents and tooling gaps. Work status is in [docs/plans/PLANS_INDEX.md](docs/plans/PLANS_INDEX.md); integration evidence is in [parallel-build-closeout](docs/plans/parallel-build-closeout.md). No generated graph is needed to use this map.
+**Ecosystem:** [AGENTS.md](AGENTS.md) governs behavior; [SPEC.md](SPEC.md) defines product requirements; [DESIGN.md](DESIGN.md) defines the Paper Fiesta tokens and the UI rules agents must pass; [MISTAKES.md](MISTAKES.md) and [WISHLIST.md](WISHLIST.md) record incidents and tooling gaps. Work status is in [docs/plans/PLANS_INDEX.md](docs/plans/PLANS_INDEX.md); integration evidence is in [parallel-build-closeout](docs/plans/parallel-build-closeout.md). No generated graph is needed to use this map.
 
 ## 2. High-Level System Diagram
 Provide a simple block diagram (e.g., a C4 Model Level 1: System Context diagram, or a basic component diagram) or a clear text-based description of the major components and their interactions. Focus on how data flows, services communicate, and key architectural boundaries.
@@ -81,7 +81,7 @@ The webhook acknowledgement is **not an outgoing WhatsApp message**. Live media/
 
 ### 3.1. Frontend
 
-**Piñata web UI:** Next.js App Router serves the public landing/invite entry and stable `/c/<slug>` routes. V7 is light-only pink/blue with local Syne, Manrope and Space Grotesk fonts. Seven private/entry screens cover join, owner ledger, friend ledger, item detail, draft confirmation, card composition and capability settings.
+**Piñata web UI:** Next.js App Router serves the public landing/invite entry and stable `/c/<slug>` routes. Paper Fiesta (light-only cream paper, ink-outlined cards) uses local Bricolage Grotesque and DM Sans fonts; `public/pinata.css` is the one stylesheet and `src/components/status.ts` owns the friend status wording. Seven private/entry screens cover join, owner ledger, friend ledger, item detail, draft confirmation, card composition and capability settings.
 
 Private routes return raw server-rendered HTML with native forms. The Node renderer loads `react-dom/server` through `createRequire(import.meta.url)` because Next's `react-server` export conditions reject the ordinary import in an App Route. Components have no hooks; every Field caller supplies a unique explicit ID. Card preview JavaScript is optional, and anonymous save works without it.
 

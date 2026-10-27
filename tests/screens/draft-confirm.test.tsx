@@ -45,7 +45,7 @@ describe('DraftConfirmScreen public server render', () => {
   it('posts the reviewed values to the supplied base path with explicit confirm intent', () => {
     const html = render();
     expect(html).toMatch(/<form\b[^>]*action="\/app\/circles\/demo-circle\/draft"[^>]*method="post"/);
-    expect(fields(html).sort()).toEqual(['currency', 'ingestEventId', 'intent', 'priceMinor', 'retailer', 'title', 'visibility'].sort());
+    expect(fields(html).sort()).toEqual(['currency', 'ingestEventId', 'intent', 'priceRand', 'retailer', 'title', 'visibility'].sort());
     expect(attribute(input(html, 'intent'), 'type')).toBe('hidden');
     expect(attribute(input(html, 'intent'), 'value')).toBe('confirm');
     expect(attribute(input(html, 'ingestEventId'), 'type')).toBe('hidden');
@@ -53,12 +53,12 @@ describe('DraftConfirmScreen public server render', () => {
     expect(attribute(input(html, 'currency'), 'value')).toBe('ZAR');
     expect(attribute(input(html, 'title'), 'value')).toBe(extracted.title);
     expect(attribute(input(html, 'retailer'), 'value')).toBe(extracted.retailer);
-    expect(attribute(input(html, 'priceMinor'), 'value')).toBe('249900');
+    expect(attribute(input(html, 'priceRand'), 'value')).toBe('2499');
   });
 
   it('lets a person correct every extracted field instead of locking model guesses', () => {
     const html = render();
-    for (const name of ['title', 'retailer', 'priceMinor']) {
+    for (const name of ['title', 'retailer', 'priceRand']) {
       expect(input(html, name)).not.toMatch(/\b(?:readonly|disabled)=/i);
       expect(attribute(input(html, name), 'type')).not.toBe('hidden');
       expect(fields(html).filter((field) => field === name)).toHaveLength(1);
@@ -66,15 +66,15 @@ describe('DraftConfirmScreen public server render', () => {
     const corrected = render({ ...extracted, title: 'Cycling shoes, size 44', retailer: 'Corrected shop', priceMinor: 219900 });
     expect(attribute(input(corrected, 'title'), 'value')).toBe('Cycling shoes, size 44');
     expect(attribute(input(corrected, 'retailer'), 'value')).toBe('Corrected shop');
-    expect(attribute(input(corrected, 'priceMinor'), 'value')).toBe('219900');
+    expect(attribute(input(corrected, 'priceRand'), 'value')).toBe('2199');
     expect(attribute(input(corrected, 'ingestEventId'), 'value')).toBe(extracted.id);
-    expect(corrected).not.toContain('249900');
+    expect(corrected).not.toContain('2499');
     expect(corrected).toContain('Nothing is added until you confirm');
   });
 
-  it('labels and constrains native fields, including an explicit integer cents price', () => {
+  it('labels and constrains native fields, including a rand price nobody types in cents', () => {
     const html = render();
-    for (const name of ['title', 'retailer', 'priceMinor']) {
+    for (const name of ['title', 'retailer', 'priceRand']) {
       const id = attribute(input(html, name), 'id');
       expect(id).toBeTruthy();
       expect(html).toContain(`<label for="${id}">`);
@@ -82,13 +82,13 @@ describe('DraftConfirmScreen public server render', () => {
     expect(attribute(input(html, 'title'), 'maxlength')).toBe('200');
     expect(input(html, 'title')).toContain('required=""');
     expect(input(html, 'retailer')).not.toContain('required=');
-    expect(input(html, 'priceMinor')).not.toContain('required=');
-    expect(html).toContain('Price in cents');
-    expect(attribute(input(html, 'priceMinor'), 'type')).toBe('number');
-    expect(attribute(input(html, 'priceMinor'), 'step')).toBe('1');
-    expect(attribute(input(html, 'priceMinor'), 'min')).toBe('0');
-    expect(html).toContain('10000 = R100.00');
-    const hint = attribute(input(html, 'priceMinor'), 'aria-describedby');
+    expect(input(html, 'priceRand')).not.toContain('required=');
+    expect(html).toContain('Price in rand');
+    expect(attribute(input(html, 'priceRand'), 'type')).toBe('text');
+    expect(input(html, 'priceRand')).toContain('inputMode="decimal"');
+    expect(html).toContain('Like 1899 or 249.50');
+    expect(html).not.toMatch(/cents/i);
+    const hint = attribute(input(html, 'priceRand'), 'aria-describedby');
     expect(hint).toBeTruthy();
     expect(html).toContain(`id="${hint}"`);
   });
@@ -100,7 +100,7 @@ describe('DraftConfirmScreen public server render', () => {
     expect(html).toContain('No WhatsApp draft is loaded');
     expect(html).toContain('Nothing is added until you confirm');
     expect(fields(html)).not.toContain('ingestEventId');
-    for (const name of ['title', 'retailer', 'priceMinor']) {
+    for (const name of ['title', 'retailer', 'priceRand']) {
       expect(attribute(input(html, name), 'value')).toBe('');
     }
     expect(attribute(input(html, 'currency'), 'value')).toBe('ZAR');
@@ -118,7 +118,7 @@ describe('DraftConfirmScreen public server render', () => {
 
   it.each([0, null])('preserves a price of %s without guessing missing money', (priceMinor) => {
     const html = render({ ...extracted, retailer: null, priceMinor });
-    expect(attribute(input(html, 'priceMinor'), 'value')).toBe(priceMinor === null ? '' : '0');
+    expect(attribute(input(html, 'priceRand'), 'value')).toBe(priceMinor === null ? '' : '0');
     expect(attribute(input(html, 'retailer'), 'value')).toBe('');
   });
 
@@ -178,7 +178,7 @@ describe('DraftConfirmScreen public server render', () => {
     expect(html).toContain('This draft uses USD, not ZAR');
     expect(html).toMatch(/<button\b[^>]*disabled=""[^>]*>Confirm and add item<\/button>/);
     expect(attribute(input(html, 'currency'), 'value')).toBe('USD');
-    expect(attribute(input(html, 'priceMinor'), 'value')).toBe('');
+    expect(attribute(input(html, 'priceRand'), 'value')).toBe('');
     expect(html).not.toContain('R24.99');
   });
 });
