@@ -78,6 +78,25 @@ Sending anything to WhatsApp. Owner-side approval. Cross-referencing contact lis
 Does the found branch render inline or redirect to `/c/<slug>`? (A redirect re-introduces the slug oracle.) Is the
 lookup available to an anonymous visitor or only to a signed-in gifter?
 
+## Scope as narrowed by Wave 0 (2026-10-27)
+
+Owner answered G1 **create-only** (rn-i §Decision): this route takes a number and always offers
+a proxy registry; it never renders an existing circle in the submission window. One body, always
+200, no `shareSlug` or `/c/` href in it (RN-D Gate: M-no-slug). The found branch is
+post-submission. Open questions above are answered by this: no inline found render, no redirect;
+available to a signed-in gifter only (RN-D M2 reuses the gate), never anonymous.
+
+## Implementation gate — stopped here (2026-10-27)
+
+Not implemented in the handover session. Precise gate: **no Postgres is reachable from the
+dev machine** (Docker Desktop engine down, no `.env`/`DATABASE_URL` in the worktree), so the
+route's always-200 indistinguishability test and the `pnpm leak` suite cannot be executed.
+Shipping an unauthenticated route whose only proof is prose violates this file's definition of
+done. Prerequisites in order, all still owed: (1) `trustedClientAddress` behind `TRUSTED_PROXY`
+(default OFF, owner 2026-10-27); (2) CSPRNG `shareSlug` generator ≥16 chars; (3) `PHONE_HASH_PEPPER`
+split (RN-D Gate 5); (4) throttle mounted ahead of every unauthenticated DB read. Start only
+when a database is up and `pnpm leak` runs green on the untouched tree.
+
 ## Blocks / gated by
 
 Gated by RN-A and RN-D. Blocks RN-F and RN-G. Parallel with RN-C once RN-A is settled.

@@ -1,7 +1,7 @@
 ---
 title: "RN-E — circle lifecycle: a once-off registry that archives itself after the day"
 type: spec
-status: draft
+status: ready
 priority: P3
 rank: 18
 updated: 2026-10-27
@@ -85,10 +85,26 @@ another agent owns the countdown surface.
 
 Deleting a circle. Any hard purge of the ledger. Stripe-adjacent money state. Re-opening an archived circle.
 
-## Open questions
+## Decision (2026-10-27, numbers not prose)
 
-Does a *normal* (owner-run) circle archive too, or only proxy circles? Does RN-D's retention answer change the
-grace window? Is an archived circle still reachable at its exact `/c/<slug>` URL for the people who already have it?
+- **Grace window: 72 hours.** `active → archived` at `event_date + 72h`, the earlier-of rule's
+  second limb from sharewear (`loan_graph.dart:27-40`): if the event date is ever moved earlier
+  than `createdAt + 72h`, archive at end of the event day instead — never before the day itself.
+- **Retention horizon: 90 days.** `archived → purged` at `archived_at + 90 days`: delete the
+  hashed allowlist rows and `recipient_phone_e164_hash`; the ledger and money state are **not**
+  purged (RN-E out-of-scope: no hard purge of the ledger).
+- **Trigger: lazy on-read derivation, no scheduler.** State is derived from `event_date` at read
+  time in one place shared by the lookup route and the circle route; any stored `archived`
+  status is a cache, never the truth. This cannot fail during the demo recording.
+- **Scope: proxy circles only in the submission window.** A normal owner-run circle keeps
+  `active|closed` under owner control; auto-archiving it is post-submission.
+- **Archived reachability: yes, at the exact `/c/<slug>` for existing members** — readable,
+  refusing new claims and pledges; not findable by lookup. `/c/<slug>` never moves.
+- RN-D sets no retention number that changes the grace window (its caps are create-rate, not
+  lifetime), so 72h stands.
+
+Status flips to `ready` with this section; implementation (expand-only `archived` value, never
+rewriting an enum value in place) is RN-C's gate, not this file's.
 
 ## Blocks / gated by
 

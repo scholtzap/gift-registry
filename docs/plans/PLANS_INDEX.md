@@ -8,7 +8,7 @@
 python scripts/ops/refresh_plans_index.py --write
 ```
 
-Generated: 2026-10-27 20:49 · repo: `gifts-registry`
+Generated: 2026-10-27 21:11 · repo: `muse-rn`
 
 ## P1
 
@@ -23,8 +23,8 @@ Generated: 2026-10-27 20:49 · repo: `gifts-registry`
 | 11 | Two dates, and a countdown that does not spoil the gift | ready | `birthday-and-event-countdown.md` | None. Settled on 2026-10-27: the friend ledger does **not** name which friend set the date. |
 | 12 | Registry-network tracks — order, dependencies and what can run in parallel | ready | `rn-tracks.md` |  |
 | 13 | RN-I — submission-window triage: what of the registry network fits before 2026-11-04 | ready | `rn-i-submission-window-triage.md` |  |
-| 14 | RN-A - proxy registry data model and authority rules | draft | `rn-a-proxy-registry-spec.md` | - Should `recipient_phone_e164_hash` use a pepper distinct from `env.SESSION_SECRET`? Reusing it is what makes gate |
-| 15 | RN-D - abuse and threat model for phone lookup and proxy registries | draft | `rn-d-abuse-model.md` | - Who answers G1? It narrows deviation row 3, so it is an owner call, not a reviewer call - surface it alongside `rn-i-s |
+| 14 | RN-A - proxy registry data model and authority rules | ready | `rn-a-proxy-registry-spec.md` | - **Pepper: distinct.** `recipient_phone_e164_hash` uses a separate `PHONE_HASH_PEPPER`, not |
+| 15 | RN-D - abuse and threat model for phone lookup and proxy registries | ready | `rn-d-abuse-model.md` | - Who answers G1? **ANSWERED 2026-10-27 (owner, Wave 0): create-only.** RN-B takes a number and |
 
 ## P2
 
@@ -43,10 +43,10 @@ Generated: 2026-10-27 20:49 · repo: `gifts-registry`
 | Rank | Title | Status | Path | Next |
 |------|-------|--------|------|------|
 | 9 | Public landing page at / and the /app route move | ready | `public-landing-page.md` | - Unlisted YouTube (needs network during Nov 5–8 judging) or self-hosted MP4 on the VM (bandwidth we do not have much |
-| 18 | RN-E — circle lifecycle: a once-off registry that archives itself after the day | draft | `rn-e-lifecycle-archive.md` | Does a *normal* (owner-run) circle archive too, or only proxy circles? Does RN-D's retention answer change the |
+| 18 | RN-E — circle lifecycle: a once-off registry that archives itself after the day | ready | `rn-e-lifecycle-archive.md` |  |
 | 19 | RN-F — promoting a proxy circle when the recipient later joins | draft | `rn-f-claim-merge.md` |  |
 | 20 | RN-G — find-a-friend as a bounded WhatsApp bot task | draft | `rn-g-bot-find-task.md` |  |
-| 21 | RN-H — on-platform search vs the noindex guarantee | draft | `rn-h-crawlability.md` |  |
+| 21 | RN-H — on-platform search vs the noindex guarantee | out-of-window | `rn-h-crawlability.md` |  |
 | 40 | Deferred feature spikes (deal-finding, coordination agent, SAM duplicates) | backlog | `deferred-feature-spikes.md` |  |
 | 900 | Registry network - discovery, public visibility, and the deviations from the shipped spine | draft | `registry-network-discovery-deviations.md` | - G1 (RN-D): is the lookup **create-only** inside the submission window, given there is no visibility field yet for |
 

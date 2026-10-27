@@ -1,7 +1,7 @@
 ---
 title: RN-A - proxy registry data model and authority rules
 type: spec
-status: draft
+status: ready
 priority: P1
 rank: 14
 updated: 2026-10-27
@@ -138,15 +138,23 @@ Throttle values and per-IP/per-account caps (RN-D). Archive, expiry, the `closed
 and its response bodies (RN-B). The create UI and its form (RN-C). Bot additions (RN-G). Lifting `noindex` (RN-H).
 OTP as a door - gated on the template approval RN-F carries. Any Meta contact import. Money holding.
 
-## Open questions
+## Open questions — resolved (2026-10-27)
 
-- Should `recipient_phone_e164_hash` use a pepper distinct from `env.SESSION_SECRET`? Reusing it is what makes gate
-  and lookup agree (`src/server/routes/circle.ts:412-413`); splitting them is a key-management decision RN-D should
-  own, not this file.
-- Is `occasion`, free text the creator writes, safe to show every friend when it can spoil the gift the way a date
-  can? Left open deliberately; it does not block RN-C.
-- Does a promoted circle keep its `shareSlug`? Assumed yes (`/c/<slug>` never moves), but RN-F should state it rather
-  inherit the assumption.
+- **Pepper: distinct.** `recipient_phone_e164_hash` uses a separate `PHONE_HASH_PEPPER`, not
+  `env.SESSION_SECRET` — decided by RN-D §6 (M6): one leaked secret must not both mint sessions
+  and crack hashes. Every `hashPhone` caller migrates in one change (RN-D Gate 5).
+- `occasion` spoiler-safety stays open deliberately; it does not block RN-C (unchanged).
+- **A promoted circle KEEPS its `shareSlug`.** Stated here, not assumed: `/c/<slug>` never moves,
+  and RN-F must quote this rather than re-decide it.
+
+## Sign-off (2026-10-27)
+
+Decisions D1–D6 stand as written and are the spec RN-B, RN-C and RN-J quote: nullable
+`owner_user_id` (no new table, no discriminator); creator gifter is a plain `friend`; recipient
+is an HMAC digest plus a `pending` allowlist row with **no** `users` row; proxy circles never
+appear as search results — under the owner's Wave 0 answer (rn-i §Decision) the lookup is
+create-only, so D6's indistinguishability holds by construction (one body, not two). Gated-by
+rn-i is answered. This file is `status: ready`.
 
 ## Blocks / gated by
 

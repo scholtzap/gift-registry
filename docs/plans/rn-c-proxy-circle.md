@@ -74,6 +74,18 @@ by design, and a test should keep it that way.
 Does the creator gifter get any elevated right, or are they a plain member (RN-A says plain member — confirm it
 survives contact with the UI)? Is the creator's name shown on the proxy page so the group knows who made it?
 
+## Implementation gate — stopped here (2026-10-27)
+
+Specs are unblocked (RN-A and RN-E are `ready`, 2026-10-27) but implementation is stopped on the
+NULL-owner audit's proof requirement: the `app_actor_joined_circle` fix
+(`(ci.owner_user_id IS NULL OR ci.owner_user_id <> app_user_id())`, plus an audit of **every**
+policy touching `owner_user_id` — `002_policies.sql:27,35,53,65,167` as re-verified 2026-10-27)
+widens access by construction and RN-A requires it to ship **with** a leak test proving both
+halves. No Postgres is reachable from the dev machine (Docker engine down, no `DATABASE_URL`),
+so no leak test can run. Do not land the migration or policy change unverified, and never make
+`owner_user_id` non-nullable with a backfill. Unblock: start Docker/Postgres, confirm
+`pnpm leak` green on the untouched tree, then implement with the leak test in the same change.
+
 ## Blocks / gated by
 
 Gated by RN-A, RN-E. Parallel with RN-B. Blocks RN-G.

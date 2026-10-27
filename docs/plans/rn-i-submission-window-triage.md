@@ -46,6 +46,29 @@ upgrade, template approval, `user_friends` permission) — write the dependency 
 
 **Do not touch:** `src/`, `prisma/`, `tests/`, `docs/diagrams/`. This is a scoping decision, not a build.
 
+## Decision
+
+Recorded 2026-10-27 by the owner (Wave 0, handover §3):
+
+1. **Phone search appears in the demo — create-only.** RN-B is a create-only route inside the
+   submission window (rn-d G1 answered YES): a lookup takes a number and always offers a proxy
+   registry; it never renders an existing circle. The found branch is post-submission, returning
+   only with `registry_profiles` plus a visibility field. Demo line: the threat model found phone
+   lookup was an existence oracle, so we shipped the half that helps gifters and removed the half
+   that outs them.
+2. **The proxy (not-found) branch is the branch shown.** There is no found branch to show under
+   create-only; the video shows search → no registry → create a proxy circle → share `/c/<slug>`.
+3. **OTP is attempted early.** Request the WhatsApp *authentication* template now (always charged,
+   up to 24h approval, AGENTS.md). RN-F stays gated: if the template is not approved, STOP and
+   report — do not build a fake OTP door.
+4. **RN-H is deferred past 2026-11-04** (`status: out-of-window`). `noindex` stays load-bearing.
+5. **`TRUSTED_PROXY` defaults OFF** (rn-d open item closed). The localhost demo is
+   unthrottled-by-flag rather than broken; on the VM, Caddy's header is trusted only when the
+   flag is explicitly enabled there.
+
+Consequences: rn-b narrows to create-only before it starts; rn-f is externally gated on template
+approval; rn-h is out-of-window; rn-a, rn-d and rn-e proceed to `ready` now.
+
 ## Out of scope
 
 Anything that needs an approval we do not control. If the answer to (1) is no, rn-b, rn-c, rn-f, rn-g become

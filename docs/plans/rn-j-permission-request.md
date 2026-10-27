@@ -86,6 +86,17 @@ no `refresh_plans_index.py`.
 Owner notifications of any kind. Chat between owner and requester. Revoking access after granting it (post-submission).
 Requests against a proxy circle beyond the defined "nobody to ask" answer.
 
+## Implementation gate — stopped here (2026-10-27)
+
+Gates are answered (RN-A and RN-D `ready`; NULL-owner answer is defined above: "nobody to ask",
+in the always-200 body). Implementation is stopped on the same database gate as RN-B/RN-C: no
+Postgres reachable from the dev machine, so the byte-identical-response test, the
+owner-projection-only render test and `pnpm leak` cannot be executed. The request expiry shape
+is settled (earlier of 72h and the event date, derived on read — RN-E's numbers). Also note
+deviation row 11: there is no owner session path yet (`session.ts` issues friend sessions only),
+so the owner inbox surface depends on that gap closing. Unblock with RN-B's helper
+(`trustedClientAddress` + mounted throttle) and a green leak suite.
+
 ## Blocks / gated by
 
 Gated by RN-A (schema and projection decisions) and RN-D (throttle, spam). Parallel to RN-C, RN-E and RN-F on files:

@@ -1,7 +1,7 @@
 ---
 title: RN-D - abuse and threat model for phone lookup and proxy registries
 type: spec
-status: draft
+status: ready
 priority: P1
 rank: 15
 updated: 2026-10-27
@@ -96,10 +96,21 @@ The lookup route and its response bodies (RN-B). Create UI and form (RN-C). Arch
 
 ## Open questions
 
-- Who answers G1? It narrows deviation row 3, so it is an owner call, not a reviewer call - surface it alongside `rn-i-submission-window-triage.md` before RN-B starts.
-- Is M1 enough for someone being impersonated, given they can never learn the circle exists? A notification-free dispute path needs an owner inbox that does not exist.
-- Should `TRUSTED_PROXY` default on or off? Off is safe for the VM but silently disables throttling in the localhost environment the video gets recorded in.
-- Does a per-recipient cap need a non-unique index on `recipient_phone_e164_hash`, or is per-creator sufficient?
+- Who answers G1? **ANSWERED 2026-10-27 (owner, Wave 0): create-only.** RN-B takes a number and
+  always offers a proxy registry; it never renders an existing circle inside the submission
+  window. The found branch returns post-submission with `registry_profiles` plus a visibility
+  field. See `rn-i` §Decision.
+- Is M1 enough for someone being impersonated, given they can never learn the circle exists? A notification-free dispute path needs an owner inbox that does not exist. *(Still open; post-submission, see handover §7 decline list.)*
+- Should `TRUSTED_PROXY` default on or off? **ANSWERED 2026-10-27 (owner): default OFF.** The
+  localhost demo is unthrottled-by-flag; the VM enables it explicitly behind Caddy.
+- Does a per-recipient cap need a non-unique index on `recipient_phone_e164_hash`, or is per-creator sufficient? *(Still open; per-creator DB cap of 10/24h is the shipped gate — Gate 4.)*
+
+## Closure (2026-10-27)
+
+G1 and the `TRUSTED_PROXY` default are answered above, so this file is `status: ready`. Gates
+2–7 below remain RN-B/RN-C implementation gates, not open questions: they must be true before
+RN-B ships, and each names its test. Pepper separation (M6) is decided in §6: split
+`PHONE_HASH_PEPPER` from `SESSION_SECRET`, one secret per failure domain.
 
 ## Gates (what must be true before RN-B ships)
 

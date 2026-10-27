@@ -1,7 +1,7 @@
 ---
 title: "RN-H — on-platform search vs the noindex guarantee"
 type: spec
-status: draft
+status: out-of-window
 priority: P3
 rank: 21
 updated: 2026-10-27
