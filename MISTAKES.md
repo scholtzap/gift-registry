@@ -2,6 +2,18 @@
 
 Agent error log. Newest entry first. No secrets, tokens, env dumps, or credentialed URLs.
 
+## 2026-10-27 — Shell tools blocked by classifier, read-only path missed
+**What happened:** User sent ambiguous "Read". Tried `Bash` and `mcp__pwsh__execute_command` to run `git show` for spec `birthday-and-event-countdown.md`. Both calls failed with "muse-spark-1.1 is temporarily unavailable" classifier block. Retried same path instead of switching to read-only tools immediately.
+**Impact:** Two wasted tool calls, delayed inventory. Spec exists in commit history (`faac31a`, `5bdce00`) but not on disk in this checkout; could have been fetched via `Read` of generated prisma or via existing screens without shell.
+**Fix:** Fell back to `Read` for `prisma/schema.prisma`, `src/lib/dates.ts`, `src/server/views`, `src/server/routes`, `tests/leak`, `src/components/screens/*` — completed pure read-only reconnaissance. For git history, should have used `Read` against already-checked-out files plus `Grep` for context rather than shell.
+**Do not repeat:** When classifier blocks shell tools, treat as signal to use `Read/Grep/Glob` only. For ambiguous "Read", ask for target or default to handover + branch diff via read-only tools, not shell.
+
+## 2026-10-27 — Used a declaration line as an Edit anchor and deleted the declaration
+**What happened:** inserting `DateLine`/`EventDateForm` into `src/components/ui.tsx` and the `/date` branch into `src/server/routes/circle.ts` with an anchor that was the *next* export's signature (and `if (cardMatch) {`) dropped that line from the file. Twice in one build.
+**Impact:** two broken files that only `tsc` caught later, and one confusing "export vanished" diff.
+**Fix:** re-added the swallowed lines in the following edit and grepped the export list before running the suite. Full suite then passed 430 cases.
+**Do not repeat:** an insertion anchor must be re-emitted verbatim inside `new_string`, or anchor on a blank line/comment instead of on the code you intend to keep.
+
 ## 2026-10-27 — An inherited grant expiry could undo a user opt-out
 **What happened:** capability toggles changed enabled/source but retained expiresAt; the gate ignored expired user rows and fell back to the granting plan.
 **Impact:** a user's explicit refusal could later permit model spending. Three real PostgreSQL regressions reproduced the failure, including an already-expired user opt-out.

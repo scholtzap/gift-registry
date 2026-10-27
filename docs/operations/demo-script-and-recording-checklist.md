@@ -4,7 +4,7 @@ type: runbook
 status: active
 priority: P1
 rank: 3
-updated: 2026-10-26
+updated: 2026-10-27
 ---
 
 # 3-minute demo script
@@ -26,7 +26,7 @@ no real people. Recorded from the deployed URL, never localhost.
 | 1:40–2:05 | Claim and pool | Thabo claims one item solo. Lerato + Sibusiso pool R2,400 behind Thabo as the single buyer; contributions mark, pool hits `funded` | The thing Giftster cannot do |
 | 2:05–2:25 | **The money shot** | Hard cut to Nadia's own screen: the same items, still just "wanted". No claim, no pool, no contributor. Nadia deletes one, answers "I bought it myself" | Owner blindness, live. And the ledger survives: friends see `pivot_needed` |
 | 2:25–2:40 | **The card** | Same pool, now `purchased`: the friends open the gift card — Nadia's name, the pun, every contributor's name with their own message — download it, and the cut lands on the printed card taped to the box | The loop closes. This is the artefact the recipient actually receives, and the emotional payoff of the whole product |
-| 2:40–2:52 | Why it can't leak | The RLS policy and the leak-suite run green in CI — including the row where the owner's session gets 404 on that card URL | Technical Depth (20%). Blindness is structural, not a UI courtesy |
+| 2:40–2:52 | Why it can't leak | The RLS policy and the leak-suite run green in CI — including the row where the owner's session gets 404 on that card URL. Then, live and with no API: Thabo writes the party date on the friend ledger, and Nadia's own screen loses the date, the "Sat 5 Dec" label and the countdown in one refresh — while the birthday stays | Technical Depth (20%). Blindness is structural, not a UI courtesy, and it is not only about money |
 | 2:52–3:00 | Close | Repo URL, live URL, one line on what was built in ten days | Demonstrates original contribution as the rules require |
 
 **Deliberately not claimed in the video:** Marketplace (not used — prohibited), outbound nudges (in-app badges

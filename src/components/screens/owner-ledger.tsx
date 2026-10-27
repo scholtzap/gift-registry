@@ -1,8 +1,13 @@
-import { AttributeList, Badge, Cta, EmptyState, Panel, Screen, type CircleContext, type NavItem } from '@/components/ui';
+import { AttributeList, Badge, Cta, DateLine, EmptyState, EventDateForm, Panel, Screen, type CircleContext, type NavItem } from '@/components/ui';
 import type { OwnerCircleView, OwnerItemView } from '@/server/views';
 
 // Owner projection only; this screen never fetches data or reads coordination state.
-export function OwnerLedgerScreen({ view, basePath }: { view: OwnerCircleView; basePath: string }) {
+export function OwnerLedgerScreen({ view, basePath, notice, eventDateDraft }: {
+  view: OwnerCircleView;
+  basePath: string;
+  notice?: string;
+  eventDateDraft?: string | null;
+}) {
   const draftHref = `${basePath}/draft`;
   const settingsHref = `${basePath}/settings`;
   const circleHref = `/c/${encodeURIComponent(view.shareSlug)}`;
@@ -80,10 +85,10 @@ export function OwnerLedgerScreen({ view, basePath }: { view: OwnerCircleView; b
             <h2>One link for your group</h2>
             <div className="pn-stack pn-stack-sm">
               <p>{view.occasion}</p>
-              <p className="pn-small">
-                Event date: <time dateTime={view.eventDate}>{view.eventDate}</time>
-              </p>
+              {view.birthday !== null && <p className="pn-small">Birthday: {view.birthday}</p>}
+              <DateLine date={view.eventDate} label={view.eventDateLabel} countdown={view.countdown} />
             </div>
+            <EventDateForm basePath={basePath} defaultValue={eventDateDraft ?? view.eventDate} notice={notice} />
             <hr className="pn-divider" />
             <p className="pn-small pn-muted">Open the circle link, then copy its address into your WhatsApp group.</p>
             <Cta href={circleHref}>Open your circle link</Cta>

@@ -1,5 +1,6 @@
 import type { Tx } from '@/server/db/client';
 import { formatMinor } from '@/lib/money';
+import { birthdayLabel, countdownLabel, humanDate, zoneDay } from '@/lib/dates';
 
 /**
  * The only place that knows which fields a role may see. RLS decides which *rows* exist for
@@ -11,6 +12,44 @@ import { formatMinor } from '@/lib/money';
  * it into a 404, never a 403, because a 403 tells a curious owner that something is in there.
  */
 
+/**
+ * The two dates, already turned into what each role is allowed to read.
+ *
+ * `eventDate` is a *writer-dependent* column: the row carries one value and the owner sees it
+ * only when they were the one who wrote it. RLS filters rows and the app role holds a table-wide
+ * SELECT on `circles` (`001_roles.sql`), so no policy can express that — this builder is the
+ * guard, and `tests/leak/event-date-secrecy.test.ts` asserts the rendered HTML is the proof.
+ * The writer's identity itself stops here: no projection renders which friend set it, because a
+ * name on a surprise is a spoiler and nothing about coordinating the gift needs it.
+ */
+interface CircleDates {
+  /** ISO `YYYY-MM-DD` when this role may see the event date, else null. */
+  eventDate: string | null;
+  /** `Sat 5 Dec` — the human form that replaced the bare ISO string. */
+  eventDateLabel: string | null;
+  /** `12 days to go`. Display only: it unlocks nothing and gates nothing. */
+  countdown: string | null;
+  /** `3 Apr`, or with a year when the owner gave one. Never an age. */
+  birthday: string | null;
+}
+
+function circleDates(circle: {
+  eventDate: Date | null;
+  eventDateSetByUserId: string | null;
+  ownerUserId: string;
+  birthMonth: number | null;
+  birthDay: number | null;
+  birthYear: number | null;
+}, showEventDate: boolean, today: string): CircleDates {
+  const iso = showEventDate && circle.eventDate !== null ? circle.eventDate.toISOString().slice(0, 10) : null;
+  return {
+    eventDate: iso,
+    eventDateLabel: iso === null ? null : humanDate(iso),
+    countdown: iso === null ? null : countdownLabel(iso, today),
+    birthday: birthdayLabel(circle.birthMonth, circle.birthDay, circle.birthYear),
+  };
+}
+
 export interface OwnerItemView {
   id: string;
   title: string;
@@ -19,10 +58,9 @@ export interface OwnerItemView {
   confirmed: boolean;
 }
 
-export interface OwnerCircleView {
+export interface OwnerCircleView extends CircleDates {
   name: string;
   occasion: string;
-  eventDate: string;
   shareSlug: string;
   items: OwnerItemView[];
   attributes: { kind: string; valueText: string; unit: string | null }[];
@@ -53,15 +91,14 @@ export interface FriendItemView {
   } | null;
 }
 
-export interface FriendCircleView {
+export interface FriendCircleView extends CircleDates {
   name: string;
   occasion: string;
-  eventDate: string;
   items: FriendItemView[];
   attributes: { kind: string; valueText: string; unit: string | null }[];
 }
 
-export async function ownerCircleView(tx: Tx, circleId: string): Promise<OwnerCircleView | null> {
+export async function ownerCircleView(tx: Tx, circleId: string, now: Date = new Date()): Promise<OwnerCircleView | null> {
   const circle = await tx.circle.findUnique({
     where: { id: circleId },
     include: {
@@ -77,7 +114,10 @@ export async function ownerCircleView(tx: Tx, circleId: string): Promise<OwnerCi
   return {
     name: circle.name,
     occasion: circle.occasion,
-    eventDate: circle.eventDate.toISOString().slice(0, 10),
+    // A date a friend wrote is not the owner's to see — not the day, not the count, not a
+    // sentence explaining the gap. Silence reads as "not set yet", which is the same
+    // false-but-harmless reading the reduced item projection already gives for claims and pools.
+    ...circleDates(circle, circle.eventDateSetByUserId === circle.ownerUserId, zoneDay(now)),
     shareSlug: circle.shareSlug,
     // RLS has already removed friend-only suggestions and the owner's own tombstones.
     items: circle.items.map((item) => ({
@@ -91,7 +131,7 @@ export async function ownerCircleView(tx: Tx, circleId: string): Promise<OwnerCi
   };
 }
 
-export async function friendCircleView(tx: Tx, circleId: string, viewerUserId: string): Promise<FriendCircleView | null> {
+export async function friendCircleView(tx: Tx, circleId: string, viewerUserId: string, now: Date = new Date()): Promise<FriendCircleView | null> {
   const circle = await tx.circle.findUnique({
     where: { id: circleId },
     include: {
@@ -110,7 +150,9 @@ export async function friendCircleView(tx: Tx, circleId: string, viewerUserId: s
   return {
     name: circle.name,
     occasion: circle.occasion,
-    eventDate: circle.eventDate.toISOString().slice(0, 10),
+    // Friends see the party date whenever it is set, and the real birthday always — a wish that
+    // lands on the wrong day is worse than a wish that lands late.
+    ...circleDates(circle, true, zoneDay(now)),
     items: circle.items.map((item) => {
       const pool = item.pools.find((p) => p.status !== 'purchased') ?? null;
       const myClaim = item.claims.find((c) => c.userId === viewerUserId && c.status === 'claimed') ?? null;
