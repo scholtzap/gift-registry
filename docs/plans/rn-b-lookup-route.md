@@ -86,16 +86,17 @@ a proxy registry; it never renders an existing circle in the submission window. 
 post-submission. Open questions above are answered by this: no inline found render, no redirect;
 available to a signed-in gifter only (RN-D M2 reuses the gate), never anonymous.
 
-## Implementation gate — stopped here (2026-10-27)
+## Implementation — done (2026-10-27, branch feat/rn-b-primitives)
 
-Not implemented in the handover session. Precise gate: **no Postgres is reachable from the
-dev machine** (Docker Desktop engine down, no `.env`/`DATABASE_URL` in the worktree), so the
-route's always-200 indistinguishability test and the `pnpm leak` suite cannot be executed.
-Shipping an unauthenticated route whose only proof is prose violates this file's definition of
-done. Prerequisites in order, all still owed: (1) `trustedClientAddress` behind `TRUSTED_PROXY`
-(default OFF, owner 2026-10-27); (2) CSPRNG `shareSlug` generator ≥16 chars; (3) `PHONE_HASH_PEPPER`
-split (RN-D Gate 5); (4) throttle mounted ahead of every unauthenticated DB read. Start only
-when a database is up and `pnpm leak` runs green on the untouched tree.
+Implemented once Postgres was restored on the dev machine. `POST /lookup`
+(`src/server/routes/lookup.ts`, adapter `src/app/lookup/route.ts`) is create-only: the lookup
+half performs no registry read and returns one static 200 body for registered, unregistered and
+invalid numbers, proven byte-identical in `tests/routes/lookup.test.ts`. Prerequisite (1)
+`trustedClientAddress` (TRUSTED_PROXY default OFF) and (2) the CSPRNG slug generator
+(24 base64url chars, `src/server/auth/slug.ts`) landed with unit tests; (4) the throttle is
+mounted before any DB read, keyed on trusted address + phone hash. Still owed: (3) the
+`PHONE_HASH_PEPPER` split (RN-D Gate 5) — the lookup still peppers with `SESSION_SECRET`, as the
+gate does today.
 
 ## Blocks / gated by
 
