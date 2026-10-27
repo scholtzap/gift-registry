@@ -124,6 +124,17 @@ describe('deterministic card renderer boundary', () => {
     expect(result.png).not.toEqual(other.png);
   });
 
+  it('renders Piñata and ñ names in the brand display and body fonts', async () => {
+    const result = await renderCardArtwork({ ...card, recipientName: 'Iñaki', entries: [{ ...card.entries[0]!, displayNameShown: 'Señora Muñoz' }] });
+    const metadata = await sharp(result.png).metadata();
+    expect([metadata.width, metadata.height]).toEqual([840, 1184]);
+    expect(svgText(result.svg)).toContain('Piñata');
+    expect(svgText(result.svg)).toContain('Iñaki');
+    expect(svgText(result.svg)).toContain('Señora Muñoz');
+    expect(result.svg).toContain('font-family="Bricolage Grotesque ExtraBold"');
+    expect(result.svg).toContain('font-family="DM Sans"');
+  });
+
   it('still refuses more than eight contributors explicitly', async () => {
     await expect(renderCardArtwork({ ...card, entries: Array.from({ length: 9 }, () => card.entries[0]!) }))
       .rejects.toThrow('card_contributor_limit');
