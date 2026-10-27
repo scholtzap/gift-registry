@@ -1,0 +1,16 @@
+title = "Piñata gitleaks config"
+
+# Keep the upstream rules; only add the allowlist below.
+[extend]
+useDefault = true
+
+[allowlist]
+description = """
+Next.js build output. Generated, gitignored, and never staged, so it cannot reach a commit or a
+clone; but a whole-tree `gitleaks dir` scan reads it off disk, and the prerender manifests,
+preview props and RSC cache entries inside it are escaped HTML and JSON that trip the default
+rules. Listing the paths here keeps that scan usable as a pre-publication check.
+"""
+paths = [
+  '(^|/)[.]next[^/]*/',
+]
