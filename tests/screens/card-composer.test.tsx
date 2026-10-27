@@ -60,7 +60,11 @@ describe('CardComposerScreen public render', () => {
   it('posts only your entry with the exact field names and native length limits', () => {
     const html = render();
     const renderedForms = forms(html);
-    expect(renderedForms).toHaveLength(2);
+    expect(renderedForms).toHaveLength(3);
+    const pun = renderedForms.find((form) => form.includes('value="pun"'));
+    expect(pun).toBeDefined();
+    expect(pun).toContain(`action="${cardPath}"`);
+    expect(pun).not.toMatch(/name="(?:displayNameShown|message|userId|contributorId)"/);
     const save = renderedForms.find((form) => form.includes('value="save_entry"'));
     expect(save).toBeDefined();
     expect(save).toContain(`action="${cardPath}"`);

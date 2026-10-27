@@ -1,10 +1,10 @@
 ---
 title: Post-event reveal of secret suggestions (F14)
 type: spec
-status: ready
+status: implementing
 priority: P2
 rank: 7
-updated: 2026-10-26
+updated: 2026-10-27
 apps: []
 related: [SPEC.md, docs/plans/gift-circles-ten-day-build-plan.md]
 evidence: SPEC.md §Decisions v1.1 (post-event reveal), §User flows F14
@@ -14,6 +14,13 @@ superseded_by: null
 ---
 
 # Post-event reveal (F14)
+
+**Built 2026-10-27** on `feat/day-3-followups` (see `day-3-nine-followups.md` #9):
+`revealItem` in `src/server/ledger/index.ts` (friend-only, `zoneDay`-gated, author veto,
+one guarded `updateMany`), `canReveal` on the friend projection, reveal form on the item
+screen, route intent `reveal`. Provisional early unlock below remains **unbuilt** and is
+still first cut. Ledger tests pin before/after the day, the veto, owner refusal, and the
+owner projection gaining the item only after reveal.
 
 **Status:** Date gate, author veto and attribution **decided**. Unanimous early unlock **provisional** — first thing
 cut at the day-7 gate.

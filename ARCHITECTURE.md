@@ -144,6 +144,8 @@ The exact local production build passed Chromium routes with installed dependenc
 
 Migrations must remain expand-only. Recovery requires a previous image tag and a verified database restore; never automatically roll back a production migration. Existing CI/doc-sync sources are not evidence of a successful CI run. CI owns KB publication; this work did not publish documents manually.
 
+**CI quickref:** while this repo is private, a GitHub Actions job that fails in ~4 s with zero steps and no log means Actions minutes/billing, not YAML — the reason lives in the check-run annotation, not `--log-failed`. Do not debug the workflow file for it. Public repos get free Linux minutes, and the hackathon requires a public repo anyway.
+
 ## 7. Security Considerations
 
 - Actual ownership and active membership are checked at HTTP/model boundaries; a signed cookie role alone is insufficient. Keep the explicit owner branch and friend-owner exclusion.
@@ -155,7 +157,7 @@ Migrations must remain expand-only. Recovery requires a previous image tag and a
 - Session advisory locks use their own bounded pool so callbacks retain query capacity. Failed unlock discards the session rather than recycling a potentially lock-bearing connection.
 - Literal contributor messages are preserved. URLs and unsupported glyphs refuse with recoverable UI instead of silently changing or losing words. No person pixels may be published by the vision factory.
 - `.env`, credentials, runtime media and caches stay ignored. Use fictional fixtures and secret-safe, redacted scans; a zero scan does not certify personal-data publication or third-party asset rights.
-- Pure M-02 throttle tests do not mean throttling is mounted at the real gate. The Windows-positive owner credential flow is not verified. See [ops report](docs/operations/parallel-agent-outputs/ops.md).
+- The M-02 gate throttle is mounted in `routes/circle.ts`: every gate attempt (success or failure) counts against circle + phone-hash + forwarded-address at 5/min before the allowlist lookup, with a uniform 429 + `Retry-After`; it is single-process in-memory state, so a second app process would double the budget. The Windows-positive owner credential flow is not verified. See [ops report](docs/operations/parallel-agent-outputs/ops.md).
 
 Review evidence is in [security_best_practices_report.md](security_best_practices_report.md), [cards/vision review](docs/operations/parallel-agent-outputs/security-cards-vision.md) and [intake report](docs/operations/parallel-agent-outputs/intake.md). New local security regressions reproduced pool starvation and inherited-expiry opt-out failure before both fixes; all 24 focused PostgreSQL consent/intake cases subsequently passed.
 

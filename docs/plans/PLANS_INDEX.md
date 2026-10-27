@@ -8,7 +8,7 @@
 python scripts/ops/refresh_plans_index.py --write
 ```
 
-Generated: 2026-10-27 19:38 · repo: `gifts-registry`
+Generated: 2026-10-27 20:10 · repo: `gifts-registry`
 
 ## P1
 
@@ -20,6 +20,7 @@ Generated: 2026-10-27 19:38 · repo: `gifts-registry`
 | 3 | Day-2 remaining-work inventory handover (voice-to-deploy queue) | implementing | `day-2-inventory-handover.md` | - First two-minute user item: §1.5 — send one message to the sandbox number and record whether |
 | 4 | Design system, brand round and the seven in-app screens | ready | `design-system-and-brand.md` |  |
 | 5 | WhatsApp task-bot surface — six bounded tasks, fixed menu, no free chat | ready | `whatsapp-task-bot-surface.md` |  |
+| 6 | Day-3 nine follow-ups (throttle, creation, pun, reveal, dispatch, landing) | implementing | `day-3-nine-followups.md` |  |
 
 ## P2
 
@@ -27,7 +28,7 @@ Generated: 2026-10-27 19:38 · repo: `gifts-registry`
 |------|-------|--------|------|------|
 | 3 | Gift card (F10) — group card with every gift-giver's name and message | implementing | `gift-card-f10.md` |  |
 | 6 | Photo to cutout candidates on SAM 3.1 (intake and card art) | ready | `vision-cutout-intake.md` |  |
-| 7 | Post-event reveal of secret suggestions (F14) | ready | `post-event-reveal.md` |  |
+| 7 | Post-event reveal of secret suggestions (F14) | implementing | `post-event-reveal.md` |  |
 | 8 | User management, the path to paid, and which open source to adopt | ready | `user-management-and-billing-path.md` | 1. **D4, the owner session.** Bot-minted or script-minted for the recording? Decide with the cast on day 7. |
 
 ## P3

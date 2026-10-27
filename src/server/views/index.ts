@@ -1,6 +1,6 @@
 import type { Tx } from '@/server/db/client';
 import { formatMinor } from '@/lib/money';
-import { birthdayLabel, countdownLabel, humanDate, zoneDay } from '@/lib/dates';
+import { birthdayLabel, countdownLabel, daysUntil, humanDate, zoneDay } from '@/lib/dates';
 
 /**
  * The only place that knows which fields a role may see. RLS decides which *rows* exist for
@@ -76,6 +76,8 @@ export interface FriendItemView {
   secret: boolean;
   addedByMe: boolean;
   claimedByMe: boolean;
+  /** F14: a friend may hand this secret suggestion over now — event passed, no author veto. */
+  canReveal: boolean;
   pool: {
     id: string;
     target: string;
@@ -169,6 +171,8 @@ export async function friendCircleView(tx: Tx, circleId: string, viewerUserId: s
         secret: item.visibility === 'friend_only',
         addedByMe: item.addedByUserId === viewerUserId,
         claimedByMe: myClaim !== null,
+        canReveal: item.status === 'active' && item.visibility === 'friend_only' && item.revealOk
+          && circle.eventDate !== null && daysUntil(circle.eventDate.toISOString().slice(0, 10), zoneDay(now)) < 0,
         pool:
           pool === null
             ? null

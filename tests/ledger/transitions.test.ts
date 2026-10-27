@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { Actor, Db } from '@/server/db/client';
-import { addItem, claimItem, contribute, createCircle, createPool, markPaid, purchasePool, releaseClaim, tombstoneItem } from '@/server/ledger';
+import { addItem, claimItem, contribute, createCircle, createPool, markPaid, purchasePool, releaseClaim, revealItem, tombstoneItem } from '@/server/ledger';
 import { friendCircleView, ownerCircleView } from '@/server/views';
 import { seedCircle, type CircleFixture } from '../leak/fixtures';
 
@@ -349,33 +349,81 @@ describe('ledger transitions through actor-scoped transactions', () => {
     expect(await db.withActor(buyer, (tx) => tx.contribution.count({ where: { poolId: pool.id } }))).toBe(0);
   });
 
-  it('reports circle creation blocked by the missing owner-membership INSERT policy', async () => {
+  it('creates a circle with its owner membership and hashed invites, never an ownerless circle', async () => {
     await expect(db.withActor(owner(), (tx) => tx.membership.create({ data: {
       circleId: fx.circleId, userId: fx.outsiderUserId, role: 'owner',
     } }))).rejects.toThrow('row-level security');
     const actor: Actor = { ...owner(), circleId: null };
-    const before = await db.withActor(actor, (tx) => tx.circle.count());
-    await expect(db.withActor(actor, (tx) => createCircle(tx, actor, {
+    const phoneHash = 'a'.repeat(64);
+    const circle = await db.withActor(actor, (tx) => createCircle(tx, actor, {
       name: 'A new celebration', occasion: 'birthday', eventDate: new Date('2027-01-15T00:00:00Z'),
-      phoneHashes: ['a'.repeat(64)],
-    }))).rejects.toThrow('ledger_policy_blocked:circle_membership');
-    expect(await db.withActor(actor, (tx) => tx.circle.count())).toBe(before);
+      phoneHashes: [phoneHash],
+    }));
+    try {
+      expect(circle.ownerUserId).toBe(actor.userId);
+      expect(circle.shareSlug).toMatch(/^a-new-celebration-[a-f0-9]{8}$/);
+      const stored = await db.prisma.circle.findUniqueOrThrow({
+        where: { id: circle.id },
+        include: { memberships: true, allowlist: true, ledgerEvents: true },
+      });
+      expect(stored.memberships).toEqual([expect.objectContaining({ userId: actor.userId, role: 'owner', status: 'active' })]);
+      expect(stored.allowlist).toEqual([expect.objectContaining({ phoneE164Hash: phoneHash, addedBy: actor.userId })]);
+      expect(stored.ledgerEvents.map((row) => row.action)).toContain('circle.created');
+      // The new owner reads their own circle back scoped; a friend of another circle cannot.
+      const scoped: Actor = { ...actor, circleId: circle.id };
+      expect(await db.withActor(scoped, (tx) => tx.circle.findFirst({ where: { id: circle.id }, select: { id: true } }))).not.toBeNull();
+    } finally {
+      await db.prisma.circle.delete({ where: { id: circle.id } });
+    }
   });
 
-  it('refuses an owner tombstone when the same transaction cannot pivot surviving pools', async () => {
+  it('tombstones an owner item and pivots its surviving pool without reading pool state', async () => {
     const actor = owner();
     expect(await db.withActor(actor, (tx) => tx.pool.updateMany({
       where: { id: fx.poolId }, data: { status: 'pivot_needed' },
     }))).toEqual({ count: 0 });
-    const before = await db.withActor(actor, (tx) => ownerCircleView(tx, fx.circleId));
-    const pool = await db.withActor(friend(), (tx) => tx.pool.findUnique({ where: { id: fx.poolId } }));
-    await expect(db.withActor(actor, (tx) => tombstoneItem(tx, actor, fx.itemOwnId, 'bought_self')))
-      .rejects.toThrow('ledger_policy_blocked:tombstone_pool_pivot');
-    expect(await db.withActor(actor, (tx) => ownerCircleView(tx, fx.circleId))).toEqual(before);
-    expect(await db.withActor(friend(), (tx) => tx.pool.findUnique({ where: { id: fx.poolId } }))).toEqual(pool);
+    const item = await db.withActor(actor, (tx) => addItem(tx, actor, { title: 'Soon deleted', currency: 'ZAR' }));
+    const pool = await db.withActor(friend(), (tx) => createPool(tx, friend(), item.id, 5000));
+    const tombstoned = await db.withActor(actor, (tx) => tombstoneItem(tx, actor, item.id, 'bought_self'));
+    expect(tombstoned).toMatchObject({ id: item.id, status: 'tombstoned', tombstoneReason: 'bought_self' });
+    const ownerView = await db.withActor(actor, (tx) => ownerCircleView(tx, fx.circleId));
+    expect(ownerView?.items.map((row) => row.id)).not.toContain(item.id);
+    const friendView = await db.withActor(friend(), (tx) => friendCircleView(tx, fx.circleId, fx.friendAUserId));
+    expect(friendView?.items.find((row) => row.id === item.id)).toMatchObject({ status: 'tombstoned', tombstoneReason: 'bought_self' });
+    expect(await db.withActor(friend(), (tx) => tx.pool.findUnique({ where: { id: pool.id }, select: { status: true } })))
+      .toEqual({ status: 'pivot_needed' });
     expect(await db.withActor(actor, (tx) => tx.ledgerEvent.count({
-      where: { entityId: fx.itemOwnId, action: 'item.tombstoned' },
-    }))).toBe(0);
+      where: { entityId: item.id, action: 'item.tombstoned' },
+    }))).toBe(1);
+  });
+
+  it('reveals a secret suggestion only after the event, never against the author veto or by the owner', async () => {
+    const secret = await db.withActor(friend(), (tx) => addItem(tx, friend(), {
+      title: 'Secret reveal candidate', currency: 'ZAR',
+    }));
+    // Before the day (fixture event is 2026-12-05): the same indistinguishable no as "not yours".
+    await expect(db.withActor(friend(), (tx) => revealItem(tx, friend(), secret.id, '2026-12-05')))
+      .rejects.toThrow('ledger_not_found');
+    // The owner cannot fish for a reveal, even after the day.
+    await expect(db.withActor(owner(), (tx) => revealItem(tx, owner(), secret.id, '2026-12-06')))
+      .rejects.toThrow('ledger_role_denied');
+    const revealed = await db.withActor(friend(), (tx) => revealItem(tx, friend(), secret.id, '2026-12-06'));
+    expect(revealed).toMatchObject({ status: 'revealed', revealedByUserId: fx.friendAUserId });
+    expect(revealed.revealedAt).not.toBeNull();
+    const ownerView = await db.withActor(owner(), (tx) => ownerCircleView(tx, fx.circleId));
+    expect(ownerView?.items.map((row) => row.id)).toContain(secret.id);
+    // A second reveal is not a state that exists.
+    await expect(db.withActor(friend(), (tx) => revealItem(tx, friend(), secret.id, '2026-12-06')))
+      .rejects.toThrow('ledger_not_found');
+
+    const vetoed = await db.withActor(friend(), (tx) => addItem(tx, friend(), {
+      title: 'Never reveal this', currency: 'ZAR',
+    }));
+    await db.prisma.item.update({ where: { id: vetoed.id }, data: { revealOk: false } });
+    await expect(db.withActor(friend(), (tx) => revealItem(tx, friend(), vetoed.id, '2026-12-06')))
+      .rejects.toThrow('ledger_not_found');
+    const afterVeto = await db.withActor(owner(), (tx) => ownerCircleView(tx, fx.circleId));
+    expect(afterVeto?.items.map((row) => row.id)).not.toContain(vetoed.id);
   });
 
   it('denies owners posing as friends, removed or unrelated memberships, and mismatched actor arguments', async () => {

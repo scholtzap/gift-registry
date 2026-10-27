@@ -23,6 +23,7 @@ const friendView: FriendCircleView = {
       secret: false,
       addedByMe: false,
       claimedByMe: false,
+      canReveal: false,
       pool: null,
     },
     {
@@ -35,6 +36,7 @@ const friendView: FriendCircleView = {
       secret: true,
       addedByMe: true,
       claimedByMe: true,
+      canReveal: false,
       pool: {
         id: 'grinder-pool',
         target: 'R4 200.00',
@@ -57,6 +59,7 @@ const friendView: FriendCircleView = {
       secret: false,
       addedByMe: false,
       claimedByMe: true,
+      canReveal: false,
       pool: {
         id: 'pan-pool',
         target: 'R2 400.00',
