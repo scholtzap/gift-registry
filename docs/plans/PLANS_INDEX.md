@@ -8,7 +8,7 @@
 python scripts/ops/refresh_plans_index.py --write
 ```
 
-Generated: 2026-10-27 08:09 · repo: `gifts-registry`
+Generated: 2026-10-27 08:16 · repo: `gifts-registry`
 
 ## P1
 
@@ -37,4 +37,5 @@ Generated: 2026-10-27 08:09 · repo: `gifts-registry`
 |------|-------|--------|------|------|
 | 9 | Public landing page at / and the /app route move | ready | `public-landing-page.md` | - Unlisted YouTube (needs network during Nov 5–8 judging) or self-hosted MP4 on the VM (bandwidth we do not have much |
 | 40 | Deferred feature spikes (deal-finding, coordination agent, SAM duplicates) | backlog | `deferred-feature-spikes.md` |  |
+| 900 | Registry network - discovery, public visibility, and the deviations from the shipped spine | draft | `registry-network-discovery-deviations.md` | - Is per-person persistence worth the schema change before the hackathon verdict, or is it post-submission v1.2? |
 
