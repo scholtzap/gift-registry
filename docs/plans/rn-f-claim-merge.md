@@ -81,6 +81,27 @@ countdown build owns that surface. One file per agent; do not run `refresh_plans
 
 Any change to what a *normal* owner sees. Migrating a proxy circle's ledger. Deleting a proxy circle. Billing.
 
+## External gate — OTP template cannot be created yet (verified 2026-10-27)
+
+The owner registered a WhatsApp Business account (WABA `1125407990451257`, Scholtz.Work) and
+attempted to create the `gift_circles_otp` authentication template in WhatsApp Manager. Meta
+refused at creation: *"This WhatsApp Business account does not have permission to create
+message template."* That exact string is Meta's authentication-category rejection, not a
+UI-assignment error: since mid-September 2025, creating AUTHENTICATION templates requires
+(1) completed Meta **Business Verification** and (2) a sustained messaging history at the
+2,000-conversation tier (reported as at least 30 consecutive days of high-quality sending;
+provider notices: Wati product update 2025-09, GREEN-API authentication-template FAQ). A
+WABA created today meets neither, and the 30-day history cannot exist before the
+2026-11-04 submission deadline even if verification starts immediately.
+
+**Consequence, per this track's fail criteria — STOP, do not build a fake:** RN-F does not
+ship in the submission window. The demo loop already excludes OTP
+(`docs/plans/demo-video-validation.md`). Discriminating check still owed by the owner: a
+UTILITY template should submit fine on the same account; if it also fails, the asset
+assignment (Full control on the WABA) needs fixing first. Post-submission path: complete
+Business Verification now, build legitimate message history, then create the template and
+build this track. The promotion design in this file is unchanged and waits.
+
 ## Blocks / gated by
 
 Blocks RN-G (the bot cannot offer a find-a-friend task that has no promotion path). Gated by RN-C for the proxy

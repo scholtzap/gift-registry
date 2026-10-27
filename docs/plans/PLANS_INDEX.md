@@ -8,7 +8,7 @@
 python scripts/ops/refresh_plans_index.py --write
 ```
 
-Generated: 2026-10-27 23:14 · repo: `muse-fix10`
+Generated: 2026-10-27 23:19 · repo: `muse-fix10`
 
 ## P1
 
