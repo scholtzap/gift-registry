@@ -36,6 +36,7 @@ gifts-registry/
     worker.ts               # pg-boss ingest consumer and shutdown lifecycle
     generated/prisma/       # Generated and ignored
   public/                   # Private-route stylesheet, optional card-preview JS, brand assets
+  site/                     # gifts.scholtz.work: static Pages site + contact Function (wrangler direct upload)
   tests/                    # RLS/views/routes, backend, screens and Chromium browser flows
     fixtures/               # Fictional WhatsApp/model and synthetic vision inputs
   scripts/                  # Policy application and fictional seed

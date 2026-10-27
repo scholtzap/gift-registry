@@ -38,6 +38,9 @@ amount inputs instead of cents, no-break money formatting. `DESIGN.md` is rewrit
 3. **Mock the remaining screens in Stitch** (join, owner list, card composer) with the Paper Fiesta design
    system, one generation at a time, before restyling them further.
 4. ~~**Card PNG typeface.**~~ Done 2026-10-28: Bricolage Grotesque 800 + DM Sans 400 TTFs.
+6. **Website:** gifts.scholtz.work built from Stitch project `14059390649242850617` in `site/`, deployed to
+   Pages project `pinata-gifts` (live at pinata-gifts.pages.dev). Open: the `gifts` CNAME in the scholtz.work
+   zone (the Pages-only token cannot write DNS), and the app is not public yet, so the CTA is the contact form.
 5. **Currency:** done 2026-10-28 — USD default, USD/ZAR/EUR/GBP per item. Open: a circle-level default
    currency, and the WhatsApp intake still drafts in ZAR (`draftSchema` literal).
 
