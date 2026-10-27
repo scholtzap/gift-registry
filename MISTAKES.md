@@ -2,6 +2,13 @@
 
 Agent error log. Newest entry first. No secrets, tokens, env dumps, or credentialed URLs.
 
+## 2026-10-27 — Read the Agent Projects Board too broadly and hit schema errors first
+
+**What happened:** Creating the board rows for PRs #2 and #3 started with a wrong `range` argument and integer cell values against the Sheets MCP (validation errors), then read `Tasks!A1:Z60` and `Tasks!A1:E250` — a 105k-character result — just to find the first free row and confirm no Piñata row existed.
+**Impact:** Tool-schema retries and a transcript-flooding sheet dump that cost context for a two-cell answer; the final narrow reads (`A183:B200`) were all the task ever needed.
+**Fix:** Located the free rows (183, then 184) with first-column-only ranges and wrote the rows with all-string values.
+**Do not repeat:** For board writes, probe the Task ID column narrowly first, load the exact tool schema before the first call, and pass strings for every cell — never read full rows to find an empty one.
+
 ## 2026-10-27 — Switched this worktree to pre-app `main` during branch cleanup
 
 **What happened:** After deleting the merged topic branches, I switched this worktree to `main` before deleting the local branch refs. This repo's `main` predates the Piñata app, so the tracked product tree immediately appeared as untracked `src/`, browser-build, and test-result paths.
