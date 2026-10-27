@@ -2,6 +2,12 @@
 
 Agent error log. Newest entry first. No secrets, tokens, env dumps, or credentialed URLs.
 
+## 2026-10-27 — Used a declaration line as an Edit anchor and deleted the declaration
+**What happened:** inserting `DateLine`/`EventDateForm` into `src/components/ui.tsx` and the `/date` branch into `src/server/routes/circle.ts` with an anchor that was the *next* export's signature (and `if (cardMatch) {`) dropped that line from the file. Twice in one build.
+**Impact:** two broken files that only `tsc` caught later, and one confusing "export vanished" diff.
+**Fix:** re-added the swallowed lines in the following edit and grepped the export list before running the suite. Full suite then passed 430 cases.
+**Do not repeat:** an insertion anchor must be re-emitted verbatim inside `new_string`, or anchor on a blank line/comment instead of on the code you intend to keep.
+
 ## 2026-10-27 — An inherited grant expiry could undo a user opt-out
 **What happened:** capability toggles changed enabled/source but retained expiresAt; the gate ignored expired user rows and fell back to the granting plan.
 **Impact:** a user's explicit refusal could later permit model spending. Three real PostgreSQL regressions reproduced the failure, including an already-expired user opt-out.

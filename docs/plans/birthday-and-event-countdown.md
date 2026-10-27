@@ -1,7 +1,7 @@
 ---
 title: Two dates, and a countdown that does not spoil the gift
 type: spec
-status: ready
+status: done
 priority: P1
 rank: 11
 updated: 2026-10-27
@@ -15,7 +15,9 @@ superseded_by: null
 
 # Two dates, and a countdown that does not spoil the gift
 
-**Status:** Ready to build. Nothing here is implemented yet.
+**Status:** Built on 2026-10-27 on `feat/two-dates-countdown`. What was built, and the four places
+it departed from this spec, are at the bottom — read those before re-deriving the rules from the
+table above.
 
 ## Problem
 
@@ -118,7 +120,7 @@ One native form, no JavaScript, on the existing `/c/<slug>` route surface:
   secret; an owner overwriting makes it known again. This is intentional and it is the whole
   model, so it needs a test in both directions.
 - Validation at the boundary, like every other write here: Origin check (`isSameOrigin`),
-  `YYYY-MM-MM`-shaped string parsed and range-checked, 422 re-render on failure with the value
+  `YYYY-MM-DD`-shaped string parsed and range-checked, 422 re-render on failure with the value
   preserved, 303 to the ledger on success. Never a 403.
 
 ## Success criteria
@@ -166,3 +168,51 @@ The column still records the writer (`event_date_set_by_user_id`) because the se
 it, but no screen reads it for display. Naming a person on a surprise is a small spoiler risk if a
 screenshot of the friend ledger reaches the owner, and nothing about coordinating the gift needs
 the name.
+
+## What was built (2026-10-27)
+
+All seven success criteria hold. `pnpm test` 430 passed (was 393; +15 countdown, +7 leak, +9
+projection/POST cases, +4 screen), `pnpm typecheck` clean, `pnpm build` clean, and Playwright is
+12 flows green — the twelfth is new, see deviation 4.
+
+- Migration `20261027150000_two_dates_and_the_countdown` (expand-only), schema, both projections,
+  `src/lib/dates.ts`, `setEventDate` in the ledger, `POST /c/<slug>/date`, `DateLine` and
+  `EventDateForm` in `ui.tsx`, both ledger screens, `scripts/seed.ts`.
+- Red-proof: not a TDD ordering claim. After building, `ownerCircleView`'s writer comparison was
+  replaced with `true` and re-run: both owner-side leak cases and the owner-blind projection case
+  failed on a leaked `<time dateTime="2026-12-19">` and the leaked `value=` in the form, then
+  passed again on revert. `LEAK_SKIP_POLICIES=1` deliberately does *not* turn this suite red — the
+  secrecy here is a column right and dropping RLS removes only the row right under it.
+
+**Deviation 1 — the writer CHECK is one-directional.** This spec asked for "null exactly when
+`event_date` is null". The FK is `ON DELETE SET NULL`, so a two-way equality would make deleting a
+friend who wrote the date fail outright. The shipped constraint is
+`event_date_set_by_user_id IS NULL OR event_date IS NOT NULL`: a writer implies a date, a date does
+not imply a writer. A null writer is read by `ownerCircleView` as "not the owner", which hides the
+date from the owner — the safe direction for a surprise.
+
+**Deviation 2 — the write goes through `app_set_event_date(date)`, not a friend UPDATE policy.**
+RLS had no friend write policy on `circles` at all, and a policy cannot pin columns: giving friends
+an UPDATE policy to enable this one field would also let them rename the circle, change
+`share_slug` (the URL that must never move), archive the circle, or forge
+`event_date_set_by_user_id`. The shipped path is a `SECURITY DEFINER` function that takes a date
+and nothing else, sets both columns, is restricted to the session's own circle id, requires
+ownership-or-membership inside the function, and is `REVOKE ... FROM PUBLIC` plus granted to
+`app_owned`/`app_friend` only. It is the first *write* function in this file — `SECURITY DEFINER`
+was already the established shape for the scope helpers (`app_user_id`, `app_actor_owns_circle`),
+chosen for the same reason: they read tables the caller has no policy on.
+
+**Deviation 3 — the pure module is `src/lib/dates.ts`, not beside the views.** `src/lib` is where
+the project's pure, unauthenticated helpers already live (`env.ts`, `money.ts`); `src/server/views`
+is the authenticated read side, and the countdown has no business reading a database.
+
+**Deviation 4 — the browser suite grew to 12 flows.** Criterion 5 only demanded the existing 11
+stay green. The extra one posts the party date with `javaScriptEnabled: false`, asserts the 303,
+asserts the friend then sees `Sat 19 Dec` and a countdown, and asserts the owner sees neither the
+date nor any explanation — the live proof the demo video needs, since this feature is invisible
+from a view-object assertion.
+
+Also: the owner-facing copy never mentions a friend setting a date (the hint is just "The day the
+gift is handed over."), and the POST cases landed in `tests/routes/circle-actions.test.ts`, which
+already owns the `post()` helper, rather than `circle-link.test.ts`.
+

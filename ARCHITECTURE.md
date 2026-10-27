@@ -111,6 +111,10 @@ Amounts are integer minor units with explicit ZAR currency. Unknown item prices 
 
 Policy SQL is applied separately after migrations. RLS scopes rows; safe-column grants on `users` protect phone/BSUID columns. `app.user_id` and `app.circle_id` are transaction-local settings; there is no `app.role` authorization setting. Friend-circle predicates exclude the actual owner, require active membership/circle and bind to the actor's selected circle. Owner ledger-event reads are limited to the owner's own events. Card entries are writable only by their contributor.
 
+RLS cannot express a column that some roles may see and others may not, so column secrecy is decided in the projection builder and proved against the rendered HTML. `circles.event_date` is the first case: the owner sees it only when they wrote it, which is `ownerCircleView` plus a leak test, not a policy ([two dates and the countdown](docs/plans/birthday-and-event-countdown.md)). Writes that a role has no policy for go through a narrow `SECURITY DEFINER` function — `app_set_event_date(date)` takes a date and nothing else, because a friend UPDATE policy on `circles` would also permit renaming the circle or moving `share_slug`.
+
+Migrations are hand-written expand-only SQL. Prisma 7.10.1 dropped `migrate diff --shadow-database-url`, so drift is checked against the live dev database: `prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --script` must print an empty migration. `CHECK` constraints exist only in migration SQL — 7.10.1 does not introspect them, so a future `migrate dev` may propose dropping them.
+
 ### 4.2. Private Files and Queue
 
 `MEDIA_DIR/ingest` holds promptly acquired media using validated database UUID filenames and private atomic writes. Vision outputs also publish completed temporary files atomically. Application-controlled storage is required; crash recovery, hostile-local-filesystem behavior and scheduled media expiry cleanup are not certified.
