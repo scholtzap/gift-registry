@@ -14,11 +14,11 @@ Agent error log. Newest entry first. No secrets, tokens, env dumps, or credentia
 **Fix:** dates on screen now come from `<EventDate>` (UTC, computed); DESIGN.md tells agents to re-check numbers and weekdays in any mock.
 **Do not repeat:** compute weekdays and day counts with code before putting them in a prompt or a reply.
 
-## 2026-10-27 — Parallel Stitch generations in one project were silently dropped
-**What happened:** three `generate_screen_from_text` calls were fired at once into one Stitch project; all three timed out client-side and only one screen was ever created.
-**Impact:** about ten minutes of waiting on screens that did not exist; `list_screens` returning `{}` hid it.
-**Fix:** generations re-run one at a time, each confirmed by the project's `updateTime` advancing. The rule is now in the global `stitch-ui-designer` skill.
-**Do not repeat:** one Stitch generation per project at a time; treat a timeout as "still running", and verify by `updateTime`, not `list_screens`.
+## 2026-10-27 — Parallel Stitch generations looked dropped, then landed late as duplicates
+**What happened:** three `generate_screen_from_text` calls were fired at once into one Stitch project; all three timed out client-side and only one screen showed for 10+ minutes, so two were re-run. On 2026-10-28 `get_project` listed five list screens: the "dropped" two had been queued and finished late.
+**Impact:** wasted waiting, duplicate screens in the project, and a wrong "silently dropped" claim written into this log and the skill (corrected here and in skills PR #60).
+**Fix:** generations run one at a time; before re-running a "missing" screen, check `get_project` → `screenInstances`, not `list_screens` (which returned `{}`).
+**Do not repeat:** one Stitch generation per project at a time, and never conclude "dropped" from an empty `list_screens`.
 
 ## 2026-10-27 — Read the Agent Projects Board too broadly and hit schema errors first
 

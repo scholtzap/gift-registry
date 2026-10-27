@@ -20,7 +20,8 @@ import { AI_CAPABILITIES, assertCan, CAPABILITY_COPY, CapabilityOffError, setCap
 import { addItem, claimItem, contribute, createPool, markPaid, purchasePool, releaseClaim, revealItem, setEventDate } from '@/server/ledger';
 import { isCalendarDate } from '@/lib/dates';
 import { env } from "@/lib/env";
-import { parseRandToMinor } from "@/lib/money";
+import { CURRENCIES, parseAmountToMinor } from "@/lib/money";
+import { PHOTO_MAX_BYTES, PhotoRejectedError, deletePhoto, readPhoto, storePhoto } from "@/server/photos";
 import { isArchived } from "@/server/lifecycle";
 
 // Native-form HTML uses Node SSR, not the App Route's react-server export condition.
@@ -186,14 +187,14 @@ const draftSchema = z.object({
 const centsSchema = z.string().regex(/^(0|[1-9]\d*)$/).transform(Number).pipe(z.number().int().min(0).max(2147483647));
 const positiveCentsSchema = centsSchema.pipe(z.number().positive());
 
-// Forms post rands ("R 400", "99,50"); the integer-cents field stays accepted for callers that
-// already send it. The result is a cents string for `centsSchema`, '' for blank, or a value
-// that fails it.
-function minorField(fields: FormData, randName: string, minorName: string): FormDataEntryValue | null {
-  const rand = fields.get(randName);
-  if (rand === null) return fields.get(minorName);
-  if (String(rand).trim() === '') return '';
-  const minor = parseRandToMinor(rand);
+// Forms post amounts as people type them in the item's currency ("$400", "R 99,50"); the
+// integer-cents field stays accepted for callers that already send it. The result is a cents
+// string for `centsSchema`, '' for blank, or a value that fails it.
+function minorField(fields: FormData, amountName: string, minorName: string, currency: string): FormDataEntryValue | null {
+  const typed = fields.get(amountName);
+  if (typed === null) return fields.get(minorName);
+  if (String(typed).trim() === '') return '';
+  const minor = parseAmountToMinor(typed, currency);
   return minor === null ? 'invalid' : String(minor);
 }
 
@@ -245,6 +246,21 @@ async function circleGet(db: Db, request: Request, slug: string): Promise<Respon
     if (cardMatch[2]) return cardPng(db, actor, itemId, new URL(request.url).searchParams.get('variant'));
     return screenResponse('Gift card', createElement(CardComposerScreen, { card, basePath, circle: circleContext }));
   }
+  const photoMatch = pathname.slice(basePath.length).match(/^\/items\/([^/]+)\/photo$/);
+  if (photoMatch) {
+    const itemId = photoMatch[1]!;
+    if (!z.uuid().safeParse(itemId).success) return notFound();
+    // The viewer's own projection decides, so an owner never gets a friend-only item's photo,
+    // and a miss looks the same as an item that does not exist.
+    const visible = actor.role === 'owner'
+      ? (await db.withActor(actor, tx => ownerCircleView(tx, circle.id)))?.items.find(row => row.id === itemId)
+      : (await db.withActor(actor, tx => friendCircleView(tx, circle.id, actor.userId)))?.items.find(row => row.id === itemId);
+    if (!visible?.hasPhoto) return notFound();
+    const row = await db.withActor(actor, tx => tx.item.findFirst({ where: { id: itemId, circleId: circle.id }, select: { imagePath: true } }));
+    const bytes = await readPhoto(env.MEDIA_DIR, row?.imagePath ?? null);
+    if (!bytes) return notFound();
+    return new Response(new Uint8Array(bytes), { headers: headers({ 'Content-Type': 'image/webp', 'Content-Disposition': 'inline' }) });
+  }
   const itemMatch = pathname.slice(basePath.length).match(/^\/items\/([^/]+)$/);
   if (itemMatch) {
     const itemId = itemMatch[1]!;
@@ -288,7 +304,7 @@ function isSameOrigin(request: Request): boolean {
   }
 }
 
-async function readForm(request: Request): Promise<FormData> {
+async function readForm(request: Request, limit = 16_384): Promise<FormData> {
   if (!request.body) throw new Error('missing_form');
   const reader = request.body.getReader();
   const chunks: Uint8Array[] = [];
@@ -298,7 +314,7 @@ async function readForm(request: Request): Promise<FormData> {
       const { done, value } = await reader.read();
       if (done) break;
       length += value.byteLength;
-      if (length > 16_384) {
+      if (length > limit) {
         await reader.cancel();
         throw new Error('form_too_large');
       }
@@ -326,8 +342,12 @@ async function circlePost(db: Db, request: Request, slug: string): Promise<Respo
   if (pathname !== basePath) {
     const actor = await privateActor(db, request, circle.id);
     if (!actor) return notFound();
+    // Only the add-item form may carry a photo, so only it gets a multipart-sized body.
+    const isDraft = pathname === `${basePath}/draft`;
+    const multipart = (request.headers.get('content-type') ?? '').startsWith('multipart/form-data');
+    if (multipart && !isDraft) return notFound();
     let fields: FormData;
-    try { fields = await readForm(request); } catch { return notFound(); }
+    try { fields = await readForm(request, isDraft && multipart ? PHOTO_MAX_BYTES + 65_536 : 16_384); } catch { return notFound(); }
     if (pathname === `${basePath}/date`) {
       if (fields.get('intent') !== 'set_event_date') return notFound();
       const draft = String(fields.get('eventDate') ?? '');
@@ -387,26 +407,39 @@ async function circlePost(db: Db, request: Request, slug: string): Promise<Respo
       if (fields.get('intent') !== 'confirm') return notFound();
       const draft = {
         title: String(fields.get('title') ?? ''), retailer: String(fields.get('retailer') ?? ''),
-        priceMinor: minorField(fields, 'priceRand', 'priceMinor'), currency: fields.get('currency'),
+        priceMinor: minorField(fields, 'priceAmount', 'priceMinor', String(fields.get('currency') ?? '')), currency: fields.get('currency'),
         ingestEventId: fields.get('ingestEventId') ?? undefined,
       };
       const parsed = z.object({
         title: z.string().trim().min(1).max(200), retailer: z.string().trim().max(200),
-        priceMinor: z.union([z.literal(''), centsSchema]).nullable(), currency: z.literal('ZAR'),
+        priceMinor: z.union([z.literal(''), centsSchema]).nullable(), currency: z.enum(CURRENCIES),
         ingestEventId: z.uuid().optional(),
       }).safeParse(draft);
-      if (!parsed.success) return screenResponse('Check item details', createElement(DraftConfirmScreen, {
-        draft: { id: draft.ingestEventId === undefined ? undefined : String(draft.ingestEventId), title: draft.title, retailer: draft.retailer, priceMinor: null, priceRand: String(fields.get('priceRand') ?? ''), currency: String(draft.currency ?? '') }, basePath, role: actor.role,
-        notice: 'Enter a title of up to 200 characters and a price in rand, like 1899 or 249.50, or leave the price blank.',
+      const draftAgain = (notice: string) => screenResponse('Check item details', createElement(DraftConfirmScreen, {
+        draft: { id: draft.ingestEventId === undefined ? undefined : String(draft.ingestEventId), title: draft.title, retailer: draft.retailer, priceMinor: null, priceAmount: String(fields.get('priceAmount') ?? ''), currency: String(draft.currency ?? '') }, basePath, role: actor.role, notice,
       }), 422);
+      if (!parsed.success) return draftAgain('Enter a title of up to 200 characters, a currency, and a price like 1899 or 249.50, or leave the price blank.');
+      // The photo is re-encoded (no EXIF or location) before anything is written to the ledger.
+      const upload = fields.get('photo');
+      let imagePath: string | undefined;
+      if (upload instanceof File && upload.size > 0) {
+        try { imagePath = await storePhoto(env.MEDIA_DIR, upload); }
+        catch (error) {
+          if (error instanceof PhotoRejectedError) return draftAgain('Use a JPEG, PNG or WebP photo under 5 MB, or leave the photo out.');
+          throw error;
+        }
+      }
       try {
         const item = await db.withActor(actor, tx => addItem(tx, actor, {
           title: parsed.data.title, retailer: parsed.data.retailer || undefined,
           priceMinor: typeof parsed.data.priceMinor === 'number' ? parsed.data.priceMinor : undefined,
-          currency: parsed.data.currency, ingestEventId: parsed.data.ingestEventId,
+          currency: parsed.data.currency, ingestEventId: parsed.data.ingestEventId, imagePath,
         }));
+        // A repeated confirm returns the first item; its photo stays, this upload goes.
+        if (imagePath && item.imagePath !== imagePath) await deletePhoto(env.MEDIA_DIR, imagePath);
         return new Response(null, { status: 303, headers: headers({ Location: `${basePath}/items/${item.id}` }) });
       } catch (error) {
+        if (imagePath) await deletePhoto(env.MEDIA_DIR, imagePath);
         if (error instanceof Error && ['ledger_not_found', 'ledger_draft_unavailable'].includes(error.message)) return notFound();
         throw error;
       }
@@ -421,9 +454,11 @@ async function circlePost(db: Db, request: Request, slug: string): Promise<Respo
       const intent = z.enum(['claim', 'release', 'create_pool', 'contribute', 'mark_paid', 'purchase', 'reveal']).safeParse(fields.get('intent'));
       if (!intent.success) return notFound();
       const moneyIntent = intent.data === 'create_pool' || intent.data === 'contribute';
-      const amount = positiveCentsSchema.safeParse(intent.data === 'create_pool' ? minorField(fields, 'targetRand', 'targetMinor') : minorField(fields, 'amountRand', 'amountMinor'));
-      if (moneyIntent && (!amount.success || fields.get('currency') !== 'ZAR')) {
-        return screenResponse(item.title, createElement(ItemDetailScreen, { item, basePath, notice: 'Enter an amount in rand above zero, like 400 or 99.50.' }), 422);
+      // Money is always in the item's currency; a pool inherits it.
+      const moneyCurrency = intent.data === 'create_pool' ? item.currency : item.pool?.currency ?? item.currency;
+      const amount = positiveCentsSchema.safeParse(intent.data === 'create_pool' ? minorField(fields, 'targetAmount', 'targetMinor', moneyCurrency) : minorField(fields, 'pledgeAmount', 'amountMinor', moneyCurrency));
+      if (moneyIntent && (!amount.success || fields.get('currency') !== moneyCurrency)) {
+        return screenResponse(item.title, createElement(ItemDetailScreen, { item, basePath, notice: 'Enter an amount above zero, like 400 or 99.50.' }), 422);
       }
       // RN-E: an archived proxy circle stays readable but takes no new
       // claims or pledges. Settling what already exists (release, mark

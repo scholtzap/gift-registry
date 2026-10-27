@@ -1,5 +1,6 @@
 import type { Tx } from '@/server/db/client';
 import { formatMinor } from '@/lib/money';
+import { isStoredPhoto } from '@/server/photos';
 import { birthdayLabel, countdownLabel, daysUntil, humanDate, zoneDay } from '@/lib/dates';
 import { isRequestLive } from '@/server/lifecycle';
 
@@ -57,6 +58,8 @@ export interface OwnerItemView {
   retailer: string | null;
   price: string | null;
   confirmed: boolean;
+  /** Owner projection: whether the wish has a product photo; the bytes are served by the route. */
+  hasPhoto: boolean;
 }
 
 export interface OwnerCircleView extends CircleDates {
@@ -76,6 +79,11 @@ export interface FriendItemView {
   title: string;
   retailer: string | null;
   price: string | null;
+  /** Friend projection: the item's currency, which any pool on it must use. The owner already
+   * sees the formatted price, so the code exposes nothing new. */
+  currency: string;
+  /** Friend projection: whether the item has a product photo. */
+  hasPhoto: boolean;
   status: 'active' | 'tombstoned' | 'revealed';
   tombstoneReason: string | null;
   secret: boolean;
@@ -133,6 +141,7 @@ export async function ownerCircleView(tx: Tx, circleId: string, now: Date = new 
       retailer: item.retailer,
       price: item.priceMinor === null ? null : formatMinor(item.priceMinor, item.currency),
       confirmed: item.confirmed,
+      hasPhoto: isStoredPhoto(item.imagePath),
     })),
     // Proxy circles have no owner, hence no owner attributes (RN-A D4).
     attributes: (circle.owner?.attributes ?? []).map((a) => ({ kind: a.kind, valueText: a.valueText, unit: a.unit })),
@@ -186,6 +195,8 @@ export async function friendCircleView(tx: Tx, circleId: string, viewerUserId: s
         title: item.title,
         retailer: item.retailer,
         price: item.priceMinor === null ? null : formatMinor(item.priceMinor, item.currency),
+        currency: item.currency,
+        hasPhoto: isStoredPhoto(item.imagePath),
         status: item.status,
         tombstoneReason: item.tombstoneReason,
         secret: item.visibility === 'friend_only',

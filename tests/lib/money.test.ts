@@ -1,51 +1,70 @@
 import { describe, expect, it } from 'vitest';
-import { formatMinor, minorToRandInput, parseRandToMinor } from '@/lib/money';
+import { CURRENCIES, DEFAULT_CURRENCY, currencySymbol, formatMinor, isCurrency, minorToInput, parseAmountToMinor } from '@/lib/money';
 
 describe('formatMinor', () => {
-  it('joins digit groups with a no-break space so an amount never wraps', () => {
-    expect(formatMinor(365000)).toBe('R3 650');
-    expect(formatMinor(123456789)).toBe('R1 234 567.89');
-    expect(formatMinor(365000)).not.toMatch(/ /);
+  it('defaults to US dollars', () => {
+    expect(DEFAULT_CURRENCY).toBe('USD');
+    expect(formatMinor(420000)).toBe('$4,200');
   });
 
-  it('drops .00 on whole rands and keeps cents when there are some', () => {
-    expect(formatMinor(0)).toBe('R0');
-    expect(formatMinor(40000)).toBe('R400');
-    expect(formatMinor(124950)).toBe('R1 249.50');
+  it('formats each supported currency without a breakable space', () => {
+    expect(formatMinor(124950, 'USD')).toBe('$1,249.50');
+    expect(formatMinor(365000, 'ZAR')).toBe('R3 650');
+    expect(formatMinor(123456789, 'ZAR')).toBe('R1 234 567.89');
+    expect(formatMinor(250000, 'EUR')).toBe('€2,500');
+    expect(formatMinor(9950, 'GBP')).toBe('£99.50');
+    for (const code of CURRENCIES) expect(formatMinor(123456700, code)).not.toMatch(/ /);
   });
 
-  it('keeps a non-ZAR code joined to its amount', () => {
-    expect(formatMinor(250000, 'USD')).toBe('USD 2 500');
+  it('drops .00 on whole amounts and keeps cents when there are some', () => {
+    expect(formatMinor(0, 'ZAR')).toBe('R0');
+    expect(formatMinor(40000, 'USD')).toBe('$400');
+  });
+
+  it('keeps an unknown code joined to its amount', () => {
+    expect(formatMinor(250000, 'JPY')).toBe('JPY 2 500');
+    expect(currencySymbol('JPY')).toBe('JPY');
+    expect(isCurrency('JPY')).toBe(false);
   });
 });
 
-describe('parseRandToMinor', () => {
+describe('parseAmountToMinor', () => {
   it.each([
-    ['400', 40000],
-    ['R 400', 40000],
-    ['r400', 40000],
-    ['1 250', 125000],
-    ['1 250', 125000],
-    ['99.5', 9950],
-    ['99,50', 9950],
-    ['0', 0],
-    [' 12.05 ', 1205],
-  ])('reads %j as %i cents', (input, minor) => {
-    expect(parseRandToMinor(input)).toBe(minor);
+    ['400', 'USD', 40000],
+    ['$400', 'USD', 40000],
+    ['USD 400', 'USD', 40000],
+    ['1,250', 'USD', 125000],
+    ['$1,249.50', 'USD', 124950],
+    ['£99.5', 'GBP', 9950],
+    ['R 400', 'ZAR', 40000],
+    ['r400', 'ZAR', 40000],
+    ['1 250', 'ZAR', 125000],
+    ['1 250', 'ZAR', 125000],
+    ['99,50', 'ZAR', 9950],
+    ['€12,05', 'EUR', 1205],
+    ['0', 'USD', 0],
+  ])('reads %j in %s as %i cents', (input, currency, minor) => {
+    expect(parseAmountToMinor(input, currency)).toBe(minor);
   });
 
-  it.each(['', 'R', '1,250', '12.345', '-5', '1e3', '01', 'abc', '400 rand', '999999999'])('rejects %j', (input) => {
-    expect(parseRandToMinor(input)).toBeNull();
+  it.each([
+    ['', 'USD'], ['$', 'USD'], ['1,25', 'USD'], ['12,34,567', 'USD'], ['12.345', 'USD'], ['-5', 'USD'],
+    ['1e3', 'USD'], ['01', 'USD'], ['400 dollars', 'USD'], ['999999999', 'USD'], ['R400', 'USD'],
+    ['1,250', 'ZAR'], ['$400', 'ZAR'], ['400', 'JPY'],
+  ])('rejects %j in %s', (input, currency) => {
+    expect(parseAmountToMinor(input, currency)).toBeNull();
   });
 
   it('rejects anything that is not a string', () => {
-    expect(parseRandToMinor(null)).toBeNull();
-    expect(parseRandToMinor(400)).toBeNull();
+    expect(parseAmountToMinor(null, 'USD')).toBeNull();
+    expect(parseAmountToMinor(400, 'USD')).toBeNull();
   });
 
   it('round-trips with the value an input is prefilled with', () => {
-    for (const minor of [0, 100, 9950, 124950, 420000]) {
-      expect(parseRandToMinor(minorToRandInput(minor))).toBe(minor);
+    for (const code of CURRENCIES) {
+      for (const minor of [0, 100, 9950, 124950, 420000]) {
+        expect(parseAmountToMinor(minorToInput(minor), code)).toBe(minor);
+      }
     }
   });
 });

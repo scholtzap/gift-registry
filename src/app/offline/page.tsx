@@ -16,7 +16,7 @@ export default function OfflinePage() {
   return (
     <Screen
       title="You are offline"
-      lede="Piñata could not reach the server, so this is the cached placeholder page."
+      lede="Piñata can’t reach the server right now."
     >
       <Panel className="pn-stack">
         <h2>Nothing was saved or sent</h2>
@@ -31,7 +31,7 @@ export default function OfflinePage() {
       </Panel>
 
       <EmptyState title="Waiting for a connection" action={<Cta href="/app">Try again</Cta>}>
-        The gift plan stays on the server. This page only tells you the trip did not complete.
+        Your gift plans are safe on the server. Reconnect and try again.
       </EmptyState>
     </Screen>
   );

@@ -11,8 +11,8 @@ export function LandingScreen() {
             Group gifts.<br />Surprise intact.
           </h1>
           <p className="pn-lede">
-            Saying what you want shouldn’t give the surprise away.
-            Friends shouldn’t have to guess who’s buying what.
+            Tell your friends what you’d like and still get a surprise.
+            They see who is buying what; you don’t.
           </p>
           <p className="pn-muted">
             One wishlist link in your WhatsApp group. Friends plan the gift;
@@ -39,7 +39,6 @@ export function LandingScreen() {
             <div className="pn-stack pn-stack-sm">
               <p className="pn-eyebrow">A card, shared by a friend</p>
               <p className="pn-quote pn-quote-human">For the next sunny afternoon.</p>
-              <p className="pn-small pn-muted">The message and the moment are yours.</p>
             </div>
           </Panel>
         </aside>
@@ -48,7 +47,7 @@ export function LandingScreen() {
       <section id="how-it-works" className="pn-stack" aria-labelledby="landing-story-title">
         <div className="pn-stack">
           <p className="pn-eyebrow">From a wish to a wrapped gift</p>
-          <h2 id="landing-story-title">You choose the wish. Friends keep the surprise.</h2>
+          <h2 id="landing-story-title">You pick the wishes. Your friends plan the rest.</h2>
         </div>
         {/* Washes keyed to what each step is about: lilac is a person's own wish or words,
             green is the money the friends pool. Not an alternating pattern. */}

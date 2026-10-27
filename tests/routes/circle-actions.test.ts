@@ -147,22 +147,35 @@ describe('private circle actions', () => {
     expect(events).toEqual([]);
   });
   it('rejects invalid cents and unsupported currency without adding an item', async () => {
-    for (const fields of [{ priceMinor: '-1', currency: 'ZAR' }, { priceMinor: '1.5', currency: 'ZAR' }, { priceMinor: '10', currency: 'USD' }]) {
+    for (const fields of [{ priceMinor: '-1', currency: 'ZAR' }, { priceMinor: '1.5', currency: 'ZAR' }, { priceMinor: '10', currency: 'JPY' }]) {
       const response = await post('/draft', { intent: 'confirm', title: 'Rejected fictional gift', ...fields });
       expect(response.status).toBe(422);
     }
     expect(await fx.db.prisma.item.count({ where: { circleId: fx.circleId, title: 'Rejected fictional gift' } })).toBe(0);
   });
-  it('reads a typed rand price as integer cents and rejects ambiguous amounts', async () => {
-    expect((await post('/draft', { intent: 'confirm', title: 'Rand-typed fictional gift', priceRand: 'R 1 249,50', currency: 'ZAR' })).status).toBe(303);
-    const item = await fx.db.prisma.item.findFirstOrThrow({ where: { circleId: fx.circleId, title: 'Rand-typed fictional gift' } });
-    expect(item.priceMinor).toBe(124950);
-    for (const priceRand of ['1,250', '12.345', 'R', '-5', '1e3']) {
-      const response = await post('/draft', { intent: 'confirm', title: 'Ambiguous rand gift', priceRand, currency: 'ZAR' });
+  it.each([
+    ['ZAR', 'R 1 249,50'],
+    ['USD', '$1,249.50'],
+    ['EUR', '1249,50'],
+    ['GBP', '£1249.5'],
+  ])('reads a typed %s price as integer cents in that currency', async (currency, priceAmount) => {
+    const title = `Typed ${currency} fictional gift`;
+    expect((await post('/draft', { intent: 'confirm', title, priceAmount, currency })).status).toBe(303);
+    const item = await fx.db.prisma.item.findFirstOrThrow({ where: { circleId: fx.circleId, title } });
+    expect(item).toMatchObject({ priceMinor: 124950, currency });
+  });
+  it('rejects ambiguous typed amounts and echoes what was typed', async () => {
+    for (const [priceAmount, currency] of [['1,250', 'ZAR'], ['1,25', 'USD'], ['12.345', 'USD'], ['R', 'ZAR'], ['-5', 'USD'], ['1e3', 'USD']]) {
+      const response = await post('/draft', { intent: 'confirm', title: 'Ambiguous typed gift', priceAmount: priceAmount!, currency: currency! });
       expect(response.status).toBe(422);
-      expect(await response.text()).toContain(`value="${priceRand}"`);
+      expect(await response.text()).toContain(`value="${priceAmount}"`);
     }
-    expect(await fx.db.prisma.item.count({ where: { circleId: fx.circleId, title: 'Ambiguous rand gift' } })).toBe(0);
+    expect(await fx.db.prisma.item.count({ where: { circleId: fx.circleId, title: 'Ambiguous typed gift' } })).toBe(0);
+  });
+  it('defaults a new item to US dollars when no currency is stored', async () => {
+    const column = await fx.db.prisma.$queryRaw<{ column_default: string }[]>`
+      SELECT column_default FROM information_schema.columns WHERE table_name = 'items' AND column_name = 'currency'`;
+    expect(column[0]?.column_default).toContain('USD');
   });
   it('does not confirm another person\'s or a nonexistent ingest event', async () => {
     const response = await post('/draft', { intent: 'confirm', title: 'Not my draft', priceMinor: '', currency: 'ZAR', ingestEventId: crypto.randomUUID() });
@@ -178,17 +191,19 @@ describe('private circle actions', () => {
   });
   it('binds contribution, mark-paid and purchase commands to the item in the URL', async () => {
     for (const intent of ['contribute', 'mark_paid', 'purchase']) {
-      const response = await post(`/items/${fx.itemOwnId}`, { intent, poolId: fx.poolId, amountMinor: '100', currency: 'ZAR' });
+      const response = await post(`/items/${fx.itemOwnId}`, { intent, poolId: fx.poolId, amountMinor: '100', currency: 'USD' });
       expect(response.status).toBe(404);
     }
   });
   it('records a pool contribution and funds it without charging money', async () => {
-    // The form posts rand; integer cents stay accepted for callers that already send them.
-    const response = await post(`/items/${fx.itemOwnId}`, { intent: 'create_pool', targetRand: 'R 100', currency: 'ZAR' });
+    // A pool must use its item's currency; a mismatch is refused before anything is written.
+    expect((await post(`/items/${fx.itemOwnId}`, { intent: 'create_pool', targetAmount: 'R 100', currency: 'ZAR' })).status).toBe(422);
+    // The form posts a typed amount; integer cents stay accepted for callers that already send them.
+    const response = await post(`/items/${fx.itemOwnId}`, { intent: 'create_pool', targetAmount: '$100', currency: 'USD' });
     expect(response.status).toBe(303);
     const pool = await fx.db.prisma.pool.findFirstOrThrow({ where: { itemId: fx.itemOwnId } });
-    expect(pool.targetMinor).toBe(10000);
-    expect((await post(`/items/${fx.itemOwnId}`, { intent: 'contribute', poolId: pool.id, amountMinor: '10000', currency: 'ZAR' })).status).toBe(303);
+    expect(pool).toMatchObject({ targetMinor: 10000, currency: 'USD' });
+    expect((await post(`/items/${fx.itemOwnId}`, { intent: 'contribute', poolId: pool.id, amountMinor: '10000', currency: 'USD' })).status).toBe(303);
     expect((await post(`/items/${fx.itemOwnId}`, { intent: 'mark_paid', poolId: pool.id })).status).toBe(303);
     expect((await fx.db.prisma.pool.findUniqueOrThrow({ where: { id: pool.id } })).status).toBe('funded');
     const contribution = await fx.db.prisma.contribution.findUniqueOrThrow({ where: { poolId_userId: { poolId: pool.id, userId: fx.friendAUserId } } });
