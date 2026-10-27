@@ -32,6 +32,10 @@ vision segmentation, deal discovery on the open web, and group coordination.
 - **The assistant never decides what happens next.** It may generate copy for a status answer or a card message; it
   may not choose a task, change state, or answer anything outside the six bounded tasks. Fixed menu or nothing.
 - **`/c/<slug>` never moves.** That URL is pasted into a WhatsApp group; a test asserts it resolves.
+- **A number lookup always answers 200.** A phone number is a lookup key, never a URL segment. Found and not-found
+  are indistinguishable in status, wording and body shape, and a miss offers a proxy registry rather than reporting
+  absence — so no route in this app may confirm whether a number is registered. A bot reply counts as a lookup
+  response: same rule, including for latency and message length. Ledger: `docs/plans/registry-network-discovery-deviations.md`.
 
 ## Verified platform constraints (do not re-litigate; re-verify before changing)
 
