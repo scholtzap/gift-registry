@@ -107,11 +107,12 @@ function expectNoIntent(html: string, intent: string): void {
   expect(html).not.toContain(`value="${intent}"`);
 }
 
-function integerInput(form: string, name: string): string {
+// Amounts are typed in rand; the server parses them to integer cents.
+function randInput(form: string, name: string): string {
   const input = Array.from(form.matchAll(/<input\b[^>]*>/g), (match) => match[0])
     .find((tag) => tag.includes(`name="${name}"`));
-  expect(input, `integer input for ${name}`).toBeDefined();
-  for (const attribute of ['type="number"', 'min="1"', 'step="1"', 'required=""']) {
+  expect(input, `rand input for ${name}`).toBeDefined();
+  for (const attribute of ['type="text"', 'inputMode="decimal"', 'required=""']) {
     expect(input).toContain(attribute);
   }
   expect(input).not.toMatch(/\bvalue="/);
@@ -122,10 +123,10 @@ describe('ItemDetailScreen public friend render', () => {
   it('renders the literal tombstone/pivot fixture and preserves its ledger', () => {
     const html = render(pivotItem);
     expect(html).toContain('Fictional espresso grinder');
-    expect(html).toContain('No longer on the list');
+    expect(html).toContain('No longer on their list');
     expect(html).toContain('They bought this themselves.');
-    expect(html).toContain('Choose a different gift');
-    expect(html).toContain('Existing contributions stay recorded');
+    expect(html).toContain('This pool needs a new plan');
+    expect(html).toContain('Pledges stay recorded');
     expect(html).toContain('R800.00');
     expect(html).toContain('R2 400.00');
     expect(html).toContain('pn-banner');
@@ -141,40 +142,41 @@ describe('ItemDetailScreen public friend render', () => {
 
   it('renders buyer-only purchase controls from the literal funded fixture', () => {
     const html = render(buyerItem);
-    expect(html).toContain('You are the buyer');
+    expect(html).toContain('You’re the buyer');
     expect(formFor(html, 'purchase')).toContain('I bought this gift');
     expectNoIntent(html, 'contribute');
-    expect(formFor(html, 'mark_paid')).toContain('Mark my contribution as paid');
-    expect(html).toContain('Hidden from the recipient');
-    expect(html).toContain('You suggested this');
+    expect(formFor(html, 'mark_paid')).toContain('I’ve paid my pledge');
+    expect(html).toContain('Secret idea · hidden from them');
+    expect(html).toContain('Your idea');
     expect(html).toContain(`href="${basePath}/items/gift-buyer/card"`);
   });
 
   it('never offers purchase to a friend who is not the buyer', () => {
     const html = render({ ...buyerItem, pool: { ...buyerItem.pool!, iAmBuyer: false } });
     expectNoIntent(html, 'purchase');
-    expect(html).toContain('Only the assigned buyer can record the purchase.');
+    expect(html).toContain('Only the buyer can record the purchase.');
   });
 
-  it('offers claim and a required integer ZAR pool target without inventing availability', () => {
+  it('offers claim and a required rand pool target without inventing availability', () => {
     const html = render(soloItem);
-    expect(formFor(html, 'claim')).toContain('Claim this gift');
+    expect(formFor(html, 'claim')).toContain('I’ll buy it myself');
     const poolForm = formFor(html, 'create_pool');
-    integerInput(poolForm, 'targetMinor');
+    randInput(poolForm, 'targetRand');
     expect(poolForm).toContain('name="currency" value="ZAR"');
-    expect(html).toContain('Pool target in cents');
-    expect(html).toContain('10000 means R100.00');
-    expect(html).toContain('Only available gifts can be claimed or pooled.');
+    expect(html).toContain('Pool target');
+    expect(html).not.toMatch(/cents/i);
     expect(html).not.toContain('Unclaimed');
+    expect(html).not.toContain('Up for grabs');
     expect(html).not.toContain('R0.00');
   });
 
-  it('requires positive whole-number contribution amounts with an associated label and hint', () => {
+  it('requires a rand contribution amount with an associated label and hint', () => {
     const html = render(contributorItem);
-    const form = formFor(html, 'contribute');
-    const input = integerInput(form, 'amountMinor');
+    const form = forms(html).find((candidate) => candidate.includes('class="pn-input"') && candidate.includes('value="contribute"'));
+    expect(form, 'typed contribution form').toBeDefined();
+    const input = randInput(form!, 'amountRand');
     expect(form).toContain('name="currency" value="ZAR"');
-    expect(form).toContain('Your contribution in cents');
+    expect(form).toContain('Or your own amount');
     const id = input.match(/\bid="([^"]+)"/)?.[1];
     const hintId = input.match(/aria-describedby="([^"]+)"/)?.[1];
     expect(id).toBeDefined();
@@ -202,7 +204,7 @@ describe('ItemDetailScreen public friend render', () => {
 
   it('offers release, not a new claim or pool, for my existing solo claim', () => {
     const html = render({ ...soloItem, claimedByMe: true });
-    expect(formFor(html, 'release')).toContain('Release my claim');
+    expect(formFor(html, 'release')).toContain('Let someone else take it');
     expectNoIntent(html, 'claim');
     expectNoIntent(html, 'create_pool');
   });
@@ -215,14 +217,14 @@ describe('ItemDetailScreen public friend render', () => {
 
   it('keeps solo release available on an inactive gift without erasing its history', () => {
     const html = render({ ...soloItem, status: 'tombstoned', claimedByMe: true });
-    expect(formFor(html, 'release')).toContain('Release my claim');
+    expect(formFor(html, 'release')).toContain('Let someone else take it');
     expectNoIntent(html, 'claim');
     expectNoIntent(html, 'create_pool');
   });
 
   it('shows an explicitly purchased pool without offering new money or purchase mutations', () => {
     const html = render({ ...buyerItem, pool: { ...buyerItem.pool!, status: 'purchased' } });
-    expect(html).toContain('Gift purchased');
+    expect(html).toContain('Bought');
     expectNoIntent(html, 'claim');
     expectNoIntent(html, 'create_pool');
     expectNoIntent(html, 'contribute');
@@ -241,7 +243,7 @@ describe('ItemDetailScreen public friend render', () => {
 
   it('blocks new contributions on a pivot even when the item is still active', () => {
     const html = render({ ...pivotItem, status: 'active', tombstoneReason: null });
-    expect(html).toContain('Choose a different gift');
+    expect(html).toContain('This pool needs a new plan');
     expectNoIntent(html, 'claim');
     expectNoIntent(html, 'create_pool');
     expectNoIntent(html, 'contribute');
@@ -260,16 +262,16 @@ describe('ItemDetailScreen public friend render', () => {
 
   it('does not infer my payment or purchase from formatted settled money', () => {
     const html = render({ ...buyerItem, pool: { ...buyerItem.pool!, status: 'open', settled: 'R1 800.00' } });
-    expect(html).toContain('Settled total');
-    expect(html).toContain('Your contribution amount and payment status are not shown here.');
-    expect(html).toContain('Mark paid only if you already pledged and sent that money outside Piñata.');
+    expect(html).toContain('R1 800.00</span> settled of');
+    expect(html).toContain('Your own pledge and payment status are not shown here.');
+    expect(html).toContain('Mark paid only once you pledged and sent that money outside Piñata.');
     expect(html).toContain('Settled is not the same as marked paid');
     expect(html).not.toContain('You have paid');
-    expect(html).not.toContain('Gift purchased');
+    expect(html).not.toMatch(/>✓ <\/span>Bought</);
     expect(html).not.toContain('name="paid"');
     expect(html).not.toContain('<progress');
     expectNoIntent(html, 'purchase');
-    expect(html).toContain('Purchase can be recorded when the pool is funded.');
+    expect(html).toContain('You can record it once the pool is full.');
   });
 
   it('escapes item and notice text and announces only a supplied notice', () => {

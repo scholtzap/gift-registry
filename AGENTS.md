@@ -37,6 +37,23 @@ vision segmentation, deal discovery on the open web, and group coordination.
   absence — so no route in this app may confirm whether a number is registered. A bot reply counts as a lookup
   response: same rule, including for latency and message length. Ledger: `docs/plans/registry-network-discovery-deviations.md`.
 
+## Brand and UI (read `DESIGN.md` § Rules before changing anything visible)
+
+The look is **Paper Fiesta** (chosen 2026-10-27): cream paper, white cards with an ink outline and a hard
+offset shadow, tissue-paper fringe, Bricolage Grotesque + DM Sans. `DESIGN.md` is the source of truth for
+tokens, components and the checks; `public/pinata.css` is the only stylesheet. The rules that break things
+when skipped:
+
+- **Numbers never break.** Format money with `formatMinor()` (no-break spaces) and render it inside a
+  nowrap class or `<Money>`; dates through `<EventDate>`.
+- **Nobody types cents.** Money inputs are `<AmountField>` in rand; routes convert with `parseRandToMinor`.
+- **Plain words.** No engine states (`tombstoned`, `pivot_needed`, "Item status:") on screen; friend wording
+  lives only in `src/components/status.ts`.
+- **Never claim what the projection cannot see** — e.g. a friend row says "No pool yet", not "Up for grabs".
+- **Tones are meanings** (`human`, `money`, `open`, `alert`, `done`), and text holds AA contrast.
+- **Stitch mocks are not specs.** Generate one screen at a time with the Paper Fiesta design system, then
+  re-check numbers, weekdays and product rules (mocks invent a Chat tab; there is none).
+
 ## Verified platform constraints (do not re-litigate; re-verify before changing)
 
 - **Marketplace scraping is prohibited.** Meta's Automated Data Collection terms bar programmatic
@@ -144,3 +161,13 @@ landed in `PLANS_INDEX.md`**. Never leave a plan in a chat message or a TODO com
   `git grep -nE '\+27[0-9]{8,9}'` before making the repo public, and again before every submission push.
 - Never auto-roll back a Prisma migration in production. Recovery is previous image tag plus `pg_restore` of the
   nightly dump; migrations are written expand-only so the previous image still runs.
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+## This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->

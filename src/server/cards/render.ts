@@ -129,7 +129,7 @@ export async function renderCardArtwork(data: CardArtworkData, variant: CardVari
     const entries = validated.map((entry) => h('div', {
       style: {
         display: 'flex', flexDirection: 'column', boxSizing: 'border-box', width: panelWidth, flexShrink: 0,
-        backgroundColor: '#FFFFFF', borderLeft: '3px solid #E11D63', padding: compact ? 12 : 20, borderRadius: 12,
+        backgroundColor: '#FFFFFF', borderLeft: '3px solid #E4572E', padding: compact ? 12 : 20, borderRadius: 12,
       },
     },
     cardText(entry.anonymous ? 'Anonymous' : entry.displayNameShown, { fontSize: compact ? 13 : 22, lineHeight: 1.2, marginBottom: compact ? 6 : 10 }),
@@ -138,16 +138,16 @@ export async function renderCardArtwork(data: CardArtworkData, variant: CardVari
     const tree = h('div', {
       style: {
         display: 'flex', flexDirection: 'column', boxSizing: 'border-box', width: 840, minHeight: logicalHeight,
-        backgroundColor: '#FFE7F0', color: '#14141C', padding, fontFamily: 'Geist', wordBreak: 'break-all',
+        backgroundColor: '#FBF5EC', color: '#2B2118', padding, fontFamily: 'Geist', wordBreak: 'break-all',
       },
     },
-    h('div', { style: { fontSize: compact ? 16 : 20, color: '#0E7490', marginBottom: compact ? 16 : 28 } }, 'Piñata'),
-    h('div', { style: { fontSize: compact ? 22 : 28, color: '#E11D63', marginBottom: 12 } }, `For ${data.recipientName}`),
+    h('div', { style: { fontSize: compact ? 16 : 20, color: '#246B5B', marginBottom: compact ? 16 : 28 } }, 'Piñata'),
+    h('div', { style: { fontSize: compact ? 22 : 28, color: '#B93A16', marginBottom: 12 } }, `For ${data.recipientName}`),
     h('div', { style: { fontSize: compact ? 32 : 48, lineHeight: 1.1, marginBottom: 12 } }, data.itemTitle),
-    h('div', { style: { fontSize: compact ? 16 : 20, color: '#5B5B66', marginBottom: compact ? 16 : 32 } }, data.occasion),
+    h('div', { style: { fontSize: compact ? 16 : 20, color: '#5E5348', marginBottom: compact ? 16 : 32 } }, data.occasion),
     h('div', { style: { fontSize: compact ? 24 : 30, lineHeight: 1.3, marginBottom: compact ? 16 : 32 } }, data.pun),
     h('div', { style: { display: 'flex', flexDirection: 'row', flexWrap: 'wrap', flexShrink: 0, gap } }, ...entries),
-    h('div', { style: { fontSize: 16, color: '#5B5B66', marginTop: 'auto', paddingTop: 24 } }, 'With love'));
+    h('div', { style: { fontSize: 16, color: '#5E5348', marginTop: 'auto', paddingTop: 24 } }, 'With love'));
 
     let contentHeight = logicalHeight;
     let overflow = false;
@@ -172,7 +172,7 @@ export async function renderCardArtwork(data: CardArtworkData, variant: CardVari
   const body = measured.svg.match(/^<svg\b[^>]*>([\s\S]*)<\/svg>$/)?.[1];
   if (!body) throw new Error('unsafe_card_svg');
   // Uniformly fit the measured tree, retaining every text node and explicit blank line.
-  const svg = `<svg width="840" height="${logicalHeight}" viewBox="0 0 840 ${logicalHeight}" xmlns="http://www.w3.org/2000/svg"><rect width="840" height="${logicalHeight}" fill="#FFE7F0"/><g transform="translate(${(840 - 840 * scale) / 2} 0) scale(${scale})">${body}</g></svg>`;
+  const svg = `<svg width="840" height="${logicalHeight}" viewBox="0 0 840 ${logicalHeight}" xmlns="http://www.w3.org/2000/svg"><rect width="840" height="${logicalHeight}" fill="#FBF5EC"/><g transform="translate(${(840 - 840 * scale) / 2} 0) scale(${scale})">${body}</g></svg>`;
   if (/<script\b|<foreignObject\b|<[a-z][^>]*\s(?:xlink:)?href\s*=/i.test(svg)) throw new Error('unsafe_card_svg');
   const raster = new Resvg(svg, {
     fitTo: { mode: 'width', value: width }, font: { fontFiles: [font.path], loadSystemFonts: false },

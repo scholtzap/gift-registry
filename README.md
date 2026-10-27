@@ -8,7 +8,7 @@ Built for the Meta Global AI Developer Hackathon. This is an in-progress build, 
 
 Verified locally on **2026-10-27**: **393 Vitest tests across 34 files**, typecheck, production build, and **10 production Chromium flows passed**. The same browser flows also passed on the development server before the final security fixes.
 
-- V7 landing and seven screens are mounted on real routes. Native forms persist private drafts, claims/releases, pools/contributions/manual paid state, card entries and account settings. Owner and forged-friend card requests return private generic 404s.
+- Paper Fiesta landing and seven screens are mounted on real routes. Native forms persist private drafts, claims/releases, pools/contributions/manual paid state, card entries and account settings. Owner and forged-friend card requests return private generic 404s.
 - Signed webhook intake, deduplicated event/job commits, immediate explicit-demo media acquisition, consent-gated checkpoints, human confirmation and the actual pg-boss worker lifecycle passed real isolated PostgreSQL tests. Fixtures never turn on after a missing key or live failure.
 - Cards use Satori/resvg with literal contributor text; synthetic vision tests prove person/mask refusal and atomic publication. Screenshot intake is not wired to live SAM or multi-cutout extraction.
 - Live WhatsApp delivery, possession-verifying authentication, real Meta inference and Oracle deployment remain unverified. Multi-user purchase, circle creation and owner tombstone/pivot are incomplete. Gate throttling and the Windows owner-session workflow still need integration.

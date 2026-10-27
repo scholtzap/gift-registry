@@ -4,7 +4,7 @@ type: spec
 status: ready
 priority: P1
 rank: 4
-updated: 2026-10-26
+updated: 2026-10-27
 apps: []
 related: [SPEC.md, docs/plans/public-landing-page.md, docs/plans/entitlements-and-capability-gate.md]
 evidence: SPEC.md §Decisions v1.1 (brand via Stitch preview round), §Success criteria (a branded product, not a bootstrap scaffold)
@@ -19,6 +19,24 @@ superseded_by: null
 **decided** on 2026-10-26: **V7 Neon Pastel** — the owner picked it from the light remixes. Taste document at
 `DESIGN.md`, token set committed in `src/app/globals.css` (Tailwind v4 `@theme`), root layout and self-hosted
 fonts in `src/app/layout.tsx`. What remains: the seven in-app screens and the landing page built on those tokens.
+
+**Round 2, decided 2026-10-27: Paper Fiesta replaces V7.** Three reworked directions were mocked in Stitch
+project `4918037056990527388` (A Confetti Daylight, B Paper Fiesta, C Navy Candy); the owner picked B, with one
+hard rule: numbers never line-break. Shipped on `feat/paper-fiesta-rebrand`: tokens and components in
+`public/pinata.css`, Bricolage Grotesque + DM Sans, plain-language statuses (`src/components/status.ts`), rand
+amount inputs instead of cents, no-break money formatting. `DESIGN.md` is rewritten as the rulebook agents follow.
+
+### Round 2 follow-ups (open)
+
+1. **Product photos on gift cards.** The mocks lean on thumbnails; `FriendItemView`/`OwnerItemView` carry no
+   image. Adding one is a projection change, so it needs the leak suite and the owner-blindness review, not
+   just a component.
+2. **Countdown hero.** The mocks open with "N days to go"; the countdown lives on the unmerged
+   `feat/schema-rls-leak-spine` line. Once it reaches `main`, put it in the friend-list hero (date via
+   `<EventDate>`, the count from the projection, never computed in the screen).
+3. **Mock the remaining screens in Stitch** (join, owner list, card composer) with the Paper Fiesta design
+   system, one generation at a time, before restyling them further.
+4. **Card PNG typeface.** `render.ts` uses the new palette but still Geist; a Bricolage TTF would match the app.
 
 ## Problem
 

@@ -8,7 +8,7 @@ describe('Piñata shared public render', () => {
     const html = renderToStaticMarkup(
       <Screen title="Join the gift" eyebrow="Friends only" backHref="/c/party" backLabel="Back to the circle">
         <Panel className="pn-stack">
-          <Badge tone="warning">Not yet claimed</Badge>
+          <Badge tone="open">Not yet claimed</Badge>
           <form action="/contribute" method="post">
             <Field label="Your contribution" name="amount" id="contribution-amount" type="number" defaultValue="150" required min="1" step="1" hint="Amount in rand. No payment is taken here." />
             <Field label="Card message" name="message" id="contribution-message" defaultValue={message} maxLength={200} placeholder="Your own words" />
@@ -59,9 +59,9 @@ describe('Piñata shared public render', () => {
       <Screen>
         <Field label={<strong>Your name</strong>} name="name" id="first-name" />
         <Field label="Another name" name="name" id="second-name" />
-        <Badge tone="green">Purchased</Badge>
-        <Badge tone="blue">Pooled</Badge>
-        <Badge tone="pink">You</Badge>
+        <Badge tone="done">Purchased</Badge>
+        <Badge tone="money">Pooled</Badge>
+        <Badge tone="human">You</Badge>
         <Badge>Draft</Badge>
       </Screen>,
     );
