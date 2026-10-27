@@ -20,6 +20,8 @@ import { AI_CAPABILITIES, assertCan, CAPABILITY_COPY, CapabilityOffError, setCap
 import { addItem, claimItem, contribute, createPool, markPaid, purchasePool, releaseClaim, revealItem, setEventDate } from '@/server/ledger';
 import { isCalendarDate } from '@/lib/dates';
 import { env } from "@/lib/env";
+import { parseRandToMinor } from "@/lib/money";
+import { isArchived } from "@/server/lifecycle";
 
 // Native-form HTML uses Node SSR, not the App Route's react-server export condition.
 const { renderToStaticMarkup } = createRequire(import.meta.url)('react-dom/server') as typeof import('react-dom/server');
@@ -184,6 +186,17 @@ const draftSchema = z.object({
 const centsSchema = z.string().regex(/^(0|[1-9]\d*)$/).transform(Number).pipe(z.number().int().min(0).max(2147483647));
 const positiveCentsSchema = centsSchema.pipe(z.number().positive());
 
+// Forms post rands ("R 400", "99,50"); the integer-cents field stays accepted for callers that
+// already send it. The result is a cents string for `centsSchema`, '' for blank, or a value
+// that fails it.
+function minorField(fields: FormData, randName: string, minorName: string): FormDataEntryValue | null {
+  const rand = fields.get(randName);
+  if (rand === null) return fields.get(minorName);
+  if (String(rand).trim() === '') return '';
+  const minor = parseRandToMinor(rand);
+  return minor === null ? 'invalid' : String(minor);
+}
+
 async function circleGet(db: Db, request: Request, slug: string): Promise<Response> {
   const basePath = `/c/${encodeURIComponent(slug)}`;
   const pathname = new URL(request.url).pathname;
@@ -305,7 +318,10 @@ async function circlePost(db: Db, request: Request, slug: string): Promise<Respo
     return pathname === basePath ? gateForm('That submission could not be verified as coming from this page. Open the link again and try.') : notFound();
   }
 
-  const circle = await db.prisma.circle.findUnique({ where: { shareSlug: slug }, select: { id: true } });
+  const circle = await db.prisma.circle.findUnique({
+    where: { shareSlug: slug },
+    select: { id: true, status: true, createdAt: true, eventDate: true, ownerUserId: true },
+  });
   if (!circle) return notFound();
   if (pathname !== basePath) {
     const actor = await privateActor(db, request, circle.id);
@@ -371,7 +387,7 @@ async function circlePost(db: Db, request: Request, slug: string): Promise<Respo
       if (fields.get('intent') !== 'confirm') return notFound();
       const draft = {
         title: String(fields.get('title') ?? ''), retailer: String(fields.get('retailer') ?? ''),
-        priceMinor: fields.get('priceMinor'), currency: fields.get('currency'),
+        priceMinor: minorField(fields, 'priceRand', 'priceMinor'), currency: fields.get('currency'),
         ingestEventId: fields.get('ingestEventId') ?? undefined,
       };
       const parsed = z.object({
@@ -380,8 +396,8 @@ async function circlePost(db: Db, request: Request, slug: string): Promise<Respo
         ingestEventId: z.uuid().optional(),
       }).safeParse(draft);
       if (!parsed.success) return screenResponse('Check item details', createElement(DraftConfirmScreen, {
-        draft: { id: draft.ingestEventId === undefined ? undefined : String(draft.ingestEventId), title: draft.title, retailer: draft.retailer, priceMinor: draft.priceMinor === null ? null : String(draft.priceMinor), currency: String(draft.currency ?? '') }, basePath, role: actor.role,
-        notice: 'Enter a title of up to 200 characters and a whole number of cents, or leave the price blank.',
+        draft: { id: draft.ingestEventId === undefined ? undefined : String(draft.ingestEventId), title: draft.title, retailer: draft.retailer, priceMinor: null, priceRand: String(fields.get('priceRand') ?? ''), currency: String(draft.currency ?? '') }, basePath, role: actor.role,
+        notice: 'Enter a title of up to 200 characters and a price in rand, like 1899 or 249.50, or leave the price blank.',
       }), 422);
       try {
         const item = await db.withActor(actor, tx => addItem(tx, actor, {
@@ -405,9 +421,16 @@ async function circlePost(db: Db, request: Request, slug: string): Promise<Respo
       const intent = z.enum(['claim', 'release', 'create_pool', 'contribute', 'mark_paid', 'purchase', 'reveal']).safeParse(fields.get('intent'));
       if (!intent.success) return notFound();
       const moneyIntent = intent.data === 'create_pool' || intent.data === 'contribute';
-      const amount = positiveCentsSchema.safeParse(fields.get(intent.data === 'create_pool' ? 'targetMinor' : 'amountMinor'));
+      const amount = positiveCentsSchema.safeParse(intent.data === 'create_pool' ? minorField(fields, 'targetRand', 'targetMinor') : minorField(fields, 'amountRand', 'amountMinor'));
       if (moneyIntent && (!amount.success || fields.get('currency') !== 'ZAR')) {
-        return screenResponse(item.title, createElement(ItemDetailScreen, { item, basePath, notice: 'Enter a whole number of cents above zero.' }), 422);
+        return screenResponse(item.title, createElement(ItemDetailScreen, { item, basePath, notice: 'Enter an amount in rand above zero, like 400 or 99.50.' }), 422);
+      }
+      // RN-E: an archived proxy circle stays readable but takes no new
+      // claims or pledges. Settling what already exists (release, mark
+      // paid, purchase) stays possible; the ledger is never destroyed.
+      const newMoneyIntent = ['claim', 'create_pool', 'contribute'].includes(intent.data);
+      if (newMoneyIntent && isArchived(circle)) {
+        return screenResponse(item.title, createElement(ItemDetailScreen, { item, basePath, notice: 'This circle has archived, so it is not taking new claims or pledges.' }), 409);
       }
       const poolIntent = ['contribute', 'mark_paid', 'purchase'].includes(intent.data);
       const poolId = String(fields.get('poolId') ?? '');
@@ -434,6 +457,34 @@ async function circlePost(db: Db, request: Request, slug: string): Promise<Respo
       }
       return new Response(null, { status: 303, headers: headers({ Location: `${basePath}/items/${itemId}` }) });
     }
+    if (pathname === `${basePath}/requests`) {
+      // RN-J: the owner decides, in their own projection, when they next
+      // open their link. Nothing was sent to get them here.
+      if (actor.role !== 'owner') return notFound();
+      const decision = z.enum(['accept', 'reject']).safeParse(fields.get('intent'));
+      const requestId = String(fields.get('requestId') ?? '');
+      if (!decision.success || !z.uuid().safeParse(requestId).success) return notFound();
+      const outcome = await db.withActor(actor, async (tx) => {
+        const row = await tx.allowlistEntry.findFirst({
+          where: { id: requestId, circleId: circle.id },
+          select: { id: true, status: true, requesterName: true },
+        });
+        if (!row) return 'missing' as const;
+        if (row.requesterName === null) return 'already' as const;
+        if (decision.data === 'accept') {
+          // Approval turns the request into an ordinary invitation: the
+          // requester can now pass the gate, which flips it to accepted.
+          await tx.allowlistEntry.update({ where: { id: row.id }, data: { requesterName: null } });
+        } else {
+          // `removed` is already the gate's word for "not an invite", and a
+          // DELETE policy for the owner role does not exist by design.
+          await tx.allowlistEntry.update({ where: { id: row.id }, data: { status: 'removed' } });
+        }
+        return 'done' as const;
+      });
+      if (outcome === 'missing') return notFound();
+      return new Response(null, { status: 303, headers: headers({ Location: basePath }) });
+    }
     if (pathname !== `${basePath}/settings`) return notFound();
     const setting = z.object({ intent: z.literal('toggle'), capability: z.enum(AI_CAPABILITIES), enabled: z.enum(['true', 'false']) }).safeParse({ intent: fields.get('intent'), capability: fields.get('capability'), enabled: fields.get('enabled') });
     if (!setting.success) return screenResponse('Settings', createElement(Screen, { title: 'Settings', backHref: `${basePath}/settings`, children: 'Choose a valid capability and on or off setting.' }), 422);
@@ -443,10 +494,12 @@ async function circlePost(db: Db, request: Request, slug: string): Promise<Respo
 
   let name = "";
   let phone = "";
+  let intent = "";
   try {
     const form = await readForm(request);
     name = String(form.get("name") ?? "").trim();
     phone = String(form.get("phone") ?? "").trim();
+    intent = String(form.get("intent") ?? "");
   } catch {
     return gateForm("That submission did not come through. Try again.");
   }
@@ -456,12 +509,13 @@ async function circlePost(db: Db, request: Request, slug: string): Promise<Respo
     return gateForm("Add the name you want on the card, and the number in full international form.");
   }
 
-  const pepper = env.SESSION_SECRET;
+  const pepper = env.PHONE_HASH_PEPPER;
   const phoneHash = hashPhone(normalized, pepper);
 
   // M-02: count every attempt before the lookup, successes and failures alike. The key is
   // circle + phone hash + forwarded address — never a raw number — and the denial is the
   // same for invited and uninvited numbers, so throttling cannot walk the phone list.
+  // This single mount also covers the RN-J request branch below.
   const address = (request.headers.get("x-forwarded-for") ?? "").split(",")[0]?.trim() || "unknown";
   const throttle = checkGateThrottle(`${circle.id}:${phoneHash}:${address}`);
   if (!throttle.allowed) {
@@ -473,12 +527,41 @@ async function circlePost(db: Db, request: Request, slug: string): Promise<Respo
     });
   }
 
-  // Authorise before writing anything. `removed` is not an invite.
+  // RN-J: asking for access. The answer is the gate's ordinary "no" whether
+  // or not anyone is listening: a proxy circle has nobody to ask, and a real
+  // owner merely finds the request next time they open their own link.
+  // Nothing is sent.
+  if (intent === "request_access") {
+    if (circle.ownerUserId !== null) {
+      const existing = await db.prisma.allowlistEntry.findUnique({
+        where: { circleId_phoneE164Hash: { circleId: circle.id, phoneE164Hash: phoneHash } },
+        select: { id: true, status: true, requesterName: true },
+      });
+      if (!existing) {
+        await db.prisma.allowlistEntry.create({
+          data: {
+            circleId: circle.id, phoneE164Hash: phoneHash, addedBy: circle.ownerUserId,
+            status: "pending", requesterName: name,
+          },
+        });
+      } else if (existing.status !== "accepted") {
+        await db.prisma.allowlistEntry.update({
+          where: { id: existing.id },
+          data: { status: "pending", requesterName: name, createdAt: new Date() },
+        });
+      }
+    }
+    return gateForm("We could not let you in with that number.");
+  }
+
+  // Authorise before writing anything. `removed` is not an invite, and a
+  // pending *request* (requesterName set) is not an invite either: only the
+  // owner's approval, which clears that marker, makes it one.
   const invited = await db.prisma.allowlistEntry.findUnique({
     where: { circleId_phoneE164Hash: { circleId: circle.id, phoneE164Hash: phoneHash } },
-    select: { id: true, status: true },
+    select: { id: true, status: true, requesterName: true },
   });
-  if (!invited || invited.status === "removed") {
+  if (!invited || invited.status === "removed" || invited.requesterName !== null) {
     // One message for every kind of no, so this form cannot be used to walk a phone list.
     console.warn("gate_denied", { circleId: circle.id });
     return gateForm("We could not let you in with that number.");

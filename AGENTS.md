@@ -32,6 +32,27 @@ vision segmentation, deal discovery on the open web, and group coordination.
 - **The assistant never decides what happens next.** It may generate copy for a status answer or a card message; it
   may not choose a task, change state, or answer anything outside the six bounded tasks. Fixed menu or nothing.
 - **`/c/<slug>` never moves.** That URL is pasted into a WhatsApp group; a test asserts it resolves.
+- **A number lookup always answers 200.** A phone number is a lookup key, never a URL segment. Found and not-found
+  are indistinguishable in status, wording and body shape, and a miss offers a proxy registry rather than reporting
+  absence — so no route in this app may confirm whether a number is registered. A bot reply counts as a lookup
+  response: same rule, including for latency and message length. Ledger: `docs/plans/registry-network-discovery-deviations.md`.
+
+## Brand and UI (read `DESIGN.md` § Rules before changing anything visible)
+
+The look is **Paper Fiesta** (chosen 2026-10-27): cream paper, white cards with an ink outline and a hard
+offset shadow, tissue-paper fringe, Bricolage Grotesque + DM Sans. `DESIGN.md` is the source of truth for
+tokens, components and the checks; `public/pinata.css` is the only stylesheet. The rules that break things
+when skipped:
+
+- **Numbers never break.** Format money with `formatMinor()` (no-break spaces) and render it inside a
+  nowrap class or `<Money>`; dates through `<EventDate>`.
+- **Nobody types cents.** Money inputs are `<AmountField>` in rand; routes convert with `parseRandToMinor`.
+- **Plain words.** No engine states (`tombstoned`, `pivot_needed`, "Item status:") on screen; friend wording
+  lives only in `src/components/status.ts`.
+- **Never claim what the projection cannot see** — e.g. a friend row says "No pool yet", not "Up for grabs".
+- **Tones are meanings** (`human`, `money`, `open`, `alert`, `done`), and text holds AA contrast.
+- **Stitch mocks are not specs.** Generate one screen at a time with the Paper Fiesta design system, then
+  re-check numbers, weekdays and product rules (mocks invent a Chat tab; there is none).
 
 ## Verified platform constraints (do not re-litigate; re-verify before changing)
 

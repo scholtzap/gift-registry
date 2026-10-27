@@ -113,59 +113,67 @@ describe('FriendLedgerScreen public static render', () => {
     const markup = render();
     const grinder = itemMarkup(markup, 'Coffee grinder');
     expect(text(markup)).toContain('Friends only');
-    expect(text(markup)).toContain('Keep this ledger away from the gift recipient.');
+    expect(text(markup)).toContain('Keep this screen away from them.');
     expect(text(markup)).toContain('birthday');
     expect(markup).toMatch(/<time dateTime="2026-12-05">Sat 5 Dec<\/time> · 12 days to go/i);
     expect(text(markup)).toContain('Birthday: 3 Apr');
     expect(text(itemMarkup(markup, 'Trail runners, burnt orange'))).toContain('R1 899.00');
     expect(text(grinder)).toContain('Coffee shop');
     expect(text(grinder)).toContain('R4 200.00');
-    expect(text(grinder)).toContain('Friend-only suggestion');
-    expect(text(grinder)).toContain('You suggested this');
-    expect(text(grinder)).toContain('Claimed by you');
-    expect(text(grinder)).toContain('You are the buyer');
-    expect(text(itemMarkup(markup, 'Trail runners, burnt orange'))).not.toMatch(/Claimed by you|You are the buyer|You suggested this|Friend-only suggestion|Unclaimed/);
+    expect(text(grinder)).toContain('Secret idea · hidden from them');
+    expect(text(grinder)).toContain('Your idea');
+    expect(text(grinder)).toContain('You’re the buyer');
+    const runners = text(itemMarkup(markup, 'Trail runners, burnt orange'));
+    expect(runners).toContain('No pool yet');
+    // Another friend's claim is not in this projection, so the row must not call it available.
+    expect(runners).not.toMatch(/You’re buying it|You’re the buyer|Your idea|Secret idea|Up for grabs|Unclaimed/);
   });
 
   it('labels the exact settled and target values without inventing pledged money or people', () => {
     const markup = render();
     const grinder = text(itemMarkup(markup, 'Coffee grinder'));
-    expect(grinder).toContain('Settled R700.00');
-    expect(grinder).toContain('Pool target R4 200.00');
-    expect(grinder).toContain('Pool status: Open');
+    expect(grinder).toContain('R700.00 settled of R4 200.00');
+    expect(grinder).toContain('Pooling · R3 500 to go');
     expect(text(markup)).not.toMatch(/promised|pledged|remaining|saved|savings|\b713\b|\b829\b|contributors|members|Thabo|Lerato|Sibusiso/i);
     expect(markup).not.toContain('<progress');
   });
 
   it('retains tombstoned ledger money and gives a pivot notice without deciding an action', () => {
     const pan = text(itemMarkup(render(), 'Copper pan'));
-    expect(pan).toContain('Item status: Tombstoned');
-    expect(pan).toContain('Reason: Bought self');
-    expect(pan).toContain('Removed from the owner’s list. Claims and pool records remain here.');
-    expect(pan).toContain('Pivot needed');
-    expect(pan).toContain('Choose the next step together on the item page.');
-    expect(pan).toContain('Settled R350.00');
-    expect(pan).toContain('Pool target R2 400.00');
-    expect(pan).toContain('Price not provided');
-    expect(pan).not.toContain('You are the buyer');
+    expect(pan).toContain('They bought it themselves');
+    expect(pan).toContain('Gone from their list. Contributions and pool records stay here with the group.');
+    expect(pan).toContain('Pick the next step together on the gift page.');
+    expect(pan).toContain('R350.00 settled of R2 400.00');
+    expect(pan).toContain('No price yet');
+    expect(pan).not.toContain('You’re the buyer');
   });
 
   it.each([
-    ['open', 'Open'],
-    ['funded', 'Funded'],
-    ['purchased', 'Purchased'],
-    ['pivot_needed', 'Pivot needed'],
-    ['awaiting_transfer', 'Awaiting transfer'],
-  ])('humanizes the actual pool status %s without relabelling settled money', (status, label) => {
+    ['open', 'Pooling · R3 500 to go'],
+    ['funded', 'Fully pooled'],
+    ['purchased', 'Bought'],
+    ['pivot_needed', 'Needs a new plan'],
+    ['awaiting_transfer', 'Pool paused'],
+  ])('words the actual pool status %s plainly without relabelling settled money', (status, label) => {
     const markup = render(withPoolStatus(status));
-    expect(text(markup)).toContain(`Pool status: ${label}`);
-    expect(text(markup)).toContain('Settled R700.00');
+    expect(text(markup)).toContain(label);
+    expect(text(markup)).toContain('R700.00 settled of R4 200.00');
     expect(text(markup)).not.toMatch(/Funded R700\.00|Promised|Pledged/);
   });
 
-  it.each(['active', 'tombstoned', 'revealed'] as const)('shows the actual item status %s', (status) => {
+  it.each([
+    ['active', 'No pool yet'],
+    ['tombstoned', 'Off their list'],
+    ['revealed', 'Revealed'],
+  ] as const)('words the actual item status %s plainly', (status, label) => {
     const view = { ...friendView, items: [{ ...friendView.items[0]!, status }] };
-    expect(text(render(view))).toContain(`Item status: ${status[0]!.toUpperCase()}${status.slice(1)}`);
+    expect(text(render(view))).toContain(label);
+  });
+
+  it('never lets an amount wrap: digit groups are joined by a no-break space', () => {
+    const grinder = itemMarkup(render(), 'Coffee grinder');
+    expect(grinder).toContain('R3 500 to go');
+    expect(grinder).toMatch(/<span class="pn-money">R700\.00<\/span>/);
   });
 
   it('renders only supplied attributes with their supplied units', () => {
@@ -229,7 +237,7 @@ describe('FriendLedgerScreen public static render', () => {
 
   it('offers a clear empty state while retaining secret suggestion and settings links', () => {
     const markup = render({ ...friendView, items: [], attributes: [] });
-    expect(text(markup)).toContain('No gifts in this ledger yet.');
+    expect(text(markup)).toContain('Nothing on the list yet');
     expect(markup).toContain(`href="${basePath}/draft"`);
     expect(markup).toContain(`href="${basePath}/settings"`);
     expect(markup).not.toContain('<article');

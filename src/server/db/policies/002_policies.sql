@@ -32,7 +32,11 @@ $$ SELECT c IS NOT NULL AND c = app_circle_id() AND EXISTS (
      SELECT 1 FROM memberships m JOIN circles ci ON ci.id = m.circle_id
      WHERE m.circle_id = c AND m.user_id = app_user_id()
        AND m.status = 'active' AND m.role = 'friend' AND ci.status = 'active'
-       AND ci.owner_user_id <> app_user_id()) $$;
+       -- A proxy circle has no owner: NULL <> x is NULL, which would fail every
+       -- friend policy closed. The explicit NULL branch admits friends of a
+       -- proxy circle while still excluding a real owner acting as friend.
+       -- Pinned by tests/leak/proxy-circle.test.ts (RN-A D1).
+       AND (ci.owner_user_id IS NULL OR ci.owner_user_id <> app_user_id())) $$;
 
 CREATE OR REPLACE FUNCTION app_circle_of_item(i uuid) RETURNS uuid
   LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS

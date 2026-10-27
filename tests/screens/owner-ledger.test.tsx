@@ -33,6 +33,7 @@ it('PUBLIC: renders literal owner wishes and navigation without friend or intake
       { kind: 'shoe_size', valueText: '43', unit: 'EU' },
       { kind: 'colour', valueText: 'Ocean blue', unit: null },
     ],
+    accessRequests: [],
   };
   const forbiddenFields = {
     claimCount: 'PRIVATE_CLAIM_COUNT',
@@ -74,7 +75,7 @@ it('PUBLIC: renders literal owner wishes and navigation without friend or intake
     'The moon picnic', 'Birthday picnic', '2026-11-03',
     'Blue enamel kettle', 'Example outdoor shop', 'R1 249.50', 'A sky map',
     'Shoe size', '43', 'EU', 'Colour', 'Ocean blue',
-    'Confirmed', 'Needs your confirmation', 'Price not added',
+    'On your list', 'Check and confirm', 'Price not added',
   ]) {
     expect(html).toContain(literal);
   }
@@ -126,6 +127,7 @@ it('PUBLIC: renders no event date to the owner when a friend wrote it, and keeps
     shareSlug: 'moon-picnic',
     items: [],
     attributes: [],
+    accessRequests: [],
   };
   const markup = renderToStaticMarkup(createElement(OwnerLedgerScreen, { view: blind, basePath: '/owner/moon-picnic' }));
   expect(markup).not.toMatch(/<time\b|days to go|>Today<|>Tomorrow<|day has passed/);
@@ -157,6 +159,7 @@ function ownerView(): OwnerCircleView {
     shareSlug: 'moon-picnic',
     items: [],
     attributes: [],
+    accessRequests: [],
   };
 }
 
@@ -171,5 +174,6 @@ function viewWithoutExtras(view: OwnerCircleView): OwnerCircleView {
     shareSlug: view.shareSlug,
     items: view.items,
     attributes: view.attributes,
+    accessRequests: view.accessRequests,
   };
 }
