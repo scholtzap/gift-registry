@@ -4,7 +4,7 @@ import { createWhatsAppWebhook } from '@/server/wa/webhook';
 it('exports a Request/Response handler that verifies before touching a real Db client', async () => {
   Object.assign(process.env, {
     DATABASE_URL: 'postgresql://synthetic:synthetic@127.0.0.1:1/unused',
-    SESSION_SECRET: 'synthetic-test-only-session-secret-not-live',
+    SESSION_SECRET: 'synthetic-test-only-session-secret-not-live', PHONE_HASH_PEPPER: 'synthetic-test-only-phone-pepper-value',
     CIRCLE_BASE_URL: 'https://registry.example',
     WHATSAPP_VERIFY_TOKEN: 'synthetic-verify-token', WHATSAPP_APP_SECRET: 'synthetic-webhook-secret-not-a-live-key',
   });
@@ -20,7 +20,7 @@ it('exports a Request/Response handler that verifies before touching a real Db c
 });
 
 it('rejects a malformed worker event key before any database or external request', async () => {
-  Object.assign(process.env, { DATABASE_URL: 'postgresql://synthetic:synthetic@127.0.0.1:1/unused', SESSION_SECRET: 'synthetic-test-only-session-secret-not-live', CIRCLE_BASE_URL: 'https://registry.example' });
+  Object.assign(process.env, { DATABASE_URL: 'postgresql://synthetic:synthetic@127.0.0.1:1/unused', SESSION_SECRET: 'synthetic-test-only-session-secret-not-live', PHONE_HASH_PEPPER: 'synthetic-test-only-phone-pepper-value', CIRCLE_BASE_URL: 'https://registry.example' });
   const { createDb } = await import('@/server/db/client');
   const { processIngest } = await import('@/server/intake/process');
   const db = createDb('postgresql://synthetic:synthetic@127.0.0.1:1/unused');

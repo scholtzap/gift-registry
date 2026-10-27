@@ -17,7 +17,7 @@ export function JoinScreen({ notice, action = '' }: JoinScreenProps) {
       <div className="pn-measure-sm pn-stack pn-stack-lg">
         <Panel className="pn-stack">
           <div className="pn-row">
-            <Badge tone="pink">Invite list</Badge>
+            <Badge tone="human">Invite list</Badge>
             <span className="pn-small pn-muted">For invited friends</span>
           </div>
           <p>Enter the name you want on the card and the WhatsApp number on the invite list.</p>
@@ -51,10 +51,14 @@ export function JoinScreen({ notice, action = '' }: JoinScreenProps) {
             </p>
             <div className="pn-actions">
               <Button type="submit" variant="primary" block>Continue</Button>
+              <button type="submit" name="intent" value="request_access">
+                Ask to be added
+              </button>
             </div>
           </form>
           <p className="pn-small pn-muted">
-            Not on the list? Ask the person who shared this link to add you.
+            Not on the list? Ask to be added, and the person who shared this link will see
+            your request next time they open it. Nothing is sent to them.
           </p>
         </Panel>
 

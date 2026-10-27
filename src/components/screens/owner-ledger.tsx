@@ -53,8 +53,8 @@ export function OwnerLedgerScreen({ view, basePath, notice, eventDateDraft }: {
                         <p className={item.price === null ? 'pn-muted' : 'pn-price'}>
                           {item.price ?? 'Price not added'}
                         </p>
-                        <Badge tone={item.confirmed ? 'green' : 'warning'}>
-                          {item.confirmed ? 'Confirmed' : 'Needs your confirmation'}
+                        <Badge tone={item.confirmed ? 'done' : 'open'}>
+                          {item.confirmed ? 'On your list' : 'Check and confirm'}
                         </Badge>
                       </div>
                     </Panel>
@@ -63,6 +63,26 @@ export function OwnerLedgerScreen({ view, basePath, notice, eventDateDraft }: {
               </ul>
             )}
           </section>
+
+          {view.accessRequests.length > 0 && (
+            <Panel className="pn-stack">
+              <h2>People asking to join</h2>
+              <ul className="pn-list">
+                {view.accessRequests.map((request) => (
+                  <li key={request.id}>
+                    <div className="pn-between">
+                      <p>{request.requesterName}</p>
+                      <form method="post" action={`${basePath}/requests`} className="pn-actions">
+                        <input type="hidden" name="requestId" value={request.id} />
+                        <button type="submit" name="intent" value="accept">Let them in</button>
+                        <button type="submit" name="intent" value="reject" className="pn-button pn-button-secondary">Not now</button>
+                      </form>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </Panel>
+          )}
 
           <Panel className="pn-stack">
             <h2>Your sizes and preferences</h2>
@@ -128,8 +148,8 @@ export function OwnerItemScreen({ item, basePath, circle }: {
           <h2>Your wish</h2>
           <div className="pn-between">
             <p className={item.price === null ? 'pn-muted' : 'pn-price'}>{item.price ?? 'Price not added'}</p>
-            <Badge tone={item.confirmed ? 'green' : 'warning'}>
-              {item.confirmed ? 'Confirmed' : 'Needs your confirmation'}
+            <Badge tone={item.confirmed ? 'done' : 'open'}>
+              {item.confirmed ? 'On your list' : 'Check and confirm'}
             </Badge>
           </div>
           {item.retailer !== null && <p className="pn-small pn-muted">{item.retailer}</p>}

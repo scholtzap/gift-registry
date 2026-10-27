@@ -6,8 +6,8 @@ priority: P3
 rank: 900
 updated: 2026-10-27
 apps: []
-related: [SPEC.md, docs/plans/user-management-and-billing-path.md, docs/plans/whatsapp-task-bot-surface.md, docs/plans/birthday-and-event-countdown.md]
-evidence: docs/diagrams/pinata-customer-journey.drawio
+related: [SPEC.md, docs/plans/rn-tracks.md, docs/plans/user-management-and-billing-path.md, docs/plans/whatsapp-task-bot-surface.md, docs/plans/birthday-and-event-countdown.md]
+evidence: docs/diagrams/pinata-customer-journey.drawio, docs/plans/rn-a-proxy-registry-spec.md, docs/plans/rn-d-abuse-model.md
 archived_date: null
 supersedes: null
 superseded_by: null
@@ -15,8 +15,10 @@ superseded_by: null
 
 # Registry network - discovery, public visibility, and the deviations from the shipped spine
 
-**Status:** Draft. Records the intended journey captured 2026-10-27 and every place it departs from what
-ships today. Nothing here is scheduled before the 2026-11-04 submission; the submission spine stays as is.
+**Status:** Draft - ledger. Records the intended journey captured 2026-10-27 and every place it departs from what
+ships today. The accepted decisions are below; the work is queued in
+[docs/plans/rn-tracks.md](rn-tracks.md), not here. Nothing in this ledger is scheduled ahead of the submission
+spine unless RN-I says so.
 
 **Diagrams:** [pinata-customer-journey.drawio](../diagrams/pinata-customer-journey.drawio) ·
 [pinata-discovery-access.drawio](../diagrams/pinata-discovery-access.drawio) ·
@@ -29,6 +31,24 @@ invite-only → friends sign up via one constant per-person link → the link go
 friends → public registries are viewable by anyone, but the viewer must log in with an OTP → registries are
 findable both by on-platform web search and by the WhatsApp bot, with a permission request on either path →
 import existing Meta/Facebook/Instagram friends to allow-list them.
+
+## Decisions accepted 2026-10-27 (owner)
+
+1. **The unguessable slug stays.** A phone number or handle is never a URL segment. A `gifts.scholtz.work/<digits>/`
+   style route was considered and rejected: it puts plaintext PII in browser history, server logs, Referer headers and
+   WhatsApp link previews, it makes E.164 normalisation (`078…` vs `+2778…`) a routing problem, and it turns the route
+   into an enumeration oracle by construction. `/c/<slug>` never moves.
+2. **The number is a lookup key, not an address.** Search by number POSTs the number; the route resolves it to a
+   registry and returns a link. The digits never appear in a URL.
+3. **Not-found creates a proxy registry.** A gifter can start a once-off circle for a person with **no account**, who
+   is never notified and for whom no name or number is stored. Friends share one link. The circle archives some time
+   after the day. This is the decision that makes the feature usable without a cold-start problem, and it **reverses**
+   the "Out of scope for v1" line in `SPEC.md` quoted below - deliberately, and recorded in
+   [rn-a-proxy-registry-spec.md](rn-a-proxy-registry-spec.md).
+4. **The always-200 invariant.** Every lookup answers 200 whether or not the number resolves. A caller who guesses a
+   number never learns whether it is registered, so the route is not an enumeration oracle.
+5. **Public view still requires the door.** A public registry renders before login; anyone who wants to *act* on it
+   goes through the gate (OTP once the authentication template is approved, allowlist today).
 
 ## Deviation ledger
 
@@ -43,6 +63,10 @@ import existing Meta/Facebook/Instagram friends to allow-list them.
 | 7 | Found through the **WhatsApp bot** | Webhook, signature verification and six bounded tasks exist (`src/server/agent/tasks.ts:5`). "Find someone" and "my registries" are not among them, and free-form chat is banned on the Business Platform from 2026-01-15 | Bounded task additions |
 | 8 | Owner puts the link in **their status / shares it** | Nothing sends or surfaces a share; the reveal and every notification stay a human act by rule | Stays human - do not build |
 | 9 | **Import Meta/Facebook/Instagram friends** to allow-list | No integration exists | Platform-blocked, see below |
+| 10 | A registry with **no account behind it** (proxy circle) | `Circle.ownerUserId` is non-nullable with a FK (`prisma/schema.prisma:211,216`), and the friend policies read `ci.owner_user_id <> app_user_id()` (`src/server/db/policies/002_policies.sql:35`) - under Postgres three-valued logic a NULL owner makes that predicate NULL, so **every friend policy fails closed** | Schema + RLS trap (rn-a, rn-c) |
+| 11 | The owner signs in to manage visibility and see requests | There is **no owner session path at all**; only a friend cookie session exists (`src/server/auth/session.ts:95-108`). An owner has no way to reach their own admin surface | Missing door (rn-a-spec) |
+| 12 | The lookup is rate-limited | `checkGateThrottle` (`src/server/auth/throttle.ts:10`) is imported only by `tests/routes/throttle.test.ts`: it is **never mounted**, and there is no usable key source - no `src/middleware.ts`, no `x-forwarded-for` handling, and Caddy overwrites XFF, so socket-keying collapses every user into one bucket | Unbuilt guard (rn-d, rn-b) |
+| 13 | The gifter shares a **link they did not choose** | No CSPRNG slug generator exists anywhere in `src/` (`prisma/seed.ts:41` is the only slug in the repo), and `/c/<slug>` already behaves as a 404-vs-200 oracle | New primitive + existing leak (rn-b, rn-d) |
 
 ## Platform facts verified 2026-10-27 (re-verify before changing)
 
@@ -69,29 +93,31 @@ number, and the contact-sync mitigation the competitor doc suggested - both defe
 is a scraping surface we don't need for a gated-circle demo."* Two consequences for anyone reviving it:
 
 1. **Enumeration.** A phone-keyed lookup answers "does this number have a registry", which turns the whole
-   E.164 space into a harvestable list. The current design deliberately makes every miss a 404 with identical
-   copy so the gate "cannot be used to walk a phone list". Any search endpoint needs `checkGateThrottle`
-   (`src/server/auth/throttle.ts`, implemented and tested but **still has no production call site**) plus a
-   per-IP and per-account cap, and the answer must not confirm existence.
+   E.164 space into a harvestable list (South African mobiles are roughly `10^8` candidates, so a keyed digest is not
+   a secret). The accepted answer is the **always-200 invariant**: found and not-found are indistinguishable in status,
+   wording and body shape, and a miss creates a proxy registry rather than reporting absence. The residual surface -
+   timing, body length, the link returned on a hit, duplicate-create behaviour, and the fact that a bot reply is a
+   natural-language side channel - is argued in [rn-d-abuse-model.md](rn-d-abuse-model.md), not assumed away. That
+   file also records that the throttle this plan previously assumed was available **is not mounted and has no key
+   source** (ledger row 12).
 2. **Indexability.** Making registry links "accessible via web search" means dropping `noindex` on a public
    subset. That removes the property the leak suite currently proves on rendered HTML, and it collides with
    `birthday-and-event-countdown`: a friend-written party date is secret from the owner, so it must also be
-   absent from any crawlable render.
+   absent from any crawlable render. RN-H decides this and recommends that "search on our platform" be a **query, not
+   an index**.
+3. **Existence by another name.** A proxy registry created in anyone's name means a stranger can mint a page that
+   looks like it belongs to a real person and share it into that person's own WhatsApp group. RN-A's answer is that a
+   proxy circle never appears as a search result and never claims to represent the recipient; RN-D's threat table
+   scores this as the sharpest remaining abuse.
 
-## Development required, in dependency order
+## Development required
 
-1. `registry_profiles` table (one per user: handle/slug, `visibility`, links to circles) plus a resolution
-   route. Expand-only migration; `/c/<slug>` unchanged.
-2. Owner-side session and an owner registry screen - closes the open gap already recorded as D4 in the
-   user-management plan.
-3. Public projection: a friend-safe read of a profile's active circles that renders nothing owner-blind and
-   nothing secret, covered by a leak test before any `noindex` is lifted.
-4. Request-and-approve flow: pending request rows, surfaced when the owner next opens their own link, never
-   pushed.
-5. OTP as a second door only after the authentication template is approved; keep the allowlist path as the
-   deterministic fallback for the demo.
-6. Bot additions as bounded tasks (`find_registry`, `my_registries`) - never free-form.
-7. Replace contact import with `REQUEST_CONTACT_INFO` self-declaration, offered by the owner's circle link.
+Queued as ten tracks with their own handover briefs, order, parallelism and do-not-touch lists:
+**[docs/plans/rn-tracks.md](rn-tracks.md)**. Critical path `rn-a -> rn-b -> rn-f -> rn-g`; `rn-d` and `rn-e` are fully
+parallel and cheapest to take off the plate early; `rn-h` is recommended defer. The ordered list that used to live
+here is superseded by that index - read it instead, because it also carries the two owner decisions (G1: is the
+lookup create-only inside the submission window; RN-I: does any of this appear in the 3-minute video) that gate the
+implementation tracks.
 
 ## Success criteria
 
@@ -108,6 +134,9 @@ owner-blindness.
 
 ## Open questions
 
-- Is per-person persistence worth the schema change before the hackathon verdict, or is it post-submission v1.2?
+- G1 (RN-D): is the lookup **create-only** inside the submission window, given there is no visibility field yet for
+  findability consent? Owner call, and it decides the scope of rn-b.
+- Is per-person persistence (`/r/<handle>`) worth the schema change before the hackathon verdict, or is it
+  post-submission v1.2?
 - Does a public registry show the occasion and date at all, given the secret-date rule?
 - Who is allowed to appear in a search index, and can that consent be recorded in a row rather than implied?

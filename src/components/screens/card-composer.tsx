@@ -146,7 +146,7 @@ export function CardComposerScreen({
         </div>
 
         {/* Rail last in the DOM so mobile reads the editor first; CSS lifts the card beside it and
-            keeps it in view while you write. The card is the one pink surface on this screen — it is
+            keeps it in view while you write. The card is the one lilac surface on this screen — it is
             where people's own words live — so everything around it stays white. Messages render
             exactly as stored, in a quote block with the shown name's initial. */}
         <div className="pn-rail">

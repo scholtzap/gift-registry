@@ -45,7 +45,7 @@ describe('private circle actions', () => {
   it('renders the friend item action screen', async () => {
     const response = await get(`/items/${fx.itemOwnId}`);
     expect(response.status).toBe(200);
-    expect(await response.text()).toContain('Claim this gift');
+    expect(await response.text()).toContain('I’ll buy it myself');
   });
   it('never hands friend item state to an owner wearing a friend cookie', async () => {
     const response = await get(`/items/${fx.itemOwnId}`, cookie('friend', fx.ownerUserId));
@@ -153,6 +153,17 @@ describe('private circle actions', () => {
     }
     expect(await fx.db.prisma.item.count({ where: { circleId: fx.circleId, title: 'Rejected fictional gift' } })).toBe(0);
   });
+  it('reads a typed rand price as integer cents and rejects ambiguous amounts', async () => {
+    expect((await post('/draft', { intent: 'confirm', title: 'Rand-typed fictional gift', priceRand: 'R 1 249,50', currency: 'ZAR' })).status).toBe(303);
+    const item = await fx.db.prisma.item.findFirstOrThrow({ where: { circleId: fx.circleId, title: 'Rand-typed fictional gift' } });
+    expect(item.priceMinor).toBe(124950);
+    for (const priceRand of ['1,250', '12.345', 'R', '-5', '1e3']) {
+      const response = await post('/draft', { intent: 'confirm', title: 'Ambiguous rand gift', priceRand, currency: 'ZAR' });
+      expect(response.status).toBe(422);
+      expect(await response.text()).toContain(`value="${priceRand}"`);
+    }
+    expect(await fx.db.prisma.item.count({ where: { circleId: fx.circleId, title: 'Ambiguous rand gift' } })).toBe(0);
+  });
   it('does not confirm another person\'s or a nonexistent ingest event', async () => {
     const response = await post('/draft', { intent: 'confirm', title: 'Not my draft', priceMinor: '', currency: 'ZAR', ingestEventId: crypto.randomUUID() });
     expect(response.status).toBe(404);
@@ -172,9 +183,11 @@ describe('private circle actions', () => {
     }
   });
   it('records a pool contribution and funds it without charging money', async () => {
-    const response = await post(`/items/${fx.itemOwnId}`, { intent: 'create_pool', targetMinor: '10000', currency: 'ZAR' });
+    // The form posts rand; integer cents stay accepted for callers that already send them.
+    const response = await post(`/items/${fx.itemOwnId}`, { intent: 'create_pool', targetRand: 'R 100', currency: 'ZAR' });
     expect(response.status).toBe(303);
     const pool = await fx.db.prisma.pool.findFirstOrThrow({ where: { itemId: fx.itemOwnId } });
+    expect(pool.targetMinor).toBe(10000);
     expect((await post(`/items/${fx.itemOwnId}`, { intent: 'contribute', poolId: pool.id, amountMinor: '10000', currency: 'ZAR' })).status).toBe(303);
     expect((await post(`/items/${fx.itemOwnId}`, { intent: 'mark_paid', poolId: pool.id })).status).toBe(303);
     expect((await fx.db.prisma.pool.findUniqueOrThrow({ where: { id: pool.id } })).status).toBe('funded');
