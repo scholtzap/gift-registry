@@ -9,13 +9,15 @@ import { SettingsScreen } from "@/components/screens/settings";
 import { DraftConfirmScreen } from '@/components/screens/draft-confirm';
 import { ItemDetailScreen } from '@/components/screens/item-detail';
 import { CardComposerScreen } from '@/components/screens/card-composer';
-import { CardEntryValidationError, CardNotFoundError, getCard, renderCardVariant, saveCardEntry } from '@/server/cards';
+import { CardEntryValidationError, CardNotFoundError, generateCardPun, getCard, renderCardVariant, saveCardEntry } from '@/server/cards';
+import { modelsForActor } from '@/server/models/client';
 import { Screen } from '@/components/ui';
 import { friendCircleView, ownerCircleView } from "@/server/views";
 import { hashPhone, normalizeE164 } from "@/server/auth/phone-hash";
+import { checkGateThrottle } from "@/server/auth/throttle";
 import { issueSession, sessionCookie, sessionFromRequest } from "@/server/auth/session";
 import { AI_CAPABILITIES, assertCan, CAPABILITY_COPY, CapabilityOffError, setCapability } from "@/server/entitlements";
-import { addItem, claimItem, contribute, createPool, markPaid, purchasePool, releaseClaim, setEventDate } from '@/server/ledger';
+import { addItem, claimItem, contribute, createPool, markPaid, purchasePool, releaseClaim, revealItem, setEventDate } from '@/server/ledger';
 import { isCalendarDate } from '@/lib/dates';
 import { env } from "@/lib/env";
 
@@ -335,6 +337,20 @@ async function circlePost(db: Db, request: Request, slug: string): Promise<Respo
       const card = await db.withActor(actor, tx => getCard(tx, actor, itemId));
       if (!card) return notFound();
       if (fields.get('intent') === 'render') return cardPng(db, actor, itemId);
+      if (fields.get('intent') === 'pun') {
+        try {
+          const models = modelsForActor(db, actor, { demoMode: env.DEMO_MODE, apiKey: env.MODEL_API_KEY, baseUrl: env.MODEL_API_BASE_URL });
+          await generateCardPun(db, actor, itemId, models);
+        } catch (error) {
+          if (error instanceof CardNotFoundError) return notFound();
+          if (error instanceof CapabilityOffError) return screenResponse('Gift card', createElement(CardComposerScreen, { card, basePath, notice: error.degraded }), 422);
+          if (error instanceof Error && ['model_not_configured', 'model_output_rejected', 'model_url_rejected'].includes(error.message)) {
+            return screenResponse('Gift card', createElement(CardComposerScreen, { card, basePath, notice: 'Pun suggestions are unavailable right now. The plain card wording still works.' }), 422);
+          }
+          throw error;
+        }
+        return new Response(null, { status: 303, headers: headers({ Location: `${basePath}/items/${itemId}/card` }) });
+      }
       if (fields.get('intent') !== 'save_entry') return notFound();
       const anonymous = fields.get('anonymous');
       if (anonymous !== null && !['on', 'true', 'false'].includes(String(anonymous))) return notFound();
@@ -386,7 +402,7 @@ async function circlePost(db: Db, request: Request, slug: string): Promise<Respo
       const view = await db.withActor(actor, tx => friendCircleView(tx, circle.id, actor.userId));
       const item = view?.items.find(row => row.id === itemId);
       if (!item) return notFound();
-      const intent = z.enum(['claim', 'release', 'create_pool', 'contribute', 'mark_paid', 'purchase']).safeParse(fields.get('intent'));
+      const intent = z.enum(['claim', 'release', 'create_pool', 'contribute', 'mark_paid', 'purchase', 'reveal']).safeParse(fields.get('intent'));
       if (!intent.success) return notFound();
       const moneyIntent = intent.data === 'create_pool' || intent.data === 'contribute';
       const amount = positiveCentsSchema.safeParse(fields.get(intent.data === 'create_pool' ? 'targetMinor' : 'amountMinor'));
@@ -406,6 +422,7 @@ async function circlePost(db: Db, request: Request, slug: string): Promise<Respo
             case 'contribute': await contribute(tx, actor, poolId, amount.data!); break;
             case 'mark_paid': await markPaid(tx, actor, poolId); break;
             case 'purchase': await purchasePool(tx, actor, poolId); break;
+            case 'reveal': await revealItem(tx, actor, itemId); break;
           }
         });
       } catch (error) {
@@ -442,6 +459,20 @@ async function circlePost(db: Db, request: Request, slug: string): Promise<Respo
   const pepper = env.SESSION_SECRET;
   const phoneHash = hashPhone(normalized, pepper);
 
+  // M-02: count every attempt before the lookup, successes and failures alike. The key is
+  // circle + phone hash + forwarded address — never a raw number — and the denial is the
+  // same for invited and uninvited numbers, so throttling cannot walk the phone list.
+  const address = (request.headers.get("x-forwarded-for") ?? "").split(",")[0]?.trim() || "unknown";
+  const throttle = checkGateThrottle(`${circle.id}:${phoneHash}:${address}`);
+  if (!throttle.allowed) {
+    console.warn("gate_throttled", { circleId: circle.id, retryAfter: throttle.retryAfter });
+    const form = gateForm("Too many tries. Wait a minute, then try again.");
+    return new Response(form.body, {
+      status: 429,
+      headers: headers({ "Content-Type": "text/html; charset=utf-8", "Retry-After": String(throttle.retryAfter) }),
+    });
+  }
+
   // Authorise before writing anything. `removed` is not an invite.
   const invited = await db.prisma.allowlistEntry.findUnique({
     where: { circleId_phoneE164Hash: { circleId: circle.id, phoneE164Hash: phoneHash } },
@@ -449,6 +480,7 @@ async function circlePost(db: Db, request: Request, slug: string): Promise<Respo
   });
   if (!invited || invited.status === "removed") {
     // One message for every kind of no, so this form cannot be used to walk a phone list.
+    console.warn("gate_denied", { circleId: circle.id });
     return gateForm("We could not let you in with that number.");
   }
 
