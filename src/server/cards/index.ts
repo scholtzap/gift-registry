@@ -63,7 +63,10 @@ async function loadCardData(tx: Tx, actor: Actor, itemId: string): Promise<CardD
     }),
     tx.giftCard.findUnique({ where: { itemId }, select: { pun: true } }),
     tx.user.findMany({ where: { id: { in: giftGivers } }, select: { id: true, displayName: true } }),
-    tx.user.findUnique({ where: { id: circle.ownerUserId }, select: { displayName: true } }),
+    // A proxy circle has no owner user; the card falls back to 'You' below.
+    circle.ownerUserId
+      ? tx.user.findUnique({ where: { id: circle.ownerUserId }, select: { displayName: true } })
+      : Promise.resolve(null),
   ]);
   const savedByUser = new Map(savedEntries.map((entry) => [entry.contributorUserId, entry]));
   const names = new Map(people.map((person) => [person.id, person.displayName.split(/\s+/u).find(Boolean) ?? 'Anonymous']));

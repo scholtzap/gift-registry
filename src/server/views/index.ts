@@ -87,7 +87,8 @@ export async function ownerCircleView(tx: Tx, circleId: string): Promise<OwnerCi
       price: item.priceMinor === null ? null : formatMinor(item.priceMinor, item.currency),
       confirmed: item.confirmed,
     })),
-    attributes: circle.owner.attributes.map((a) => ({ kind: a.kind, valueText: a.valueText, unit: a.unit })),
+    // Proxy circles have no owner, hence no owner attributes (RN-A D4).
+    attributes: (circle.owner?.attributes ?? []).map((a) => ({ kind: a.kind, valueText: a.valueText, unit: a.unit })),
   };
 }
 
@@ -145,7 +146,7 @@ export async function friendCircleView(tx: Tx, circleId: string, viewerUserId: s
               },
       };
     }),
-    attributes: circle.owner.attributes
+    attributes: (circle.owner?.attributes ?? [])
       .filter((a) => a.visibility === 'friends')
       .map((a) => ({ kind: a.kind, valueText: a.valueText, unit: a.unit })),
   };
