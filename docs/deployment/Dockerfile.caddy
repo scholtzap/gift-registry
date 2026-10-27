@@ -1,0 +1,11 @@
+ARG CADDY_VERSION=2
+FROM caddy:${CADDY_VERSION}-builder AS builder
+ARG CLOUDFLARE_MODULE_VERSION
+# Operator selects a reviewed version/commit; do not build an unpinned plugin implicitly.
+RUN test -n "$CLOUDFLARE_MODULE_VERSION" \
+    && xcaddy build --with github.com/caddy-dns/cloudflare@${CLOUDFLARE_MODULE_VERSION}
+
+FROM caddy:${CADDY_VERSION}
+COPY --from=builder /usr/bin/caddy /usr/bin/caddy
+RUN mkdir -p /data /config && chown -R 10001:10001 /data /config
+USER 10001:10001

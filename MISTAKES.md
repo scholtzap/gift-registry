@@ -2,6 +2,24 @@
 
 Agent error log. Newest entry first. No secrets, tokens, env dumps, or credentialed URLs.
 
+## 2026-10-27 — An inherited grant expiry could undo a user opt-out
+**What happened:** capability toggles changed enabled/source but retained expiresAt; the gate ignored expired user rows and fell back to the granting plan.
+**Impact:** a user's explicit refusal could later permit model spending. Three real PostgreSQL regressions reproduced the failure, including an already-expired user opt-out.
+**Fix:** user-source choices always prevail; toggles clear expiry. All 14 gate cases pass, including expired non-user grant fallback.
+**Do not repeat:** test state changes from expiring grants to user choices, not only fresh rows and current enabled values.
+
+## 2026-10-27 — Ingest locks borrowed connections their callbacks needed
+**What happened:** session advisory locks used the same ten-connection pool as Prisma actor queries while holding connections across external work.
+**Impact:** sufficient concurrent holders starved the queries needed to finish and release those locks; a real database regression reproduced transaction acquisition failure.
+**Fix:** a separate bounded two-connection advisory pool, acquisition timeouts and discard on failed unlock. The twelve-lock regression and all ten real intake cases pass.
+**Do not repeat:** verify resource ownership across callback boundaries; a non-transaction lock still holds a database connection.
+
+## 2026-10-27 — Hook removal left repeated form names with duplicate IDs
+**What happened:** making private screens hook-free for Node App Route rendering left a name-derived Field ID default. Repeated fields with the same name collided.
+**Impact:** the full screen suite failed its unique-label association assertion even though production navigation passed.
+**Fix:** Field requires an explicit unique ID from every caller; the final full suite passes 393 cases.
+**Do not repeat:** test repeated reusable controls after SSR changes; native navigation and accessibility naming are separate checks.
+
 ## 2026-10-26 — Wrote an RLS policy without a `FOR` clause and it silently became a SELECT policy
 **What happened:** `CREATE POLICY items_owner_write ON items TO app_owned USING (app_actor_owns_circle(circle_id))`
 read as "the owner may write their own items". With no command clause, PostgreSQL applies a policy to **all**

@@ -1,302 +1,197 @@
 # Architecture Overview
+This document serves as a critical, living template designed to equip agents with a rapid and comprehensive understanding of the codebase's architecture, enabling efficient navigation and effective contribution from day one. Update this document as the codebase evolves.
 
-**Status:** current as of 2026-10-26 (planning lock). Update with skill `repo-architecture` when structure changes.
-Complementary: `MISTAKES.md`, `WISHLIST.md`, `SPEC.md`, `docs/plans/PLANS_INDEX.md`.
-
-**Product in one line:** a gift-target owner shares one gated link into their own WhatsApp group; friends claim
-items or pool money behind one assigned buyer, and the owner provably cannot see claims, pools, secret suggestions
-or better prices.
+Verified local structure as of **2026-10-27**. This map distinguishes local implementation from unverified live services and deployment.
 
 ## 1. Project Structure
+This section provides a high-level overview of the project's directory and file structure, categorised by architectural layer or major functional area. It is essential for quickly navigating the codebase, locating relevant files, and understanding the overall organization and separation of concerns.
 
 ```text
 gifts-registry/
-  AGENTS.md CLAUDE.md ARCHITECTURE.md MISTAKES.md WISHLIST.md SPEC.md
-  .env                    # non-secret config only (Notion root page id, DOC_SYNC_TARGET)
-  .github/workflows/      # sync-notion-docs.yml, plans-registry-gate.yml, + CI test gate
-  docker-compose.yml      # app + postgres + caddy (identical local and on the Oracle VM)
+  AGENTS.md CLAUDE.md ARCHITECTURE.md MISTAKES.md WISHLIST.md SPEC.md DESIGN.md
+  README.md LICENSE
+  package.json pnpm-lock.yaml prisma7.config.ts
+  next.config.mjs vitest.config.ts playwright.config.ts
+  docker-compose.yml        # Local PostgreSQL only, loopback port 5433
+  prisma/                   # Schema and migrations; policies deployed separately
   src/
-    app/                  # Next.js App Router. Built: health/, c/[slug]/ (thin adapter).
-                          #   Planned: (owner)/, (friend)/, api/, landing page at /
-    lib/                  # env contract (zod, fails at boot), money formatting
+    app/                    # Landing, /app invite entry, /health, icons
+      c/[slug]/             # Stable GET/POST and private catch-all route adapters
+      api/wa/webhook/        # Node raw-body webhook GET/POST
+    components/             # Hook-free shared UI and seven screens plus landing
+    lib/                    # Validated environment and integer-money formatting
     server/
-      db/                 # client.ts (withActor — the only door), policies.ts, policy SQL
-      auth/               # phone-hash.ts (keyed E.164 hash), session.ts (signed cookie)
-      routes/             # framework-free route logic; circle.ts is the /c/<slug> role split
-      views/              # role-scoped projection builders (the privacy boundary)
-      entitlements.ts     # can() / assertCan() — the single gate on every model-spending path
-      wa/                 # PLANNED: WhatsApp Cloud API client + webhook handler + media store
-      models/             # PLANNED: Meta Model API client — spark, transcribe, image, sam
-      intake/             # PLANNED: dedupe -> fetch media -> convert -> parse -> draft item
-      ledger/             # PLANNED: circles, members, items, claims, pools, contributions
-      agent/              # PLANNED: role-specific toolsets + context builder
-    generated/prisma/     # generated client; gitignored
-  tests/                  # leak/ (RLS), views/ (projections), entitlements/ (gate), routes/
-                          #   (HTTP layer). `pnpm leak` runs all four; globalSetup applies the
-                          #   migrations and the policies to DATABASE_URL_TEST every run.
-  worker/                 # PLANNED: pg-boss consumer for ingest jobs
-  fixtures/               # PLANNED: hand-checked SA retailer product fixtures + SOURCES.md
-  scripts/                # seed.ts (fictional cast), apply_policies.ts
-  scripts/ops/            # sync_docs_to_notion.py, plans registry tooling
-  docs/                   # strategy / plans / investigations / operations / deployment
+      db/                   # Actor transaction wrapper and checked-in policy SQL
+      auth/                 # Signed cookies, phone hashing, unmounted throttle helper
+      routes/               # Framework-free circle HTTP, native actions and private HTML
+      views/                # Explicit owner/friend projections
+      entitlements.ts       # Actor-private capability decisions
+      wa/                   # Signature, identity, queue, bounded media/HTTP/storage
+      models/               # Consent-gated Meta client and explicit fixture mode
+      intake/               # Voice/link/image drafts, checkpoints and processing
+      ledger/               # Scoped transactional item/claim/pool/contribution functions
+      agent/                # Six deterministic task intents, dispatch and private status
+      cards/                # Contributor validation/projection, Satori and resvg PNG
+      vision/               # Person/mask guard, bounded compositing and atomic publication
+    worker.ts               # pg-boss ingest consumer and shutdown lifecycle
+    generated/prisma/       # Generated and ignored
+  public/                   # Private-route stylesheet, optional card-preview JS, brand assets
+  tests/                    # RLS/views/routes, backend, screens and Chromium browser flows
+    fixtures/               # Fictional WhatsApp/model and synthetic vision inputs
+  scripts/                  # Policy application and fictional seed
+    ops/                    # Plans registry, KB sync, owner issuer, backup/restore sources
+  docs/
+    deployment/             # Unexecuted Oracle/Caddy/Compose/k6 candidates
+    operations/parallel-agent-outputs/ # Worker reports and parent verification addenda
+    plans/                  # Git-native work queue and generated index
+  .github/workflows/        # Existing workflow sources; execution not certified here
 ```
 
-A row marked PLANNED is a module that does not exist yet. It stays in this map because the shape
-is agreed, and it loses the marker the day the directory appears — a map that cannot tell you
-which half is real is a map that becomes a lie.
+**Ecosystem:** [AGENTS.md](AGENTS.md) governs behavior; [SPEC.md](SPEC.md) defines product requirements; [DESIGN.md](DESIGN.md) defines V7 tokens; [MISTAKES.md](MISTAKES.md) and [WISHLIST.md](WISHLIST.md) record incidents and tooling gaps. Work status is in [docs/plans/PLANS_INDEX.md](docs/plans/PLANS_INDEX.md); integration evidence is in [parallel-build-closeout](docs/plans/parallel-build-closeout.md). No generated graph is needed to use this map.
 
 ## 2. High-Level System Diagram
-
-```mermaid
-flowchart LR
-  subgraph Meta
-    WA[WhatsApp Cloud API<br/>webhooks + send]
-    MAPI[Meta Model API<br/>muse-spark-1.2/1.3<br/>muse-voice-transcribe-1.0<br/>muse-image-1.0]
-  end
-
-  subgraph Oracle VM [Oracle free-tier ARM VM · Docker Compose]
-    CADDY[Caddy<br/>TLS DNS-01]
-    APP[Next.js app<br/>owner + friend routes]
-    HOOK[/api/wa/webhook<br/>verify + dedupe/]
-    WORKER[pg-boss worker<br/>intake jobs]
-    PG[(Postgres 16<br/>Prisma + RLS)]
-    MEDIA[(Local media store<br/>bytes + item images)]
-  end
-
-  OWNER{Owner phone<br/>PWA + WhatsApp}
-  FR1{Friend A phone}
-  FR2{Friend B phone}
-
-  OWNER -->|voice note / photo / link| WA
-  FR1 -->|text / link| WA
-  WA -->|POST messages| HOOK
-  HOOK -->|media-id GET| WA
-  HOOK --> PG
-  HOOK --> WORKER
-  WORKER -->|ffmpeg ogg→wav 16k mono| MEDIA
-  WORKER -->|transcribe + json_schema| MAPI
-  WORKER --> PG
-  OWNER -->|gated link, owner view| CADDY --> APP
-  FR1 -->|gated link, friend view| CADDY
-  FR2 --> CADDY
-  APP -->|role-scoped projection| PG
-  APP -->|send template / in-window reply| WA
-  MAPI -.->|model responses| APP
-```
-
-**The two projections** are the diagram's point. Owner and friend traffic reaches the *same* app and the *same*
-Postgres, but through different view builders, and RLS denies the owner's role any read of `claims`, `pools` or
-`pool_contributions`. There is no second database.
-
-## 3. Core Components
-
-| Component | Responsibility | Key decision |
-|---|---|---|
-| `wa/webhook` | Verify `hub.challenge`, validate signature, dedupe on WhatsApp message id, enqueue | Idempotent by unique message id — Meta redelivers |
-| `intake` | Normalise audio/image/text/url into a **draft** item | Drafts require human confirm; never auto-commit a model-guessed price |
-| `models` | Single client for `POST /v1/responses`, `/v1/chat/completions`, `/v1/asr/transcribe` | `json_schema` output must be **flat** — recursive schemas return HTTP 400 |
-| `ledger` | Items, claims, pools, contributions, tombstones | Append-only `ledger_events` gives the friend side a provable history |
-| `views` | Build owner vs friend projection from one ledger | Chooses which rows and fields to render; the **columns** a role may read at all are decided by the grants in `001_roles.sql`, and a projection that asks for more than the grant allows raises 42501 |
-| `agent` | Role-specific toolsets + context builder | The model is never *handed* data the requester cannot see |
-
-## 4. Data Stores
-
-Postgres 16 is the only system of record. `minor` integer amounts + explicit `currency` (ZAR) everywhere —
-no floats for money.
+Provide a simple block diagram (e.g., a C4 Model Level 1: System Context diagram, or a basic component diagram) or a clear text-based description of the major components and their interactions. Focus on how data flows, services communicate, and key architectural boundaries.
 
 ```text
-users              id, bsuid NULL, phone_e164 NULL, display_name, created_at
-                   UNIQUE(bsuid), UNIQUE(phone_e164), CHECK (bsuid IS NOT NULL OR phone_e164 IS NOT NULL)
-attributes         id, user_id FK (the gift target), kind, value_text, unit,
-                   visibility friends|private, updated_at
-                   kind ∈ ring_size, shoe_size, top, bottom, colour, other — owner-authored
-circles            id, name, occasion, event_date, owner_user_id FK, share_slug UNIQUE, status
-allowlist_entries  id, circle_id, phone_e164_hash, added_by, status pending|accepted|removed
-memberships        id, circle_id, user_id, role owner|friend, status, joined_at
-items              id, circle_id, title, canonical_url, retailer, price_minor, currency,
-                   image_path, added_by_user_id,
-                   visibility owner_visible|friend_only,        -- friend_only = secret suggestion
-                   status active|tombstoned|revealed,
-                   tombstone_reason bought_self|no_longer_wants|duplicate NULL,
-                   confirmed bool, created_at, tombstoned_at
-claims             id, item_id, user_id, pool_id NULL, kind solo|pool_member,
-                   status claimed|fulfilled|released, created_at
-pools              id, item_id, buyer_user_id, target_minor, currency,
-                   status open|funded|purchased|pivot_needed
-contributions      id, pool_id, user_id, amount_minor, currency,
-                   status promised|marked_paid|settled, paid_at, note
-ingest_events      id, wa_message_id UNIQUE, circle_id, user_id, kind audio|image|text|url,
-                   media_path, media_expires_at, model_used, draft jsonb, item_id NULL,
-                   status received|converted|transcribed|parsed|confirmed|failed, error
-ledger_events      id, circle_id, entity, entity_id, actor_user_id, action, payload jsonb, created_at
-card_entries       id, item_id, contributor_user_id FK, display_name_shown, anonymous bool,
-                   message text CHECK (char_length(message) <= 200), created_at
-                   -- one row per gift-giver; the card is composed from these, never stored as one blob
-gift_cards         id, item_id UNIQUE, pun, tagline, model_used, art_path NULL, art_prompt,
-                   rendered_png_path, rendered_at, created_by_user_id
+Browser -> Next Node adapters -> circle HTTP role checks -> owner/friend projections
+                                      |                           |
+                                  native POST                withActor + RLS
+                                      |                           |
+                                  ledger/cards <-------------- Postgres
+
+Signed webhook -> raw HMAC -> current identity -> event + pg-boss job transaction
+                                                     |
+                                           immediate media acquisition
+                                                     |
+Worker -> session advisory lock -> staged intake -> private version-1 draft
+                                      |
+                           short actor consent transactions
+                                      |
+                     bounded external adapters OR explicit demo fixtures
+
+Human draft confirmation -> one scoped item, exactly once
+Eligible friend -> own card entry -> private PNG -> manual human handover
+Vision service factory -> person guard -> mask/composite -> atomic private file
 ```
 
-**`card_entries` / `gift_cards` are friend-scoped in full.** No read policy exists for `app_owned`, so an owner
-query returns zero rows and the route 404s rather than 403s — a 403 would confirm a card exists, which is the leak.
-Card rows are derived state, not ledger state: deleting a card never touches `contributions`, and a tombstoned item
-with a funded pool still renders its card, because the keepsake belongs to the gifters.
-`message` is the gifters' own words — stored verbatim, never rewritten by a model, URLs rejected on write so the
-card cannot become a channel that smuggles a retailer or a cheaper price to the owner.
+The webhook acknowledgement is **not an outgoing WhatsApp message**. Live media/model adapters exist but have only external-fake/fixture evidence. The vision factory is separate from screenshot intake and refuses unsupported live SAM. Oracle deployment and outbound transport are not represented as running services.
 
-**Stripe-Connect-proofing without holding money:** `contributions` already separates `promised` from `paid` from
-`settled` and carries `amount_minor`/`currency`. Adding escrow later means adding a `payment_intent_id` column and
-a provider, not re-shaping the ledger — which is the requirement the brief set.
+## 3. Core Components
+(List and briefly describe the main components of the system. For each, include its primary responsibility and key technologies used.)
 
-**RLS (the privacy mechanism).** Policies are owned by the app role, and the request sets
-`SET LOCAL ROLE app_owned | app_friend` per transaction:
+### 3.1. Frontend
 
-```sql
-ALTER TABLE claims             ENABLE ROW LEVEL SECURITY;
-CREATE POLICY claims_friend_read ON claims
-  FOR SELECT USING (current_setting('app.role') = 'friend');
--- no policy for owner => SELECT returns 0 rows, not an error. Same on pools, contributions.
+**Piñata web UI:** Next.js App Router serves the public landing/invite entry and stable `/c/<slug>` routes. V7 is light-only pink/blue with local Syne, Manrope and Space Grotesk fonts. Seven private/entry screens cover join, owner ledger, friend ledger, item detail, draft confirmation, card composition and capability settings.
 
-CREATE POLICY items_owner_read ON items
-  FOR SELECT USING (circle_id = current_setting('app.circle_id')::uuid
-                    AND visibility = 'owner_visible');
-```
+Private routes return raw server-rendered HTML with native forms. The Node renderer loads `react-dom/server` through `createRequire(import.meta.url)` because Next's `react-server` export conditions reject the ordinary import in an App Route. Components have no hooks; every Field caller supplies a unique explicit ID. Card preview JavaScript is optional, and anonymous save works without it.
 
-Tombstoned items stay readable to friends (`status = 'tombstoned'`) and vanish from the owner view — which is
-exactly the "soft delete, ledger survives" rule, expressed as a policy rather than as app-layer discipline.
+### 3.2. Backend Services
 
-## 5. External Integrations
+| Component | Responsibility and constraint |
+| --- | --- |
+| `routes/circle.ts` | Resolve current actor/circle, branch explicitly on actual ownership, render private projections, bound native form bodies and verify canonical same-origin POSTs. |
+| `db/client.ts` | `withActor` switches to `app_owned`/`app_friend`, sets transaction-local actor/circle/optional phone context and asserts the role. Prisma queries use a ten-connection pool. Long ingest session locks use a separate two-connection pool; acquisitions have five-second timeouts. |
+| `entitlements.ts` | One actor-private spending gate. User choices prevail despite inherited expiry; user toggles clear expiry. Expired non-user grants fall back to the plan; outages fail closed. |
+| `wa` / `intake` | Raw HMAC before parsing, unique-message dedupe, atomic event/job commit, immediate bounded media acquisition, no-shell Ogg/Opus conversion, staged private candidates and checkpoints. |
+| `models` | Recheck current membership/ownership and capability before each spending stage. ASR is `muse-voice-transcribe-1.0`; structured extraction is `muse-spark-1.2`. Missing credentials or live failures never enable fixtures. |
+| `ledger` | Canonical UUID item advisory transaction lock precedes pool-row locks. Claim/release/open-pool/contribute/mark-paid and human confirmation are exercised on real PostgreSQL. Multi-user purchase, owner creation and tombstone/pivot still refuse unsupported operations. |
+| `agent` | Exactly six task intents. Free text and model output cannot select state transitions. Owner status excludes friend coordination; replies need a separate outgoing transport. |
+| `cards` | Eligibility and own-entry updates, literal messages, URL rejection in names/messages, supported-glyph validation, bounded layout and Satori/resvg PNG. Owners and non-givers receive generic private 404s. |
+| `vision` | Person-box check before mask persistence, excluded-pixel zeroing, consent checks, bounded decoding and atomic completed-file publication. Synthetic guard/compositor tests do not certify live detection accuracy. |
+| `src/worker.ts` | Start/poll/complete pg-boss jobs and return an async shutdown closure; `pnpm worker` launches the local process. Container worker integration remains open. |
 
-| Surface | Used for | Called from | Constraint |
-|---|---|---|---|
-| WhatsApp Cloud API | inbound intake, outbound replies/templates | server webhook + send client | inbound free; media URL lives 5 min; **webhook media id expires 7 days** |
-| Authentication template | optional OTP upgrade | server | **always charged** for +27; ≤24 h approval |
-| `muse-spark-1.2` | audio + image → structured item | worker | 1.3 audio is documented **degraded** — 1.2 for voice |
-| `muse-spark-1.3` | text-only reasoning (item merge, captions) | app | richer text, worse audio |
-| `muse-voice-transcribe-1.0` | ASR path | worker | **RIFF/WAVE mono 16-bit 16/24 kHz only** → ffmpeg |
-| `muse-image-1.0` | optional item imagery | app | 150 RPM team-wide |
-| `web_search` grounding | deal-finding (deferred spike) | app | returns cited prose, not product records; ZA availability unconfirmed |
-| Retailer page fetch | link expansion `og:*` + JSON-LD | worker | user-directed URL, our own fetch — not Meta data |
-| Cloudflare DNS | TLS-01 for Caddy | deploy | token from vault, never committed |
+## 4. Data Stores
+(List and describe the databases and other persistent storage solutions used.)
 
-Explicitly **not** used: Facebook Marketplace (prohibited by Meta's Automated Data Collection terms; would breach
-two disqualification rules), the WhatsApp Groups API (Official-Business-Account gated, 8 participants, cannot post
-into a user's existing group), Facebook Login.
+### 4.1. PostgreSQL 16
+
+One system of record, accessed through Prisma 7's PostgreSQL adapter and `pg`. The fourteen Prisma application tables are: `users`, `entitlements`, `attributes`, `circles`, `allowlist_entries`, `memberships`, `items`, `claims`, `pools`, `contributions`, `ingest_events`, `ledger_events`, `card_entries`, `gift_cards`. Prisma bookkeeping and pg-boss queue tables are separate infrastructure state.
+
+Amounts are integer minor units with explicit ZAR currency. Unknown item prices are null; contributions and pool targets must be positive. Settlement is manual and no money is held. Billing decisions are recorded in [user-management-and-billing-path](docs/plans/user-management-and-billing-path.md); no payment integration is required before submission.
+
+Policy SQL is applied separately after migrations. RLS scopes rows; safe-column grants on `users` protect phone/BSUID columns. `app.user_id` and `app.circle_id` are transaction-local settings; there is no `app.role` authorization setting. Friend-circle predicates exclude the actual owner, require active membership/circle and bind to the actor's selected circle. Owner ledger-event reads are limited to the owner's own events. Card entries are writable only by their contributor.
+
+### 4.2. Private Files and Queue
+
+`MEDIA_DIR/ingest` holds promptly acquired media using validated database UUID filenames and private atomic writes. Vision outputs also publish completed temporary files atomically. Application-controlled storage is required; crash recovery, hostile-local-filesystem behavior and scheduled media expiry cleanup are not certified.
+
+`ingest_events.draft` holds a version-1 private record with input, transcript/evidence, reply and one pending candidate. Human confirmation uses actor ownership/current circle and corrected values; provenance `actorRole` is not authorization. pg-boss persists jobs in PostgreSQL, with event and job committed together.
+
+## 5. External Integrations / APIs
+(List any third-party services or external APIs the system interacts with.)
+
+| Integration | Implemented boundary | Evidence gap |
+| --- | --- | --- |
+| WhatsApp Cloud API | Challenge/raw signature, BSUID-first resolution, bounded metadata/media downloads and seven-day media lifetime metadata. | No live WABA/number/webhook/device run or outbound message transport. The independent MIT `whatsapp-api-js` wrapper was reviewed, not installed. |
+| Meta Model API | Pinned endpoint/models, WAV ASR, flat constrained JSON, local validation and per-stage consent. | No paid/live request; external-fake and explicit demo-fixture tests only. |
+| Retailer metadata | Exact allowlisted HTTPS hosts, redirects refused, bounded metadata/lexical money parsing. | No arbitrary marketplace scraping, retailer image download or live quality benchmark. |
+| Person/SAM service | Injection seam and conservative person/mask guard. | Unsupported live SAM refuses; not wired to multi-candidate screenshot intake. |
+| Cloudflare/Caddy | DNS-01 and private-network deployment templates. | No authorized VM/domain/token or TLS deployment verification. |
+
+Authentication OTP needs an approved, charged authentication template. Fixed-menu interactive messages require the service window; outside it approved templates are necessary. No unofficial WhatsApp clients, general chatbot, Marketplace scraping or automatic card/reveal delivery are allowed.
 
 ## 6. Deployment & Infrastructure
 
-Oracle Always Free Ampere VM, `docker compose` under Caddy. Chosen over Vercel+Neon and Cloud Run because this
-workload needs all four of: Postgres RLS, ffmpeg in the runtime, a webhook that is never cold, and 24/7 uptime
-through the Nov 5–8 judging window without a free tier that sleeps.
+**Local:** Windows x64, Node 24 and pnpm 10.33.0; root Compose starts PostgreSQL only on `127.0.0.1:5433`. The app and worker run separately. Browser tests own a loopback server on port 3001 and an isolated test database.
 
-- `docker-compose.yml` is the same file locally and in prod; a `git push` + `docker compose up -d` is the deploy.
-- Postgres gets nightly `pg_dump` to a second disk; **Prisma migrations are never auto-rolled-back** — recovery is
-  "redeploy previous image tag + `pg_restore`", written as a runbook before the first migration lands.
-- Caddy obtains the cert via Cloudflare DNS-01; Oracle security-list ingress opens 443 only; app and Postgres bind
-  to the compose network, not the host.
-- Freeze deploys after **Nov 3** (it is also the last day for hackathon technical questions).
-- **GitHub Actions gotcha:** a workflow that fails in ~4 seconds with *no log* (`--log-failed` returns "log not
-  found") is a **billing** failure, not a YAML error. Private repos on an account without a payment method cannot
-  start `ubuntu-latest` jobs; the reason surfaces only in the check-run annotation. Public repos get unlimited free
-  Linux minutes — and this repo must be public for the hackathon anyway.
+**Candidate target:** Oracle Ampere ARM64, private PostgreSQL/app network, Caddy TLS and persistent private media. [oracle-vm.md](docs/deployment/oracle-vm.md) and sibling Docker/Compose/Caddy sources are unexecuted candidates. Backup/restore scripts exist; no restore drill is claimed. No runtime image, deployment, public flip or live endpoint was produced in this wave.
+
+The exact local production build passed Chromium routes with installed dependencies. Its circle traces contain Geist, sharp and resvg; the dynamic React renderer require is not listed in those traces. The Oracle candidate copies full dependencies. Minimal standalone deployment, ARM64 native bindings, container worker lifecycle and FFmpeg binary behavior still need verification. Materialize Google Drive reparse-sensitive files before Docker builds.
+
+Migrations must remain expand-only. Recovery requires a previous image tag and a verified database restore; never automatically roll back a production migration. Existing CI/doc-sync sources are not evidence of a successful CI run. CI owns KB publication; this work did not publish documents manually.
 
 ## 7. Security Considerations
 
-1. **Privacy is the product.** Any path where an owner can observe a claim, pool, contribution, secret suggestion
-   or deal is a hard failure. Enforced in three places on purpose — RLS, the view builder, and role-scoped agent
-   toolsets — so one developer's mistake in one place is not a leak.
-   **Correction from a red-proof, 2026-10-26:** those three layers are *not* independently sufficient for the
-   friend projection. The owner is a member of their own circle, so `friendCircleView` legitimately returns rows for
-   them; a proof that mounted the friend builder on the owner's session rendered the secret suggestion and the pool
-   straight into the owner's HTML. **The route is what keeps the owner out of the friend projection** — hence
-   `src/server/routes/circle.ts` uses two explicit branches rather than one ternary over the role. Do not "simplify"
-   that branch, and do not treat the view builder as the boundary.
-   **Second correction, same day:** RLS filters **rows** and has no notion of **columns**, so a policy that is
-   correct about the row set can still leak a column. `001_roles.sql` grants `SELECT ON ALL TABLES` (deliberately,
-   so an ungranted table reads as zero rows and the route can 404), which meant the correct
-   `users_circle_roster` handed every friend the whole group's `phone_e164` and `bsuid` inside the roster they were
-   allowed to see. `users` is therefore granted column-by-column, and `phone_e164` stays plaintext on purpose —
-   the WhatsApp Cloud API addresses by number, so the send path reads it on the login role. Two things follow:
-   a bare Prisma `include` of a user relation now raises 42501 (name the columns), and a column added to `users`
-   by a later migration is invisible to both roles until it is added to that grant list. Both are the intended
-   failure direction; do not re-grant the column to make a query go green.
-2. **Prompt-injection resistance by construction.** The intake pipeline parses untrusted user text. Parsing uses
-   `json_schema` constrained decoding; the resulting draft is data, never instructions.
-3. **Public repo hygiene.** No real phone numbers, names or gift conversations in fixtures, docs, screenshots or
-   git history. Fictional cast only. `.env` untracked; Notion sync secret-scans before writing.
-4. **POPIA.** Size attributes are personal information: owner-authored, `private` by default, explicit per-attribute
-   opt-in to share with friends, and deletable — deletion cascades to tombstone the attribute and keep the ledger.
-5. Webhook signature verification on every request; app screensharing tokens short-lived; sessions HttpOnly +
-   SameSite. `SameSite=Lax` does **not** protect `POST /c/<slug>`, because that endpoint issues a cookie rather than
-   reading one, so it verifies `Origin` (Referer as fallback) against its own origin before touching the database —
-   login-CSRF is a privacy failure here, not just an integrity one: the victim's gifts and card messages land in a
-   circle the attacker owns and reads.
-6. Model API key lives in the compose environment from the vault, never in the image or the repo.
-7. **Hook chain (verify, do not assume).** `core.hooksPath` is *global* (`~/.config/git/hooks` → `_dispatch`), which
-   runs gitleaks on the staged diff then chains to a repo hook only if `git config hooks.chainDir` is set. This repo
-   needs `hooks.chainDir = .githooks` locally or `.githooks/pre-commit` (plans-index freshness) silently never fires.
-   Git config is not committed, so a fresh clone depends on CI's `plans-registry-gate.yml` instead. Pre-publication
-   review: `security_best_practices_report.md`.
+- Actual ownership and active membership are checked at HTTP/model boundaries; a signed cookie role alone is insufficient. Keep the explicit owner branch and friend-owner exclusion.
+- All private HTML, errors, redirects and PNG responses use `private, no-store, max-age=0, must-revalidate`. Missing and unauthorized resources are indistinguishable 404s. Cards have no OG/Twitter preview, automatic notification or delivery.
+- Cookies are signed, HttpOnly, SameSite=Lax and Secure in production. The current phone allowlist gate is not possession verification. Production OTP and the D4 owner-session workflow remain open.
+- Native POSTs compare Origin/Referer with configured `CIRCLE_BASE_URL`, not internal Next hostnames or untrusted forwarded headers. Private Referrer-Policy is `same-origin`; foreign/null origins remain denied. Form bodies are bounded to 16 KiB.
+- Raw webhook HMAC precedes JSON parsing. External media/model/retailer requests have host/protocol, redirect, byte and timeout bounds; FFmpeg receives fixed argv with `shell: false`.
+- User/model text is data. Only strict explicit task intents select transitions. Every model-spending stage rechecks consent; user opt-outs do not expire with inherited grants.
+- Session advisory locks use their own bounded pool so callbacks retain query capacity. Failed unlock discards the session rather than recycling a potentially lock-bearing connection.
+- Literal contributor messages are preserved. URLs and unsupported glyphs refuse with recoverable UI instead of silently changing or losing words. No person pixels may be published by the vision factory.
+- `.env`, credentials, runtime media and caches stay ignored. Use fictional fixtures and secret-safe, redacted scans; a zero scan does not certify personal-data publication or third-party asset rights.
+- Pure M-02 throttle tests do not mean throttling is mounted at the real gate. The Windows-positive owner credential flow is not verified. See [ops report](docs/operations/parallel-agent-outputs/ops.md).
+
+Review evidence is in [security_best_practices_report.md](security_best_practices_report.md), [cards/vision review](docs/operations/parallel-agent-outputs/security-cards-vision.md) and [intake report](docs/operations/parallel-agent-outputs/intake.md). New local security regressions reproduced pool starvation and inherited-expiry opt-out failure before both fixes; all 24 focused PostgreSQL consent/intake cases subsequently passed.
 
 ## 8. Development & Testing Environment
 
-Docker Compose + `pnpm dev`; a `cloudflared` tunnel only for webhook dev, never for the submitted demo.
-The test suite that matters is the **leak suite**: a matrix of (actor role × query) asserting the owner cannot
-reach any friend-scoped row, through the API *and* through the agent context builder. Run in CI on every push.
-Owner-blindness rows, one per surface that can carry friend-scoped content — each asserted as **404, not 403**
-(a 403 confirms the resource exists, which is itself the leak), and each asserted for the role the test *thinks*
-it set:
+See [README.md](README.md) and [AGENTS.md](AGENTS.md) for configuration/commands. Prisma scripts and test setup explicitly use `prisma7.config.ts`; policy application is a separate step. Generated client and local secrets must not be committed.
 
-| Surface (owner session) | Must not reveal |
-|---|---|
-| `GET /api/circles/:id/claims` · `/pools` · `/contributions` | that anything is claimed or pooled |
-| `GET /api/items/:id/suggestions` | secret suggestions, deal prices, retailer of a cheaper option |
-| `GET /api/circles/:id/viewers` | who is looking |
-| `GET /cards/:id` and `GET /api/cards/:id.png` | the card: contributor names + messages, i.e. who bought what |
-| `GET /c/:slug` link-preview and `og:` tags on any card route | the same, rendered by WhatsApp to everyone in the group **including the owner** |
-| agent context builder, owner role | any friend-scoped row it could paraphrase back |
-| error bodies, response headers, `Cache-Control` on card artefacts | existence, via message text or a shared cache entry |
+`pnpm test` runs serial Vitest files against `DATABASE_URL_TEST`, applying migrations and reviewed policies. `pnpm leak` selects leak/views/entitlements/routes. Use an isolated disposable test database/account, never valuable data. Do not disable RLS or drop databases merely to demonstrate a red.
 
-Commands:
+`pnpm test:browser` starts Next dev on loopback and exercises mounted HTTP/navigation/native writes with fictional scoped sessions. `PLAYWRIGHT_PRODUCTION=1` uses a previously built production artifact; `NEXT_DIST_DIR=.next-verification pnpm build` selects its isolated build directory. Browser setup signs fixture sessions directly and is not OTP evidence.
 
-```bash
-pnpm db:policies   # roles + policies, then a hard check that no app table is left uncovered
-pnpm leak          # the matrix above, against a separate `gifts_test` database
-```
+Final local verification: **393/393 Vitest cases across 34 files**, typecheck, production build and **10/10 production Chromium cases passed**. The four new security regressions failed before their fixes and passed in a 24-case focused PostgreSQL run. Full evidence is recorded in [closeout](docs/plans/parallel-build-closeout.md). Browser coverage includes webhook challenge/signature, owner reflow, private drafts, claim/release/pool/paid, settings, card preview/save/download, no-JS anonymity and owner/forged-friend exclusion.
 
-The suite creates `gifts_test`, migrates it, then applies the same SQL the deploy runs — never the dev database.
-To see it fail on purpose (the only evidence that these assertions *can* fail), drop the database and skip the
-policies:
+No real human usability trials, screen-reader sessions, axe conformance result, physical WhatsApp browser test or k6 runtime result is claimed. Public landing accessibility measurements and an eight-task human script are in [accessibility-and-click-tests](docs/operations/parallel-agent-outputs/accessibility-and-click-tests.md).
 
-```bash
-docker exec gifts-pg psql -U gifts -d postgres -c 'DROP DATABASE gifts_test'
-LEAK_SKIP_POLICIES=1 pnpm leak    # 7 red: the owner can see the whole ledger
-pnpm leak                         # 10 green
-```
+## 9. Future Considerations / Roadmap
 
-`GET /health` returns 500 when any app table has no policy: an app that is up but unguarded is the failure this
-deployment actually fears, so it does not get to look healthy.
+The existing [parallel closeout](docs/plans/parallel-build-closeout.md) owns unfinished work: multi-user purchase, circle creation, owner tombstone/pivot, live SAM and vision/intake binding, mounted throttling, owner session/OTP, outgoing transport, live Meta evidence and Oracle deployment/restore/ARM64 checks. Humanizer changes await per-item approval and never alter contributors' messages.
 
-
-## 9. Future Considerations
-
-Deferred spikes with their kill criteria live in `docs/strategy/investigations/deferred-spikes.md`:
-SAM 3.1 cross-screenshot duplicate detection, the coordination/nudge agent, and `web_search` deal-finding.
-Post-hackathon: Stripe Connect escrow, `Login with WhatsApp` if it ever ships for +27, multi-occasion circles,
-and the post-event reveal.
+Deferred research is in [deferred-spikes](docs/strategy/investigations/deferred-spikes.md). PayFast is the planned ZA gateway after the hackathon; recurring payments are credit-card only and it is not a merchant of record. There is no Stripe/escrow implementation. Post-event reveal and deal discovery remain planned; no Marketplace access is implied.
 
 ## 10. Project Identification
 
-`scholtzap/gift-registry` · public · Next.js App Router + TypeScript + Prisma + Postgres 16 + pg-boss ·
-Meta Model API (`api.meta.ai/v1`) + WhatsApp Cloud API · hackathon submission due 2026-11-04 21:00 ET.
+Project Name: Piñata (`pinata` package), Gift Circles.
 
-## 11. Glossary
+Repository: `scholtzap/gift-registry`; visibility changes require explicit approval, and this map does not certify public-release readiness.
 
-- **Circle** — one gift-target, one occasion, one gated link, its owner and its allowlisted friends.
-- **Gift target** — the person attributes describe; usually the owner, always the one who must stay blind.
-- **Claim** — a friend taking responsibility for an item, solo or as a pool member.
-- **Pool** — friends funding one item behind **one assigned buyer**.
-- **Pivot** — an owner-deleted-bought-self item releasing its pool so the money moves elsewhere.
-- **Secret suggestion** — a friend-added item, `visibility = friend_only`.
-- **Projection** — the role-scoped rendering of one ledger. Owner and friend views are projections, not tables.
-- **BSUID** — Business-Scoped User ID; the stable identifier for a WhatsApp sender. Primary key for users.
-- **Vertical slice** — voice note on a phone → structured item in the DB → visible in the friend projection.
+Primary Contact: Arno Scholtz. Meta Global AI Developer Hackathon, Indie Developer track; submission deadline **2026-11-04 21:00 ET**.
+
+Date of Last Update: **2026-10-27**.
+
+## 11. Glossary / Acronyms
+
+- **Circle:** one gift recipient, occasion, stable gated link and allowlisted members.
+- **Owner:** the gift recipient; must not discover friend gift coordination through any app surface.
+- **Projection:** an explicitly scoped rendering of the shared ledger, not a separate database.
+- **BSUID:** Business-Scoped User ID, the preferred WhatsApp identity when supplied.
+- **RLS:** PostgreSQL Row-Level Security; safe-column grants additionally protect identity fields.
+- **Pool:** contributors promise/pay manually behind one assigned buyer.
+- **Pivot:** planned reassignment after an owner tombstones a wish; not completed here.
+- **Candidate:** actor-private, unconfirmed model/metadata draft requiring human review.
+- **Demo fixture:** explicitly selected fictional output with recorded demo provenance, not live inference.
+- **Reveal:** a human handover of the card; never an automatic send or public preview.

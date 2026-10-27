@@ -1,0 +1,106 @@
+# Standalone candidate, NOT an override for the root development compose.
+# UNTESTED ON ORACLE. Run with --project-directory pointing to repository root.
+services:
+  postgres:
+    image: ${POSTGRES_IMAGE:-postgres:16-alpine}
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-gifts}
+      POSTGRES_DB: ${POSTGRES_DB:-gifts}
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+    secrets:
+      - postgres_password
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks: [database]
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    mem_limit: 1g
+    logging: &bounded_logs
+      driver: json-file
+      options: {max-size: '10m', max-file: '3'}
+    # No ports: database is reachable only on the internal Compose network.
+
+  app:
+    image: ${APP_IMAGE:?set immutable APP_IMAGE}
+    user: '10001:10001'
+    restart: unless-stopped
+    env_file: &app_env
+      - ${APP_RUNTIME_ENV_FILE:?set external app runtime env file}
+    environment:
+      NODE_ENV: production
+      PORT: '3000'
+      MEDIA_DIR: /data/media
+      FFMPEG_PATH: ffmpeg
+    depends_on:
+      postgres: {condition: service_healthy}
+    volumes: [media:/data/media]
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m,uid=10001,gid=10001,mode=1770
+      - /app/.next/cache:rw,nosuid,size=64m,uid=10001,gid=10001,mode=0700
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    networks: [database, edge]
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:3000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      start_period: 30s
+      retries: 3
+    mem_limit: 1g
+    pids_limit: 128
+    logging: *bounded_logs
+
+  migrate:
+    profiles: [ops]
+    image: ${APP_IMAGE:?set immutable APP_IMAGE}
+    user: '10001:10001'
+    env_file: *app_env
+    environment: {NODE_ENV: production}
+    depends_on:
+      postgres: {condition: service_healthy}
+    # Direct Node entry points avoid Corepack downloading pnpm on an isolated network.
+    command: [sh, -c, 'node node_modules/prisma/build/index.js migrate deploy --config prisma7.config.ts && node --import tsx scripts/apply_policies.ts']
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    networks: [database]
+    logging: *bounded_logs
+
+  caddy:
+    image: ${CADDY_IMAGE:?set reviewed Caddy image with Cloudflare DNS module}
+    user: '10001:10001'
+    restart: unless-stopped
+    env_file:
+      - ${CADDY_RUNTIME_ENV_FILE:?set external Caddy runtime env file}
+    volumes:
+      - ./docs/deployment/Caddyfile.example:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    # Safe local default. Bind public 443 ONLY on an approved VM with ingress configured.
+    ports: ['${HTTPS_BIND_IP:-127.0.0.1}:${HTTPS_PORT:-8443}:8443']
+    depends_on:
+      app: {condition: service_healthy}
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    networks: [edge]
+    mem_limit: 256m
+    pids_limit: 64
+    logging: *bounded_logs
+
+networks:
+  database: {internal: true}
+  edge: {}
+
+volumes:
+  pgdata: {}
+  media: {}
+  caddy_data: {}
+  caddy_config: {}
+
+secrets:
+  postgres_password:
+    file: ${POSTGRES_PASSWORD_FILE:?set external postgres password file}

@@ -18,6 +18,10 @@ vision segmentation, deal discovery on the open web, and group coordination.
 - Owner "delete" is a soft delete: tombstone for the owner, ledger + money state survive for friends.
 - No money is held. Payments settle manually in v1; the schema must not need rewriting for Stripe Connect later.
 - Deal suggestions reach **friends only**. The owner must not learn a cheaper option exists — that spoils the gift.
+- **The party date is secret when a friend wrote it.** A circle holds two dates: the real birthday (month and day;
+  year optional, so no date of birth is stored) and the day the gift is handed over. Whoever last sets the event date
+  decides its secrecy. RLS filters rows, never columns, so `ownerCircleView` is the guard for a friend-set date and a
+  leak test on the rendered owner HTML is the proof. Spec: `docs/plans/birthday-and-event-countdown.md`.
 - **The reveal is a human act.** The system generates the gift card (contributor names + their own messages) and
   never delivers it: no send, no notification, no `og:` preview, no cacheable response on any card route. The circle
   link lives in a WhatsApp group that contains the owner, so a preview image is rendered *for the owner*.

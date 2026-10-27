@@ -1,0 +1,28 @@
+# Build context: repository root. No .env, local media, or scratch directory is copied.
+FROM node:24-bookworm-slim AS build
+WORKDIR /app
+RUN corepack enable && corepack prepare pnpm@10.33.0 --activate
+COPY package.json pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile
+COPY prisma ./prisma
+COPY prisma7.config.ts next.config.mjs postcss.config.mjs tsconfig.json ./
+COPY src ./src
+COPY scripts ./scripts
+COPY public ./public
+RUN pnpm exec prisma generate --config prisma7.config.ts
+# Disposable build-only configuration, supplied out of tree; never production credentials.
+RUN --mount=type=secret,id=build_env,required=true \
+    node --env-file=/run/secrets/build_env node_modules/next/dist/bin/next build
+
+FROM node:24-bookworm-slim AS runtime
+ENV NODE_ENV=production PORT=3000 MEDIA_DIR=/data/media FFMPEG_PATH=ffmpeg
+WORKDIR /app
+RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg ca-certificates \
+    && rm -rf /var/lib/apt/lists/* \
+    && groupadd --gid 10001 app && useradd --uid 10001 --gid app --no-create-home app \
+    && mkdir -p /data/media /app/.next/cache && chown -R app:app /data/media /app
+# Keep migration tooling in this v1 image; migrate is an explicit one-shot service, not startup.
+COPY --from=build --chown=app:app /app /app
+USER 10001:10001
+EXPOSE 3000
+CMD ["node", "node_modules/next/dist/bin/next", "start", "--hostname", "0.0.0.0"]
