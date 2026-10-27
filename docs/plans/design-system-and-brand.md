@@ -28,15 +28,18 @@ amount inputs instead of cents, no-break money formatting. `DESIGN.md` is rewrit
 
 ### Round 2 follow-ups (open)
 
-1. **Product photos on gift cards.** The mocks lean on thumbnails; `FriendItemView`/`OwnerItemView` carry no
-   image. Adding one is a projection change, so it needs the leak suite and the owner-blindness review, not
-   just a component.
+1. ~~**Product photos on gift cards.**~~ Done 2026-10-28 (`feat/currency-photos-cardfont`): optional upload on
+   the add-item form, re-encoded without metadata, `hasPhoto` on both projections, private photo route that
+   checks the viewer's projection, `/privacy` notice. Still open: carrying a WhatsApp intake image onto the
+   confirmed item (needs the person-box guard first), and adding or replacing a photo after an item exists.
 2. **Countdown hero.** The mocks open with "N days to go"; the countdown lives on the unmerged
    `feat/schema-rls-leak-spine` line. Once it reaches `main`, put it in the friend-list hero (date via
    `<EventDate>`, the count from the projection, never computed in the screen).
 3. **Mock the remaining screens in Stitch** (join, owner list, card composer) with the Paper Fiesta design
    system, one generation at a time, before restyling them further.
-4. **Card PNG typeface.** `render.ts` uses the new palette but still Geist; a Bricolage TTF would match the app.
+4. ~~**Card PNG typeface.**~~ Done 2026-10-28: Bricolage Grotesque 800 + DM Sans 400 TTFs.
+5. **Currency:** done 2026-10-28 — USD default, USD/ZAR/EUR/GBP per item. Open: a circle-level default
+   currency, and the WhatsApp intake still drafts in ZAR (`draftSchema` literal).
 
 ## Problem
 

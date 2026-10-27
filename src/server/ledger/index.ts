@@ -1,5 +1,6 @@
 import type { Actor, Tx } from '@/server/db/client';
 import type { Circle, Claim, Contribution, Item, Pool, Prisma, TombstoneReason } from '@/generated/prisma/client';
+import { DEFAULT_CURRENCY, isCurrency } from '@/lib/money';
 
 async function session(tx: Tx, actor: Actor, role?: Actor['role']) {
   if (role !== undefined && actor.role !== role) throw new Error('ledger_role_denied');
@@ -77,18 +78,19 @@ export async function createPool(tx: Tx, actor: Actor, itemId: string, targetMin
   await scope(tx, actor, 'friend');
   money(targetMinor);
   const item = await lockItem(tx, actor, itemId);
-  if (item.currency !== 'ZAR') throw new Error('ledger_currency_unsupported');
+  if (!isCurrency(item.currency)) throw new Error('ledger_currency_unsupported');
   if (item.status !== 'active' || !item.confirmed) throw new Error('ledger_item_unavailable');
   const existing = await tx.pool.findFirst({ where: { itemId } });
-  if (existing && existing.currency !== 'ZAR') throw new Error('ledger_currency_unsupported');
+  if (existing && existing.currency !== item.currency) throw new Error('ledger_currency_unsupported');
   if (existing?.buyerUserId === actor.userId && existing.targetMinor === targetMinor &&
       (existing.status === 'open' || existing.status === 'funded')) return existing;
   if (existing || await tx.claim.count({ where: { itemId, status: { in: ['claimed', 'fulfilled'] } } })) {
     throw new Error('ledger_item_reserved');
   }
-  const pool = await tx.pool.create({ data: { itemId, buyerUserId: actor.userId, targetMinor, currency: 'ZAR' } });
+  // A pool is always in its item's currency.
+  const pool = await tx.pool.create({ data: { itemId, buyerUserId: actor.userId, targetMinor, currency: item.currency } });
   await joinPool(tx, actor, pool);
-  await append(tx, actor, 'pool', pool.id, 'pool.opened', { targetMinor, currency: 'ZAR' });
+  await append(tx, actor, 'pool', pool.id, 'pool.opened', { targetMinor, currency: pool.currency });
   return pool;
 }
 
@@ -118,15 +120,15 @@ async function lockPool(tx: Tx, actor: Actor, poolId: string) {
   if (!rows.length) throw new Error('ledger_not_found');
   const pool = await tx.pool.findFirst({ where: { id: poolId, itemId: item.id } });
   if (!pool) throw new Error('ledger_not_found');
-  if (pool.currency !== 'ZAR' || item.currency !== 'ZAR') throw new Error('ledger_currency_unsupported');
+  if (!isCurrency(pool.currency) || pool.currency !== item.currency) throw new Error('ledger_currency_unsupported');
   if (item.status !== 'active' || !item.confirmed) throw new Error('ledger_item_unavailable');
   return pool;
 }
 
-async function poolMoney(tx: Tx, poolId: string) {
-  const rows = await tx.contribution.findMany({ where: { poolId } });
+async function poolMoney(tx: Tx, pool: Pool) {
+  const rows = await tx.contribution.findMany({ where: { poolId: pool.id } });
   for (const row of rows) {
-    if (row.currency !== 'ZAR') throw new Error('ledger_currency_unsupported');
+    if (row.currency !== pool.currency) throw new Error('ledger_currency_unsupported');
     money(row.amountMinor);
   }
   const paid = rows.filter((row) => row.status === 'marked_paid');
@@ -137,7 +139,7 @@ export async function contribute(tx: Tx, actor: Actor, poolId: string, amountMin
   await scope(tx, actor, 'friend');
   money(amountMinor);
   const pool = await lockPool(tx, actor, poolId);
-  const { rows } = await poolMoney(tx, poolId);
+  const { rows } = await poolMoney(tx, pool);
   const existing = rows.find((row) => row.userId === actor.userId);
   if (existing) {
     if (existing.amountMinor !== amountMinor) throw new Error('ledger_contribution_conflict');
@@ -145,8 +147,8 @@ export async function contribute(tx: Tx, actor: Actor, poolId: string, amountMin
   }
   if (pool.status !== 'open') throw new Error('ledger_pool_unavailable');
   await joinPool(tx, actor, pool);
-  const contribution = await tx.contribution.create({ data: { poolId, userId: actor.userId, amountMinor, currency: 'ZAR' } });
-  await append(tx, actor, 'contribution', contribution.id, 'contribution.promised', { poolId, amountMinor, currency: 'ZAR' });
+  const contribution = await tx.contribution.create({ data: { poolId, userId: actor.userId, amountMinor, currency: pool.currency } });
+  await append(tx, actor, 'contribution', contribution.id, 'contribution.promised', { poolId, amountMinor, currency: pool.currency });
   return contribution;
 }
 
@@ -154,7 +156,7 @@ export async function markPaid(tx: Tx, actor: Actor, poolId: string): Promise<{ 
   await scope(tx, actor, 'friend');
   let pool = await lockPool(tx, actor, poolId);
   if (pool.status !== 'open' && pool.status !== 'funded') throw new Error('ledger_pool_unavailable');
-  const { rows, paidMinor } = await poolMoney(tx, poolId);
+  const { rows, paidMinor } = await poolMoney(tx, pool);
   let contribution = rows.find((row) => row.userId === actor.userId);
   if (!contribution) throw new Error('ledger_not_found');
   if (contribution.status === 'marked_paid') return { contribution, pool };
@@ -176,7 +178,7 @@ export async function purchasePool(tx: Tx, actor: Actor, poolId: string): Promis
   if (pool.buyerUserId !== actor.userId) throw new Error('ledger_buyer_required');
   if (pool.status === 'purchased') return pool;
   if (pool.status !== 'funded') throw new Error('ledger_pool_unavailable');
-  const { paid, paidMinor } = await poolMoney(tx, poolId);
+  const { paid, paidMinor } = await poolMoney(tx, pool);
   if (paidMinor < BigInt(pool.targetMinor)) {
     throw new Error('ledger_pool_not_paid');
   }
@@ -204,6 +206,8 @@ export interface AddItemInput {
   priceMinor?: number;
   currency?: string;
   ingestEventId?: string;
+  /** A path from `storePhoto`, already re-encoded. */
+  imagePath?: string;
 }
 
 /** This call is the human confirmation, not a model/worker auto-commit. */
@@ -211,7 +215,7 @@ export async function addItem(tx: Tx, actor: Actor, input: AddItemInput): Promis
   await scope(tx, actor);
   const title = typeof input.title === 'string' ? input.title.trim() : '';
   if (!title) throw new Error('ledger_invalid_item');
-  if (input.currency !== undefined && input.currency !== 'ZAR') throw new Error('ledger_currency_unsupported');
+  if (input.currency !== undefined && !isCurrency(input.currency)) throw new Error('ledger_currency_unsupported');
   if (input.priceMinor !== undefined) money(input.priceMinor, 0);
   const visibility = actor.role === 'friend' ? 'friend_only' : 'owner_visible';
   let ingestId: string | undefined;
@@ -229,8 +233,8 @@ export async function addItem(tx: Tx, actor: Actor, input: AddItemInput): Promis
   }
   const item = await tx.item.create({ data: {
     circleId: actor.circleId!, addedByUserId: actor.userId, title,
-    retailer: input.retailer, priceMinor: input.priceMinor, currency: input.currency ?? 'ZAR',
-    visibility, confirmed: true,
+    retailer: input.retailer, priceMinor: input.priceMinor, currency: input.currency ?? DEFAULT_CURRENCY,
+    imagePath: input.imagePath, visibility, confirmed: true,
   } });
   if (ingestId) {
     await tx.ingestEvent.update({ where: { id: ingestId, status: 'parsed', itemId: null }, data: { status: 'confirmed', itemId: item.id } });

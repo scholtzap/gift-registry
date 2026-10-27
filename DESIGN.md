@@ -86,8 +86,12 @@ tomato wash = needs attention. A new surface picks its wash by what it is about,
 - **Meter:** paper track with ink outline, marigold candy-stripe fill; full or done turns green.
 - **Badges:** `<Badge tone>` takes a meaning — `human`, `money`, `done` (solid green stamp with ✓), `open`,
   `alert` (with !), `neutral`. Never pass a colour name.
-- **Amount fields:** `<AmountField>` — the R sits inside the input, `inputMode="decimal"`, the server parses
-  with `parseRandToMinor`. Quick picks are separate submit buttons (`.pn-picks`), so a pledge needs no JS.
+- **Amount fields:** `<AmountField currency>` — the item's currency symbol sits inside the input,
+  `inputMode="decimal"`, the server parses with `parseAmountToMinor(text, currency)`. Quick picks are separate
+  submit buttons (`.pn-picks`), so a pledge needs no JS.
+- **Product photos:** `<ItemPhoto>` — 64px framed print beside a list title, `large` on the item page. Alt is
+  empty (the title is next to it). The upload field on the add-item form always carries the photo privacy
+  note beside it (`#draft-photo-privacy`) and a link to `/privacy`.
 - **Card messages:** white quote on the lilac card, 3px tomato left rule, DM Sans 600, no italics.
 
 ## Rules (agents: these are the checks a change must pass)
@@ -97,8 +101,11 @@ tomato wash = needs attention. A new surface picks its wash by what it is about,
    `.pn-stat > dd` or `<Money>` — all `white-space: nowrap`. Never build an amount with a plain space, never
    put `overflow-wrap: anywhere` or `word-break: break-all` on text that can contain one. Dates go through
    `<EventDate>`. Proven by `tests/lib/money.test.ts` and the friend-ledger "never lets an amount wrap" test.
-2. **Nobody types cents.** Every money input is rand via `<AmountField>`; the route converts. Copy never says
-   "cents", "minor units" or "ZAR" to a person.
+2. **Nobody types cents.** Every money input is `<AmountField>` in the item's currency; the route converts.
+   Copy never says "cents" or "minor units" to a person. **Currency:** new items default to **USD**; a person
+   picks USD, ZAR, EUR or GBP per item on the add-item form; a pool and its pledges always use their item's
+   currency (`src/lib/money.ts` owns symbols, grouping and parsing — never format money anywhere else).
+   Dollars and pounds group with commas (`$4,200`), rand with a no-break space (`R4 200`).
 3. **Plain words, no engine states.** People never read `tombstoned`, `pivot_needed`, `active`, `status:`.
    The friend wording lives in one place, [src/components/status.ts](src/components/status.ts) — extend it
    there, never inline. Current vocabulary: *No pool yet · Pooling · R… to go · Fully pooled · Bought ·
@@ -113,8 +120,15 @@ tomato wash = needs attention. A new surface picks its wash by what it is about,
    `style` only for a runtime value (the meter's `--pn-fill`). New tokens get a Tailwind mapping in
    `src/app/globals.css`.
 8. **Phone first:** check 360px wide with no horizontal scroll; 44px minimum touch targets.
-9. **Card PNG** ([src/server/cards/render.ts](src/server/cards/render.ts)) uses the same palette hexes; change
-   both together. Its font stays the bundled Geist TTF (satori needs a TTF).
+9. **Card PNG** ([src/server/cards/render.ts](src/server/cards/render.ts)) uses the same palette hexes and the
+   same faces: Bricolage Grotesque 800 for display lines, DM Sans 400 for body, from the TTFs in `public/fonts/`
+   (satori and resvg need TTF, not WOFF2). Change palette and fonts in both places together.
+10. **Photos are private and clean.** Every upload is re-encoded by `storePhoto` (no EXIF, GPS or camera data)
+    and served only by the circle route after the viewer's own projection lists the item — an owner never
+    receives the photo on a friend's secret idea. Never link to a photo file directly.
+11. **Owner copy never mentions pools, claims or pledges**, not even in a hint (the owner add-item form says
+    "Friends see the price in this currency", the friend one says "Any pool on this gift uses the same
+    currency"). A test greps the owner render for these words.
 
 ## Product rules the UI must obey
 

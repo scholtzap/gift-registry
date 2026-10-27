@@ -267,7 +267,7 @@ model Item {
   canonicalUrl   String?          @map("canonical_url")
   retailer       String?
   priceMinor     Int?             @map("price_minor")
-  currency       String           @default("ZAR") @db.Char(3)
+  currency       String           @default("USD") @db.Char(3)
   imagePath      String?          @map("image_path")
   addedByUserId  String           @map("added_by_user_id") @db.Uuid
   visibility     ItemVisibility   @default(owner_visible)
@@ -319,7 +319,7 @@ model Pool {
   itemId      String     @map("item_id") @db.Uuid
   buyerUserId String     @map("buyer_user_id") @db.Uuid
   targetMinor Int        @map("target_minor")
-  currency    String     @default("ZAR") @db.Char(3)
+  currency    String     @default("USD") @db.Char(3)
   status      PoolStatus @default(open)
   createdAt   DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
 
@@ -337,7 +337,7 @@ model Contribution {
   poolId      String             @map("pool_id") @db.Uuid
   userId      String             @map("user_id") @db.Uuid
   amountMinor Int                @map("amount_minor")
-  currency    String             @default("ZAR") @db.Char(3)
+  currency    String             @default("USD") @db.Char(3)
   status      ContributionStatus @default(promised)
   paidAt      DateTime?          @map("paid_at") @db.Timestamptz(6)
   note        String?

@@ -1,4 +1,5 @@
 import type { CSSProperties, HTMLInputTypeAttribute, MouseEventHandler, ReactNode } from 'react';
+import { currencySymbol } from '@/lib/money';
 
 export type NavItem = { href: string; label: string; icon?: 'ledger' | 'add' | 'settings' | 'card'; current?: boolean };
 
@@ -118,7 +119,10 @@ export function Screen({
           ))}
         </nav>
       )}
-      <footer className="pn-footer"><p>{footer ?? 'Group gifts nobody can spoil.'}</p></footer>
+      <footer className="pn-footer pn-between">
+        <p>{footer ?? 'Group gifts nobody can spoil.'}</p>
+        <a className="pn-link pn-link-target" href="/privacy">Privacy notice</a>
+      </footer>
     </div>
   );
 }
@@ -223,13 +227,15 @@ export function Field({
 }
 
 /**
- * A rand amount, typed the way people say it ("400", "R 1 250", "99,50"). The server turns it
- * into integer cents with `parseRandToMinor`; nobody types cents.
+ * An amount in the item's currency, typed the way people say it ("400", "1,250", "99.50"). The
+ * symbol sits inside the field; the server turns the text into integer cents with
+ * `parseAmountToMinor`. Nobody types cents.
  */
-export function AmountField({ label, name, id, defaultValue, required, hint }: {
+export function AmountField({ label, name, id, currency, defaultValue, required, hint }: {
   label: ReactNode;
   name: string;
   id: string;
+  currency: string;
   defaultValue?: string;
   required?: boolean;
   hint?: ReactNode;
@@ -238,7 +244,7 @@ export function AmountField({ label, name, id, defaultValue, required, hint }: {
   return (
     <div className="pn-field">
       <label htmlFor={id}>{label}{required && <span className="pn-small pn-muted"> (required)</span>}</label>
-      <div className="pn-amount">
+      <div className="pn-amount" data-symbol={currencySymbol(currency)}>
         <input className="pn-input" id={id} name={name} type="text" inputMode="decimal" autoComplete="off"
                defaultValue={defaultValue} required={required} maxLength={14} aria-describedby={hintId} />
       </div>
@@ -277,6 +283,18 @@ export function EventDate({ iso }: { iso: string }) {
     ? iso
     : `${WEEKDAYS[date.getUTCDay()]} ${date.getUTCDate()} ${MONTHS[date.getUTCMonth()]} ${date.getUTCFullYear()}`;
   return <time className="pn-money" dateTime={iso}>{label}</time>;
+}
+
+/**
+ * A gift's product photo, served by the circle route after it checks the viewer's projection.
+ * Decorative next to the title (empty alt); `large` is the item page's hero image.
+ */
+export function ItemPhoto({ basePath, itemId, large }: { basePath: string; itemId: string; large?: boolean }) {
+  const size = large ? 480 : 64;
+  return (
+    <img className={`pn-photo ${large ? 'pn-photo-lg' : 'pn-photo-sm'}`} src={`${basePath}/items/${encodeURIComponent(itemId)}/photo`}
+         alt="" width={size} height={size} loading="lazy" decoding="async" />
+  );
 }
 
 /** One amount as an unbreakable token, for amounts that sit inside a sentence. */

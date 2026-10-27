@@ -16,14 +16,14 @@ it('PUBLIC: renders literal owner wishes and navigation without friend or intake
         title: 'Blue enamel kettle',
         retailer: 'Example outdoor shop',
         price: 'R1 249.50',
-        confirmed: true,
+        confirmed: true, hasPhoto: false,
       },
       {
         id: 'wish-two',
         title: 'A sky map',
         retailer: null,
         price: null,
-        confirmed: false,
+        confirmed: false, hasPhoto: false,
       },
     ],
     attributes: [

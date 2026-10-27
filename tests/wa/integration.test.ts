@@ -122,7 +122,7 @@ describe('signed WhatsApp intake on real PostgreSQL', () => {
     const owner = await getCircle(fx.db, new Request(`${appOrigin}/c/${slug}/draft?id=${row.id}`, { headers: { cookie: cookieFor('owner') } }), slug);
     expect(owner.status).toBe(404);
     const fields = { intent: 'confirm', title: 'Human corrected bicycle lamp', retailer: '', priceMinor: '12500', currency: 'ZAR', ingestEventId: row.id };
-    const invalid = await postCircle(fx.db, new Request(`${appOrigin}/c/${slug}/draft`, { method: 'POST', headers: { cookie: cookieFor('friend'), origin: appOrigin }, body: new URLSearchParams({ ...fields, priceRand: '1.555' }) }), slug);
+    const invalid = await postCircle(fx.db, new Request(`${appOrigin}/c/${slug}/draft`, { method: 'POST', headers: { cookie: cookieFor('friend'), origin: appOrigin }, body: new URLSearchParams({ ...fields, priceAmount: '1.555' }) }), slug);
     expect(invalid.status).toBe(422);
     const invalidHtml = await invalid.text();
     expect(invalidHtml).toContain(`name="ingestEventId" value="${row.id}"`);

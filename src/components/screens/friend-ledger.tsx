@@ -1,4 +1,4 @@
-import { AttributeList, Badge, Cta, EmptyState, EventDate, Meter, Money, Panel, Screen } from '@/components/ui';
+import { AttributeList, Badge, Cta, EmptyState, EventDate, ItemPhoto, Meter, Money, Panel, Screen } from '@/components/ui';
 import type { NavItem } from '@/components/ui';
 import { itemStatus, poolPercent } from '@/components/status';
 import { formatMinor } from '@/lib/money';
@@ -13,11 +13,14 @@ function LedgerRow({ item, basePath }: { item: FriendItemView; basePath: string 
     <li>
       <article className="pn-item">
         <div className="pn-between">
-          <div className="pn-item-head">
-            <h3 className="pn-item-title">
-              <Cta href={`${basePath}/items/${item.id}`} size="title">{item.title}</Cta>
-            </h3>
-            {item.retailer !== null && <p className="pn-muted">{item.retailer}</p>}
+          <div className="pn-item-lead">
+            {item.hasPhoto && <ItemPhoto basePath={basePath} itemId={item.id} />}
+            <div className="pn-item-head">
+              <h3 className="pn-item-title">
+                <Cta href={`${basePath}/items/${item.id}`} size="title">{item.title}</Cta>
+              </h3>
+              {item.retailer !== null && <p className="pn-muted">{item.retailer}</p>}
+            </div>
           </div>
           {item.price === null ? (
             <p className="pn-muted">No price yet</p>

@@ -1,4 +1,4 @@
-import { AttributeList, Badge, Cta, EmptyState, EventDate, Panel, Screen, type CircleContext, type NavItem } from '@/components/ui';
+import { AttributeList, Badge, Cta, EmptyState, EventDate, ItemPhoto, Panel, Screen, type CircleContext, type NavItem } from '@/components/ui';
 import type { OwnerCircleView, OwnerItemView } from '@/server/views';
 
 // Owner projection only; this screen never fetches data or reads coordination state.
@@ -38,12 +38,17 @@ export function OwnerLedgerScreen({ view, basePath }: { view: OwnerCircleView; b
                 {view.items.map((item) => (
                   <li key={item.id}>
                     <Panel className="pn-panel-tight pn-stack" tone="human">
-                      <h3 className="pn-item-title">
-                        <Cta href={`${basePath}/items/${encodeURIComponent(item.id)}`} size="title">
-                          {item.title}
-                        </Cta>
-                      </h3>
-                      {item.retailer !== null && <p className="pn-small pn-muted">{item.retailer}</p>}
+                      <div className="pn-item-lead">
+                        {item.hasPhoto && <ItemPhoto basePath={basePath} itemId={item.id} />}
+                        <div className="pn-item-head">
+                          <h3 className="pn-item-title">
+                            <Cta href={`${basePath}/items/${encodeURIComponent(item.id)}`} size="title">
+                              {item.title}
+                            </Cta>
+                          </h3>
+                          {item.retailer !== null && <p className="pn-small pn-muted">{item.retailer}</p>}
+                        </div>
+                      </div>
                       <div className="pn-between">
                         <p className={item.price === null ? 'pn-muted' : 'pn-price'}>
                           {item.price ?? 'Price not added'}
@@ -141,6 +146,7 @@ export function OwnerItemScreen({ item, basePath, circle }: {
       <div className="pn-stack pn-measure">
         <Panel className="pn-stack" tone="human">
           <h2>Your wish</h2>
+          {item.hasPhoto && <ItemPhoto basePath={basePath} itemId={item.id} large />}
           <div className="pn-between">
             <p className={item.price === null ? 'pn-muted' : 'pn-price'}>{item.price ?? 'Price not added'}</p>
             <Badge tone={item.confirmed ? 'done' : 'open'}>

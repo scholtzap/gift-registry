@@ -1,10 +1,11 @@
-import { AmountField, Badge, Button, Cta, Meter, Money, Notice, Panel, Screen } from '@/components/ui';
+import { AmountField, Badge, Button, Cta, ItemPhoto, Meter, Money, Notice, Panel, Screen } from '@/components/ui';
 import type { CircleContext, NavItem } from '@/components/ui';
 import { itemStatus, poolPercent, remainingMinor } from '@/components/status';
-import { formatMinor, minorToRandInput } from '@/lib/money';
+import { formatMinor, minorToInput } from '@/lib/money';
 import type { FriendItemView } from '@/server/views';
 
-// Quick pledges in whole rand. Only the ones below what is left are offered, plus "the rest".
+// Quick pledges in whole units of the pool's currency. Only the ones below what is left are
+// offered, plus "the rest".
 const PICKS_MINOR = [10000, 25000, 50000];
 
 /** Friend projection only; the parent route must exclude the owner. */
@@ -77,6 +78,7 @@ export function ItemDetailScreen({
           <Panel>
             <section className="pn-stack" aria-labelledby="item-details-heading">
               <h2 id="item-details-heading" className="pn-sr-only">The gift</h2>
+              {item.hasPhoto && <ItemPhoto basePath={basePath} itemId={item.id} large />}
               <div className="pn-item-meta">
                 <Badge tone={status.tone}>{status.label}</Badge>
                 {item.secret && <Badge tone="human">Secret idea · hidden from them</Badge>}
@@ -104,11 +106,12 @@ export function ItemDetailScreen({
                 <hr className="pn-divider" />
                 <form action={itemPath} method="post" className="pn-stack">
                   <input type="hidden" name="intent" value="create_pool" />
-                  <input type="hidden" name="currency" value="ZAR" />
+                  <input type="hidden" name="currency" value={item.currency} />
                   <AmountField
                     label="Pool target"
-                    name="targetRand"
+                    name="targetAmount"
                     id="pool-target"
+                    currency={item.currency}
                     required
                     hint={item.price
                       ? <>Usually the shop price, <Money>{item.price}</Money>. Starting a pool does not pay for the gift.</>
@@ -152,14 +155,14 @@ export function ItemDetailScreen({
                       <form action={itemPath} method="post" className="pn-picks" aria-label="Quick pledge">
                         <input type="hidden" name="intent" value="contribute" />
                         <input type="hidden" name="poolId" value={pool.id} />
-                        <input type="hidden" name="currency" value="ZAR" />
+                        <input type="hidden" name="currency" value={pool.currency} />
                         {picks.map((minor) => (
-                          <button key={minor} type="submit" name="amountRand" value={minorToRandInput(minor)}>
+                          <button key={minor} type="submit" name="pledgeAmount" value={minorToInput(minor)}>
                             {formatMinor(minor, pool.currency)}
                           </button>
                         ))}
                         {left > 0 && (
-                          <button type="submit" name="amountRand" value={minorToRandInput(left)}>
+                          <button type="submit" name="pledgeAmount" value={minorToInput(left)}>
                             The rest · {formatMinor(left, pool.currency)}
                           </button>
                         )}
@@ -168,11 +171,12 @@ export function ItemDetailScreen({
                     <form action={itemPath} method="post" className="pn-stack">
                       <input type="hidden" name="intent" value="contribute" />
                       <input type="hidden" name="poolId" value={pool.id} />
-                      <input type="hidden" name="currency" value="ZAR" />
+                      <input type="hidden" name="currency" value={pool.currency} />
                       <AmountField
                         label="Or your own amount"
-                        name="amountRand"
+                        name="pledgeAmount"
                         id="pool-contribution"
+                        currency={pool.currency}
                         required
                         hint="This records a pledge. Pay the buyer however your group does; Piñata keeps the tally."
                       />

@@ -41,7 +41,7 @@ describe('the public Piñata landing', () => {
     expect(appLinks).toHaveLength(1);
     expect(textOf(appLinks[0]![2]!)).toBe('Open Piñata');
     expect(appLinks[0]![0]).toContain('pn-button-primary');
-    expect(anchors.map((anchor) => anchor[1])).toEqual(['#pn-content', '/', '/app', '#how-it-works']);
+    expect(anchors.map((anchor) => anchor[1])).toEqual(['#pn-content', '/', '/app', '#how-it-works', '/privacy']);
     expect(html).not.toMatch(/(?:href|src)="(?:https?:|\/c\/|\/cards?\/|\/api\/)/);
   });
 

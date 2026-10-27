@@ -8,7 +8,7 @@
 python scripts/ops/refresh_plans_index.py --write
 ```
 
-Generated: 2026-10-27 22:31 · repo: `gifts-registry`
+Generated: 2026-10-27 23:25 · repo: `gifts-registry`
 
 ## P1
 
