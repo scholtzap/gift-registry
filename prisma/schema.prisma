@@ -199,12 +199,18 @@ model Circle {
   name        String
   occasion    String
   eventDate   DateTime      @map("event_date") @db.Date
-  ownerUserId String        @map("owner_user_id") @db.Uuid
+  // Nullable for proxy circles (RN-A D2): a registry created for someone with
+  // no account has no owner row, and must not invent one.
+  ownerUserId String?       @map("owner_user_id") @db.Uuid
+  // Proxy-circle recipient, as a keyed digest only (RN-A D3). Never plaintext.
+  recipientLabel         String? @map("recipient_label")
+  recipientPhoneE164Hash String? @map("recipient_phone_e164_hash")
+  proxyCreatedByUserId   String? @map("proxy_created_by_user_id") @db.Uuid
   shareSlug   String        @unique @map("share_slug")
   status      CircleStatus  @default(active)
   createdAt   DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
 
-  owner          User             @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
+  owner          User?            @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
   allowlist      AllowlistEntry[]
   memberships    Membership[]
   items          Item[]

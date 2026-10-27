@@ -1,7 +1,7 @@
 import type { Actor, Db } from '@/server/db/client';
 import type { SenderIdentity } from './protocol';
 
-export interface MembershipContext { circleId: string; role: 'owner' | 'friend'; status: string; circle: { status: string; ownerUserId: string } }
+export interface MembershipContext { circleId: string; role: 'owner' | 'friend'; status: string; circle: { status: string; ownerUserId: string | null } }
 export function selectActiveActor(userId: string, memberships: MembershipContext[]): Actor | null {
   const active = memberships.filter(m => m.status === 'active' && m.circle.status === 'active');
   if (active.length !== 1) return null;
