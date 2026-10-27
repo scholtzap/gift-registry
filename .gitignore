@@ -1,17 +1,69 @@
-# Not tracked: local secrets. CI owns docs KB sync (see .github/workflows/sync-notion-docs.yml),
-# so NOTION_API_KEY lives only as a GitHub Actions secret, never in this file.
+# Local environment files; reviewed setup/deploy templates remain trackable.
 .env
-.env.local
-.env.*.local
+.env.*
+!.env.example
+!.env.sample
+!.env.template
+!.env.*.example
+!.env.*.sample
+!.env.*.template
+.envrc
 
-# Node / Next.js
+# Private credentials, not public certificates or deployment manifests.
+.secrets/
+.credentials/
+credentials.json
+credentials.*.json
+service-account*.json
+serviceAccount*.json
+!credentials.example.json
+!credentials.sample.json
+!service-account.example.json
+!service-account.sample.json
+!serviceAccount.example.json
+!serviceAccount.sample.json
+*.key
+*.p12
+*.pfx
+*.keystore
+*.jks
+*-private.pem
+*_private.pem
+private*.pem
+id_rsa
+id_ed25519
+.npmrc.local
+.aws/credentials
+
+# Node / Next.js / generated clients
 node_modules/
 .next/
+.next-*/
 out/
 build/
 dist/
 *.tsbuildinfo
 next-env.d.ts
+/src/generated/prisma/
+/generated/
+.pnpm-store/
+.npm/
+.turbo/
+.cache/
+.parcel-cache/
+.eslintcache
+.stylelintcache
+.vercel/
+
+# Test and coverage output, not committed fixtures.
+coverage/
+.nyc_output/
+htmlcov/
+.coverage
+.coverage.*
+playwright-report/
+blob-report/
+test-results/
 
 # Python
 __pycache__/
@@ -22,33 +74,76 @@ venv/
 .mypy_cache/
 .ruff_cache/
 
-# Local data / scratch
+# Runtime media and raw recordings only. Keep public/, fixtures/, and design assets.
+/.media/
+/media/
+/uploads/
+/recordings/
+/.recordings/
+/artifacts/
+/local-data/
+/backups/
+*.dump
+*.sql.gz
+
+# Local scratch / OS / editor leftovers
 .scratch/
+.scratchpad/
+/tmp/
+/temp/
 *.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.tmp
+*.temp
+*.bak
+*.swp
+*.swo
+*~
 .DS_Store
 Thumbs.db
 desktop.ini
 
-# Editors
+# Editors: retain reviewed shared settings, tasks, and extension recommendations.
 .idea/
 .vscode/*
 !.vscode/settings.json
+!.vscode/extensions.json
+!.vscode/tasks.json
+!.vscode/launch.json
+*.code-workspace
 
-# Agent runtime state (repo-memory keeps project_memory.json tracked, not the sqlite blob)
-.memory/*.sqlite
-.memory/*.sqlite-journal
-.memory/*.sqlite-wal
-.memory/*.sqlite-shm
+# Agent runtime state; shared agent config and project_memory.json stay trackable.
+.memory/*.sqlite*
+.memory/*.db
+.memory/*.db-journal
+.memory/*.db-wal
+.memory/*.db-shm
+.memory/cache/
 .omc/sessions/
 .omc/state/
+.claude/*.local.*
+.codex/*.local.*
+.cursor/*.local.*
+.qoder/cache/
+.qoder/logs/
+.qoder/sessions/
 
-# Diagram/tool output
+# Diagram/tool output, not source diagrams.
 graphify-out/
 
-# Third-party page prints (event rules pages) - kept locally for reference, not redistributed
-# in a public repo; docs/strategy/hackathon-rules-and-rubric.md is our own summary.
+# Third-party event-rule page prints are local reference, not redistribution.
+# docs/strategy/hackathon-rules-and-rubric.md is our own summary.
 docs/strategy/hackathon/*.pdf
 
-# Generated plans-registry reports (regenerate with audit_plans.py)
+# Generated plans-registry reports (regenerate with audit_plans.py).
 docs/plans/PLANS_AUDIT_REPORT.md
 docs/plans/RELOCATION_MAP.md
+
+# Vendor agent skills installed by CLIs, not submitted product code.
+.agents/skills/
+.claude/skills/
+.windsurf/
+skills-lock.json

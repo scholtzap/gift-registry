@@ -1,7 +1,7 @@
 ---
 title: Gift Circles ten-day build plan
 type: spec
-status: ready
+status: implementing
 priority: P1
 rank: 1
 updated: 2026-10-26
@@ -16,6 +16,13 @@ superseded_by: null
 # Gift Circles — ten-day build plan (Oct 26 → Nov 4 2026)
 
 **Status:** Active. Gates are the contract; if a gate fails, apply the cut list rather than absorbing the slip.
+
+**Progress (26 Oct, part of days 1–2):** all §4 tables in Prisma with two expand-only migrations; `app_owned` /
+`app_friend` roles and the policy set; `withActor` as the only door to friend-scoped data; fictional-cast seed;
+`GET /health` that answers 500 when a table has no policy; leak suite green on 10 assertions, 7 of them proven red
+first; owner and friend **projection builders** with 5 shape assertions (`pnpm leak` = 15 green, committed
+`9d61268`). Still open on day 1: VM, TLS, Meta key, WhatsApp webhook verify, auth template. Still open on day 2:
+nightly `pg_dump`, session cookie, role-split routes, ingest webhook + dedupe.
 
 Deadline **Wed 4 Nov 21:00 ET**. Nine usable days after today. Solo. Judging uses a 3-minute video, the public
 repo, and the live product, and top-5 teams have judges watching the video **live** on Nov 9, so the URL must
@@ -36,6 +43,29 @@ committed and pushed, per the repo hygiene rule.
 | 8 | Tue 2 Nov | Feature freeze in practice. **Judge README** (`docker compose up` → seeded demo), fixtures, deterministic demo state, runbook for `down -v && seed`, deploy docs containing no secrets. Run the 9-point pre-recording checklist and fail it on purpose once to prove it catches things. | The demo path runs twice in a row from a fresh seed with identical results. |
 | 9 | Wed 3 Nov | **Record the 3-minute video.** Freeze deploys. Last day for hackathon technical questions — ask in #office-hours today, not Nov 4. | Video edited and viewable by a logged-out account. Repo, README, LICENSE, live URL all reachable by a stranger. |
 | 10 | Thu 4 Nov | Submit before 21:00 ET: video, live URL, public repo, contributors listed. Do not touch code. Claim credits if not already claimed. | Submission confirmed on the Cerebral Valley platform. |
+
+## v1.1 amendment (26 Oct, second interview round)
+
+Six new workstreams, each with its own plan file and its own cut line. **They add roughly 3.5 days to a 9-day plan
+that was already full**, so the day mapping below is a dependency order, not a promise — and the cut order is decided
+now rather than at 2 a.m. on day 8.
+
+| Lands | Workstream | Plan file |
+|---|---|---|
+| day 3, **before** the voice path is written | Entitlements + the single `can()` gate, retrofitted onto the three existing model paths | `entitlements-and-capability-gate.md` |
+| day 4 (half day) | Stitch brand round → `DESIGN.md` → Tailwind tokens | `design-system-and-brand.md` |
+| day 4–8, incremental | Screens built styled, no end-of-project styling pass | `design-system-and-brand.md` |
+| day 6–7 | SAM 3.1 photo → cutout candidates, then the same function on the card | `vision-cutout-intake.md` |
+| day 6–8 | WhatsApp task-bot: fixed menu first, then the six bounded tasks | `whatsapp-task-bot-surface.md` |
+| day 8 | Post-event reveal (date gate + author veto + attribution) | `post-event-reveal.md` |
+| day 8 | Public landing page at `/`, app under `/app`, `/c/<slug>` unmoved | `public-landing-page.md` |
+
+**Cut order (first cut first):** unanimous early unlock → landing screenshot strip → card-art cutout → photo intake
+beyond one best mask → the reveal → the landing page. **Never cut:** the capability gate, the leak suite, the voice
+path, the fixed-menu compliance floor, `/c/<slug>`.
+
+`ARCHITECTURE.md` §3 gains rows for the gate, the vision pipeline and the inbound router **when those modules
+exist**, not before — a map of planned code is how a map becomes a lie.
 
 ## Risk register
 

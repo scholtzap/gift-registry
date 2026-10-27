@@ -1,0 +1,26 @@
+# UNTESTED DEPLOYMENT CANDIDATE. Requires the reviewed caddy-dns/cloudflare build.
+{
+	admin off
+	http_port 8080
+	https_port 8443
+	auto_https disable_redirects
+}
+
+{$CIRCLE_HOST} {
+	tls {
+		dns cloudflare {env.CLOUDFLARE_API_TOKEN}
+	}
+	# No access log: circle slugs and credential-bearing requests must not be retained.
+	encode zstd gzip
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "same-origin"
+	}
+	reverse_proxy app:3000 {
+		# Direct-client deployment only. Overwrite, do not append untrusted client headers.
+		header_up X-Forwarded-For {remote_host}
+		header_up -Forwarded
+		header_up -X-Real-IP
+	}
+}
