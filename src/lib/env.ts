@@ -28,6 +28,8 @@ const schema = z.object({
   WHATSAPP_VERIFY_TOKEN: z.string().min(8).optional(),
   WHATSAPP_ACCESS_TOKEN: z.string().optional(),
   WHATSAPP_PHONE_NUMBER_ID: z.string().optional(),
+  /** The WABA asset every template and send call addresses. ID only, never a credential. */
+  WHATSAPP_BUSINESS_ACCOUNT_ID: z.string().optional(),
   WHATSAPP_GRAPH_API_VERSION: z.string().default("v23.0"),
 
   MODEL_API_KEY: z.string().startsWith("LLM_").optional(),

@@ -8,7 +8,7 @@
 python scripts/ops/refresh_plans_index.py --write
 ```
 
-Generated: 2026-10-27 21:44 · repo: `muse-rn2`
+Generated: 2026-10-27 22:57 · repo: `muse-demo`
 
 ## P1
 
@@ -25,6 +25,7 @@ Generated: 2026-10-27 21:44 · repo: `muse-rn2`
 | 13 | RN-I — submission-window triage: what of the registry network fits before 2026-11-04 | ready | `rn-i-submission-window-triage.md` |  |
 | 14 | RN-A - proxy registry data model and authority rules | ready | `rn-a-proxy-registry-spec.md` | - **Pepper: distinct.** `recipient_phone_e164_hash` uses a separate `PHONE_HASH_PEPPER`, not |
 | 15 | RN-D - abuse and threat model for phone lookup and proxy registries | ready | `rn-d-abuse-model.md` | - Who answers G1? **ANSWERED 2026-10-27 (owner, Wave 0): create-only.** RN-B takes a number and |
+| 23 | Demo video validation — the 3-minute loop, replayed by Playwright before recording | ready | `demo-video-validation.md` |  |
 
 ## P2
 
