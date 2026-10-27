@@ -19,14 +19,14 @@ it('PUBLIC: renders literal owner wishes and navigation without friend or intake
         title: 'Blue enamel kettle',
         retailer: 'Example outdoor shop',
         price: 'R1 249.50',
-        confirmed: true,
+        confirmed: true, hasPhoto: false,
       },
       {
         id: 'wish-two',
         title: 'A sky map',
         retailer: null,
         price: null,
-        confirmed: false,
+        confirmed: false, hasPhoto: false,
       },
     ],
     attributes: [
@@ -90,7 +90,7 @@ it('PUBLIC: renders literal owner wishes and navigation without friend or intake
   expect(html).toContain('href="/c/moon-picnic"');
   expect(html).toContain('Review a draft');
   expect(html).toContain('After a voice note becomes a draft');
-  expect(html).toContain('Nothing is confirmed for you.');
+  expect(html).toContain('check the title and price before you confirm');
   // The owner ledger is links and display, with exactly one exception: the native party-date form.
   expect(html).toMatch(/<form\b[^>]*action="\/owner\/moon-picnic\/date"[^>]*method="post"/);
   expect(html.match(/<form\b/g)).toHaveLength(1);

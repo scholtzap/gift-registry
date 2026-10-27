@@ -46,7 +46,10 @@ when skipped:
 
 - **Numbers never break.** Format money with `formatMinor()` (no-break spaces) and render it inside a
   nowrap class or `<Money>`; dates through `<EventDate>`.
-- **Nobody types cents.** Money inputs are `<AmountField>` in rand; routes convert with `parseRandToMinor`.
+- **Nobody types cents.** Money inputs are `<AmountField>` in the item's currency; routes convert with
+  `parseAmountToMinor`. New items default to USD; USD/ZAR/EUR/GBP are picked per item; pools inherit it.
+- **Photos go through `storePhoto` and the circle route** — re-encoded without metadata, served only after the
+  viewer's projection lists the item. The upload field always shows the photo privacy note and `/privacy`.
 - **Plain words.** No engine states (`tombstoned`, `pivot_needed`, "Item status:") on screen; friend wording
   lives only in `src/components/status.ts`.
 - **Never claim what the projection cannot see** — e.g. a friend row says "No pool yet", not "Up for grabs".

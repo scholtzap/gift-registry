@@ -151,7 +151,7 @@ describe('SettingsScreen', () => {
 
     expect(markup).toMatch(/<h1\b[^>]*>Settings<\/h1>/);
     expect(markup).toMatch(/<h2\b[^>]*>AI capabilities<\/h2>/);
-    expect(content).toContain('These choices apply to your actions, not anyone else');
+    expect(content).toContain('These settings only change what Piñata does for you, and nobody else can see them.');
     expect(content).toContain('Turn AI on for the actions you want help with');
     expect(content).toContain('will not use AI for it');
     expect(content).toContain('type gift details yourself');

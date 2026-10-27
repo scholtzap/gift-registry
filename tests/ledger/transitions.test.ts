@@ -330,7 +330,7 @@ describe('ledger transitions through actor-scoped transactions', () => {
     const buyer = friend();
     const item = await wantedItem();
     expect(await db.withActor(asOwner, (tx) => addItem(tx, asOwner, { title: 'A zero-price gift', priceMinor: 0 })))
-      .toMatchObject({ priceMinor: 0, currency: 'ZAR', confirmed: true });
+      .toMatchObject({ priceMinor: 0, currency: 'USD', confirmed: true });
     for (const value of [-1, 1.5, NaN, Infinity, 2147483648]) {
       await expect(db.withActor(asOwner, (tx) => addItem(tx, asOwner, { title: 'Manual item', priceMinor: value })))
         .rejects.toThrow('ledger_invalid_money');
@@ -339,7 +339,7 @@ describe('ledger transitions through actor-scoped transactions', () => {
       await expect(db.withActor(buyer, (tx) => createPool(tx, buyer, item.id, value)))
         .rejects.toThrow('ledger_invalid_money');
     }
-    await expect(db.withActor(asOwner, (tx) => addItem(tx, asOwner, { title: 'Manual item', currency: 'USD' })))
+    await expect(db.withActor(asOwner, (tx) => addItem(tx, asOwner, { title: 'Manual item', currency: 'JPY' })))
       .rejects.toThrow('ledger_currency_unsupported');
     const pool = await db.withActor(buyer, (tx) => createPool(tx, buyer, item.id, 10000));
     for (const value of [0, -1, 1.5, NaN, Infinity, 2147483648]) {
@@ -654,7 +654,7 @@ describe('ledger transitions through actor-scoped transactions', () => {
     await expect(db.withActor(actor, (tx) => addItem(tx, actor, { title: 'Gift cup', ingestEventId: received.id })))
       .rejects.toThrow('ledger_draft_unavailable');
     const item = await db.withActor(actor, (tx) => addItem(tx, actor, { title: '  Gift cup  ' }));
-    expect(item).toMatchObject({ title: 'Gift cup', priceMinor: null, currency: 'ZAR', confirmed: true, visibility: 'owner_visible' });
+    expect(item).toMatchObject({ title: 'Gift cup', priceMinor: null, currency: 'USD', confirmed: true, visibility: 'owner_visible' });
     await expect(db.withActor(friend(), (tx) => claimItem(tx, friend(), fx.itemSecretId)))
       .rejects.toThrow('ledger_item_unavailable');
   });

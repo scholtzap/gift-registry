@@ -27,6 +27,13 @@ function attribute(tag: string, name: string) {
   return tag.match(new RegExp(`(?:^|\\s)${name}="([^"]*)"`, 'i'))?.[1];
 }
 
+// The currency is a <select>: the selected option is the value the form posts.
+function selectedCurrency(html: string) {
+  const select = html.match(/<select\b[^>]*name="currency"[^>]*>[\s\S]*?<\/select>/)?.[0];
+  expect(select, 'Expected a currency select').toBeDefined();
+  return select!.match(/<option[^>]*value="([A-Z]{3})"[^>]*selected=""/)?.[1];
+}
+
 function fields(html: string) {
   return [...html.matchAll(/<input\b[^>]*>/g)].map(([tag]) => attribute(tag, 'name'));
 }
@@ -45,20 +52,20 @@ describe('DraftConfirmScreen public server render', () => {
   it('posts the reviewed values to the supplied base path with explicit confirm intent', () => {
     const html = render();
     expect(html).toMatch(/<form\b[^>]*action="\/app\/circles\/demo-circle\/draft"[^>]*method="post"/);
-    expect(fields(html).sort()).toEqual(['currency', 'ingestEventId', 'intent', 'priceRand', 'retailer', 'title', 'visibility'].sort());
+    expect(fields(html).sort()).toEqual(['ingestEventId', 'intent', 'photo', 'priceAmount', 'retailer', 'title', 'visibility'].sort());
     expect(attribute(input(html, 'intent'), 'type')).toBe('hidden');
     expect(attribute(input(html, 'intent'), 'value')).toBe('confirm');
     expect(attribute(input(html, 'ingestEventId'), 'type')).toBe('hidden');
     expect(attribute(input(html, 'ingestEventId'), 'value')).toBe('ingest-demo-1');
-    expect(attribute(input(html, 'currency'), 'value')).toBe('ZAR');
+    expect(selectedCurrency(html)).toBe('ZAR');
     expect(attribute(input(html, 'title'), 'value')).toBe(extracted.title);
     expect(attribute(input(html, 'retailer'), 'value')).toBe(extracted.retailer);
-    expect(attribute(input(html, 'priceRand'), 'value')).toBe('2499');
+    expect(attribute(input(html, 'priceAmount'), 'value')).toBe('2499');
   });
 
   it('lets a person correct every extracted field instead of locking model guesses', () => {
     const html = render();
-    for (const name of ['title', 'retailer', 'priceRand']) {
+    for (const name of ['title', 'retailer', 'priceAmount']) {
       expect(input(html, name)).not.toMatch(/\b(?:readonly|disabled)=/i);
       expect(attribute(input(html, name), 'type')).not.toBe('hidden');
       expect(fields(html).filter((field) => field === name)).toHaveLength(1);
@@ -66,7 +73,7 @@ describe('DraftConfirmScreen public server render', () => {
     const corrected = render({ ...extracted, title: 'Cycling shoes, size 44', retailer: 'Corrected shop', priceMinor: 219900 });
     expect(attribute(input(corrected, 'title'), 'value')).toBe('Cycling shoes, size 44');
     expect(attribute(input(corrected, 'retailer'), 'value')).toBe('Corrected shop');
-    expect(attribute(input(corrected, 'priceRand'), 'value')).toBe('2199');
+    expect(attribute(input(corrected, 'priceAmount'), 'value')).toBe('2199');
     expect(attribute(input(corrected, 'ingestEventId'), 'value')).toBe(extracted.id);
     expect(corrected).not.toContain('2499');
     expect(corrected).toContain('Nothing is added until you confirm');
@@ -74,7 +81,7 @@ describe('DraftConfirmScreen public server render', () => {
 
   it('labels and constrains native fields, including a rand price nobody types in cents', () => {
     const html = render();
-    for (const name of ['title', 'retailer', 'priceRand']) {
+    for (const name of ['title', 'retailer', 'priceAmount']) {
       const id = attribute(input(html, name), 'id');
       expect(id).toBeTruthy();
       expect(html).toContain(`<label for="${id}">`);
@@ -82,13 +89,13 @@ describe('DraftConfirmScreen public server render', () => {
     expect(attribute(input(html, 'title'), 'maxlength')).toBe('200');
     expect(input(html, 'title')).toContain('required=""');
     expect(input(html, 'retailer')).not.toContain('required=');
-    expect(input(html, 'priceRand')).not.toContain('required=');
-    expect(html).toContain('Price in rand');
-    expect(attribute(input(html, 'priceRand'), 'type')).toBe('text');
-    expect(input(html, 'priceRand')).toContain('inputMode="decimal"');
+    expect(input(html, 'priceAmount')).not.toContain('required=');
+    expect(html).toContain('>Price<');
+    expect(attribute(input(html, 'priceAmount'), 'type')).toBe('text');
+    expect(input(html, 'priceAmount')).toContain('inputMode="decimal"');
     expect(html).toContain('Like 1899 or 249.50');
     expect(html).not.toMatch(/cents/i);
-    const hint = attribute(input(html, 'priceRand'), 'aria-describedby');
+    const hint = attribute(input(html, 'priceAmount'), 'aria-describedby');
     expect(hint).toBeTruthy();
     expect(html).toContain(`id="${hint}"`);
   });
@@ -100,10 +107,11 @@ describe('DraftConfirmScreen public server render', () => {
     expect(html).toContain('No WhatsApp draft is loaded');
     expect(html).toContain('Nothing is added until you confirm');
     expect(fields(html)).not.toContain('ingestEventId');
-    for (const name of ['title', 'retailer', 'priceRand']) {
+    for (const name of ['title', 'retailer', 'priceAmount']) {
       expect(attribute(input(html, name), 'value')).toBe('');
     }
-    expect(attribute(input(html, 'currency'), 'value')).toBe('ZAR');
+    // A manual entry starts in US dollars; the person can pick another currency per item.
+    expect(selectedCurrency(html)).toBe('USD');
     expect(html).not.toMatch(/voice note (?:processed|transcribed)|extracted from your voice|connected to WhatsApp/i);
   });
 
@@ -118,7 +126,7 @@ describe('DraftConfirmScreen public server render', () => {
 
   it.each([0, null])('preserves a price of %s without guessing missing money', (priceMinor) => {
     const html = render({ ...extracted, retailer: null, priceMinor });
-    expect(attribute(input(html, 'priceRand'), 'value')).toBe(priceMinor === null ? '' : '0');
+    expect(attribute(input(html, 'priceAmount'), 'value')).toBe(priceMinor === null ? '' : '0');
     expect(attribute(input(html, 'retailer'), 'value')).toBe('');
   });
 
@@ -173,12 +181,28 @@ describe('DraftConfirmScreen public server render', () => {
     expect(html).not.toContain('<script>');
   });
 
-  it('does not silently treat a foreign-currency draft as ZAR', () => {
-    const html = render({ ...extracted, currency: 'USD', priceMinor: 2499 });
-    expect(html).toContain('This draft uses USD, not ZAR');
+  it('does not silently convert a draft in an unsupported currency', () => {
+    const html = render({ ...extracted, currency: 'JPY', priceMinor: 2499 });
+    expect(html).toContain('This draft uses JPY, which Piñata does not support');
     expect(html).toMatch(/<button\b[^>]*disabled=""[^>]*>Confirm and add item<\/button>/);
-    expect(attribute(input(html, 'currency'), 'value')).toBe('USD');
-    expect(attribute(input(html, 'priceRand'), 'value')).toBe('');
-    expect(html).not.toContain('R24.99');
+    expect(attribute(input(html, 'currency'), 'value')).toBe('JPY');
+    expect(attribute(input(html, 'priceAmount'), 'value')).toBe('');
+    expect(html).not.toContain('24.99');
+  });
+
+  it.each(['USD', 'ZAR', 'EUR', 'GBP'])('lets a person price an item in %s', (currency) => {
+    expect(selectedCurrency(render({ ...extracted, currency }))).toBe(currency);
+    expect(render({ ...extracted, currency }, 'friend')).toContain('Any pool on this gift uses the same currency.');
+    expect(render({ ...extracted, currency }, 'owner')).toContain('Friends see the price in this currency.');
+  });
+
+  it('puts the photo privacy note next to the upload', () => {
+    const friend = render(extracted, 'friend');
+    expect(friend).toMatch(/<form\b[^>]*enctype="multipart\/form-data"/i);
+    expect(attribute(input(friend, 'photo'), 'aria-describedby')).toBe('draft-photo-privacy');
+    expect(friend).toContain('location and camera');
+    expect(friend).toContain('the person getting the gift never does');
+    expect(friend).toContain('href="/privacy"');
+    expect(render(extracted, 'owner')).toContain('You and the friends in this circle can see it.');
   });
 });

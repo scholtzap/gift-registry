@@ -44,7 +44,7 @@ describe('the owner projection', () => {
     expect(view.shareSlug).toMatch(/^t-/);
     expect(view.attributes).toHaveLength(3);
     // Structural, not cosmetic: the owner's payload has no slot a claim could arrive in.
-    expect(Object.keys(view.items[0]!).sort()).toEqual(['confirmed', 'id', 'price', 'retailer', 'title']);
+    expect(Object.keys(view.items[0]!).sort()).toEqual(['confirmed', 'hasPhoto', 'id', 'price', 'retailer', 'title']);
     // And no slot for a writer either — the date is the owner's own or absent.
     expect(Object.keys(view).sort()).toEqual([
       'accessRequests', 'attributes', 'birthday', 'countdown', 'eventDate', 'eventDateLabel', 'items', 'name', 'occasion', 'shareSlug',
@@ -102,11 +102,11 @@ describe('the friend projection', () => {
     expect(view.items.filter((i) => i.status === 'tombstoned')).toHaveLength(1);
 
     const grinder = view.items.find((i) => i.title === 'Coffee grinder')!;
-    expect(grinder.pool).toMatchObject({ target: 'R4\u00A0200', settled: 'R0', status: 'open', iAmBuyer: true, contributors: 2 });
+    expect(grinder.pool).toMatchObject({ target: '$4,200', settled: '$0', currency: 'USD', status: 'open', iAmBuyer: true, contributors: 2 });
     expect(grinder.claimedByMe).toBe(true);
 
     const shoe = view.items.find((i) => i.title === 'Trail runners')!;
-    expect(shoe.price).toBe('R1\u00A0899');
+    expect(shoe).toMatchObject({ price: '$1,899', currency: 'USD', hasPhoto: false });
     expect(shoe.pool).toBeNull();
   });
 

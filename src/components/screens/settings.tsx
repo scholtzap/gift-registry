@@ -29,7 +29,7 @@ export function SettingsScreen({
   return (
     <Screen
       title="Settings"
-      lede={"These choices apply to your actions, not anyone else's. They are private to your account."}
+      lede={"These settings only change what Piñata does for you, and nobody else can see them."}
       backHref={basePath}
       backLabel="Back to circle"
       circle={circle}

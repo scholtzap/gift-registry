@@ -10,6 +10,8 @@ const pivotItem: FriendItemView = {
   title: 'Fictional espresso grinder',
   retailer: 'Demo shop',
   price: 'R2 400.00',
+  currency: 'ZAR',
+  hasPhoto: false,
   status: 'tombstoned',
   tombstoneReason: 'bought_self',
   secret: false,
@@ -34,6 +36,8 @@ const buyerItem: FriendItemView = {
   title: 'Fictional weekend bag',
   retailer: 'Demo shop',
   price: 'R1 800.00',
+  currency: 'ZAR',
+  hasPhoto: false,
   status: 'active',
   tombstoneReason: null,
   secret: true,
@@ -58,6 +62,8 @@ const contributorItem: FriendItemView = {
   title: 'Fictional weekend bag',
   retailer: 'Demo shop',
   price: 'R1 800.00',
+  currency: 'ZAR',
+  hasPhoto: false,
   status: 'active',
   tombstoneReason: null,
   secret: true,
@@ -82,6 +88,8 @@ const soloItem: FriendItemView = {
   title: 'Fictional puzzle',
   retailer: null,
   price: null,
+  currency: 'ZAR',
+  hasPhoto: false,
   status: 'active',
   tombstoneReason: null,
   secret: false,
@@ -165,7 +173,7 @@ describe('ItemDetailScreen public friend render', () => {
     const html = render(soloItem);
     expect(formFor(html, 'claim')).toContain('I’ll buy it myself');
     const poolForm = formFor(html, 'create_pool');
-    randInput(poolForm, 'targetRand');
+    randInput(poolForm, 'targetAmount');
     expect(poolForm).toContain('name="currency" value="ZAR"');
     expect(html).toContain('Pool target');
     expect(html).not.toMatch(/cents/i);
@@ -178,7 +186,7 @@ describe('ItemDetailScreen public friend render', () => {
     const html = render(contributorItem);
     const form = forms(html).find((candidate) => candidate.includes('class="pn-input"') && candidate.includes('value="contribute"'));
     expect(form, 'typed contribution form').toBeDefined();
-    const input = randInput(form!, 'amountRand');
+    const input = randInput(form!, 'pledgeAmount');
     expect(form).toContain('name="currency" value="ZAR"');
     expect(form).toContain('Or your own amount');
     const id = input.match(/\bid="([^"]+)"/)?.[1];

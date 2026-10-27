@@ -41,7 +41,7 @@ describe('the public Piñata landing', () => {
     expect(appLinks).toHaveLength(1);
     expect(textOf(appLinks[0]![2]!)).toBe('Open Piñata');
     expect(appLinks[0]![0]).toContain('pn-button-primary');
-    expect(anchors.map((anchor) => anchor[1])).toEqual(['#pn-content', '/', '/app', '#how-it-works']);
+    expect(anchors.map((anchor) => anchor[1])).toEqual(['#pn-content', '/', '/app', '#how-it-works', '/privacy']);
     expect(html).not.toMatch(/(?:href|src)="(?:https?:|\/c\/|\/cards?\/|\/api\/)/);
   });
 
@@ -68,7 +68,7 @@ describe('the public Piñata landing', () => {
     expect(textOf(example![1]!)).toBe(
       'Example Illustration Fictional illustration, not a live circle. ' +
       'A wish, in your words A picnic blanket “Something for slow afternoons in the park.” ' +
-      'A card, shared by a friend For the next sunny afternoon. The message and the moment are yours.',
+      'A card, shared by a friend For the next sunny afternoon.',
     );
     expect(html).not.toMatch(/data-(?:circle|user|actor|contributor)|circleId|shareSlug|userId|\+\d{8,}/);
     // The seeded demo circle and cast are the concrete leak this guards: none of their
