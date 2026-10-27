@@ -30,6 +30,7 @@ it('PUBLIC: renders literal owner wishes and navigation without friend or intake
       { kind: 'shoe_size', valueText: '43', unit: 'EU' },
       { kind: 'colour', valueText: 'Ocean blue', unit: null },
     ],
+    accessRequests: [],
   };
   const forbiddenFields = {
     claimCount: 'PRIVATE_CLAIM_COUNT',
@@ -110,5 +111,6 @@ function viewWithoutExtras(view: OwnerCircleView): OwnerCircleView {
     shareSlug: view.shareSlug,
     items: view.items,
     attributes: view.attributes,
+    accessRequests: view.accessRequests,
   };
 }
