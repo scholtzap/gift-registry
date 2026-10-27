@@ -64,11 +64,11 @@ describe('the friend projection', () => {
     expect(view.items.filter((i) => i.status === 'tombstoned')).toHaveLength(1);
 
     const grinder = view.items.find((i) => i.title === 'Coffee grinder')!;
-    expect(grinder.pool).toMatchObject({ target: 'R4 200.00', settled: 'R0.00', status: 'open', iAmBuyer: true, contributors: 2 });
+    expect(grinder.pool).toMatchObject({ target: 'R4\u00A0200', settled: 'R0', status: 'open', iAmBuyer: true, contributors: 2 });
     expect(grinder.claimedByMe).toBe(true);
 
     const shoe = view.items.find((i) => i.title === 'Trail runners')!;
-    expect(shoe.price).toBe('R1 899.00');
+    expect(shoe.price).toBe('R1\u00A0899');
     expect(shoe.pool).toBeNull();
   });
 
