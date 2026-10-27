@@ -12,7 +12,7 @@ export function JoinScreen({ notice, action = '' }: JoinScreenProps) {
     <Screen
       title="Join this circle"
       eyebrow="Keep the surprise"
-      lede="A little planning between friends. A gift they won't see coming."
+      lede="Plan the gift with the rest of the group. The person you're buying for can't see any of it."
     >
       <div className="pn-measure-sm pn-stack pn-stack-lg">
         <Panel className="pn-stack">
@@ -66,7 +66,7 @@ export function JoinScreen({ notice, action = '' }: JoinScreenProps) {
           <h2>The surprise stays with friends</h2>
           <p>
             The person receiving the gift cannot see claims, pooled amounts or friend suggestions.
-            Circle details stay behind this gate.
+            Only people on the invite list can open this circle.
           </p>
         </aside>
       </div>

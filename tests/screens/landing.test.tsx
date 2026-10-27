@@ -68,7 +68,7 @@ describe('the public Piñata landing', () => {
     expect(textOf(example![1]!)).toBe(
       'Example Illustration Fictional illustration, not a live circle. ' +
       'A wish, in your words A picnic blanket “Something for slow afternoons in the park.” ' +
-      'A card, shared by a friend For the next sunny afternoon. The message and the moment are yours.',
+      'A card, shared by a friend For the next sunny afternoon.',
     );
     expect(html).not.toMatch(/data-(?:circle|user|actor|contributor)|circleId|shareSlug|userId|\+\d{8,}/);
     expect(text).not.toMatch(/\b(?:R\s*\d|ZAR|USD|GBP|pledged|funded|remaining|contributors?|testimonials?|certified|GDPR|POPIA)\b/i);

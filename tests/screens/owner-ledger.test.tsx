@@ -84,7 +84,7 @@ it('PUBLIC: renders literal owner wishes and navigation without friend or intake
   expect(html).toContain('href="/c/moon-picnic"');
   expect(html).toContain('Review a draft');
   expect(html).toContain('After a voice note becomes a draft');
-  expect(html).toContain('Nothing is confirmed for you.');
+  expect(html).toContain('check the title and price before you confirm');
   expect(html).not.toMatch(/\bhref="#"|<button\b|<form\b|<script\b/);
   expect(html).toContain('href="#pn-content"');
   expect(html).toContain('id="pn-content"');

@@ -94,8 +94,8 @@ export function OwnerLedgerScreen({ view, basePath }: { view: OwnerCircleView; b
           </Panel>
 
           <Panel className="pn-stack">
-            <h2>A voice note is just the start</h2>
-            <p>After a voice note becomes a draft, check the title and price before you confirm. Nothing is confirmed for you.</p>
+            <h2>Check drafts before you confirm</h2>
+            <p>After a voice note becomes a draft, check the title and price before you confirm.</p>
             <Cta href={draftHref}>Review a draft</Cta>
           </Panel>
         </div>
