@@ -160,8 +160,9 @@ countdown next to the views, `src/components/screens/{owner,friend}-ledger.tsx`,
 
 ## Open questions
 
-1. Should the friend ledger name which friend set the date? Copy call, nothing blocks the build.
+None. Settled on 2026-10-27: the friend ledger does **not** name which friend set the date.
 
-The data supports it already through `event_date_set_by_user_id`. The reason to hesitate is that
-naming a person on a surprise is itself a small spoiler risk, if a screenshot of the friend
-ledger ever reaches the owner.
+The column still records the writer (`event_date_set_by_user_id`) because the secrecy rule needs
+it, but no screen reads it for display. Naming a person on a surprise is a small spoiler risk if a
+screenshot of the friend ledger reaches the owner, and nothing about coordinating the gift needs
+the name.
