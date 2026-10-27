@@ -10,7 +10,11 @@ Use `docs/deployment/docker-compose.oracle.yml` as a **standalone** Compose file
 - `Dockerfile.caddy`: Cloudflare DNS module build; a reviewed plugin version/commit is required. Operator must select matching reviewed Caddy builder/runtime versions and immutable release image digests. Default major tags are examples, not reproducible release pins.
 - `Caddyfile.example`: DNS-01 TLS, non-root internal HTTPS port 8443, no HTTP listener exposed or access log, no caching layer. Application responses retain their own private/no-store policy. The example assumes **direct clients, Cloudflare DNS-only**, not orange-cloud proxying or a load balancer.
 - Database: internal network, named data volume, **no published port**. App: no published port, non-root, read-only root filesystem, writable named media volume and bounded tmpfs caches, dropped capabilities, bounded logs/memory. Caddy alone has a port mapping, defaulting to loopback 8443; public VM 443 binding requires separate explicit operator approval and ingress configuration.
-- `migrate` is profile `ops`, one-shot, and never an automatic app startup action. No worker service is invented; adding a worker requires updating the maintenance/backup writer inventory.
+- `migrate` is profile `ops`, one-shot, and never an automatic app startup action. `worker`
+  runs the pg-boss ingest consumer (`node --import tsx src/worker.ts`) with the same
+  hardening as app (non-root, read-only rootfs, no published ports, named media volume)
+  and joins only the internal `database` network. Run exactly one replica: the in-process
+  throttle budget resets per process.
 
 ## External prerequisites (not supplied)
 
@@ -46,7 +50,7 @@ Keep runtime files and backups outside Git, restrict them to the operator, and e
 
 ## Nightly backup
 
-`scripts/ops/backup.sh` is a Linux candidate, not an installed scheduler. Invoke it with `bash` through the parent-supplied secret wrapper. It refuses a running `app`, takes an advisory lock, writes a custom `pg_dump`, checks the archive table of contents, copies the stopped app's media and archives it **without following symlinks**, then publishes one private directory containing `database.dump`, `media.tar`, and `SHA256SUMS`. Partial bundles are removed on failure; successful backups are not automatically deleted. Standard output contains only the bundle path.
+`scripts/ops/backup.sh` is a Linux candidate, not an installed scheduler. Invoke it with `bash` through the parent-supplied secret wrapper. It refuses a running `app` or `worker`, takes an advisory lock, writes a custom `pg_dump`, checks the archive table of contents, copies the stopped app's media and archives it **without following symlinks**, then publishes one private directory containing `database.dump`, `media.tar`, and `SHA256SUMS`. Partial bundles are removed on failure; successful backups are not automatically deleted. Standard output contains only the bundle path.
 
 Configure an operator-owned nightly job (for example `15 3 * * *` **after confirming the host timezone**). Its secret-wrapped sequence must:
 

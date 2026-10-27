@@ -51,6 +51,12 @@ describe('private circle actions', () => {
     const response = await get(`/items/${fx.itemOwnId}`, cookie('friend', fx.ownerUserId));
     expect(response.status).toBe(404);
   });
+  it('hides a friend-only suggestion from the owner item route', async () => {
+    const response = await get(`/items/${fx.itemSecretId}`, cookie('owner'));
+    expect(response.status).toBe(404);
+    expect(response.headers.get('Cache-Control')).toContain('no-store');
+    expect(await response.text()).toContain('not valid');
+  });
   it('renders an owner-only item detail without coordination state', async () => {
     const response = await get(`/items/${fx.itemOwnId}`, cookie('owner'));
     expect(response.status).toBe(200);
