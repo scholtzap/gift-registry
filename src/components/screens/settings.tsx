@@ -70,7 +70,7 @@ export function SettingsScreen({
                         <div className="pn-between">
                           <h3 id={labelId}>{setting.label}</h3>
                           <span id={stateId}>
-                            <Badge tone={setting.enabled ? 'blue' : 'neutral'}>
+                            <Badge tone={setting.enabled ? 'done' : 'neutral'}>
                               {setting.enabled ? 'On' : 'Off'}
                             </Badge>
                           </span>

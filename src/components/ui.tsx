@@ -22,6 +22,15 @@ const TAB_ICONS: Record<string, ReactNode> = {
   card: <path d="M4 6.5h16v11H4zM4 10h16" />,
 };
 
+function LockIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.25}
+         strokeLinecap="round" aria-hidden="true" focusable="false">
+      <path d="M6 11h12v9H6zM8.5 11V8a3.5 3.5 0 0 1 7 0v3" />
+    </svg>
+  );
+}
+
 function TabIcon({ name }: { name: string }) {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}
@@ -66,7 +75,10 @@ export function Screen({
           <Brand />
           {circle && (
             <div className="pn-context">
-              <p className="pn-eyebrow">{circle.role === 'owner' ? 'Owner view' : 'Friends only'}</p>
+              <p className={`pn-sticker${circle.role === 'owner' ? ' pn-sticker-owner' : ''}`}>
+                {circle.role === 'friend' && <LockIcon />}
+                {circle.role === 'owner' ? 'Owner view' : 'Friends only'}
+              </p>
               <p className="pn-context-name">{circle.name}</p>
             </div>
           )}
@@ -210,20 +222,66 @@ export function Field({
   );
 }
 
+/**
+ * A rand amount, typed the way people say it ("400", "R 1 250", "99,50"). The server turns it
+ * into integer cents with `parseRandToMinor`; nobody types cents.
+ */
+export function AmountField({ label, name, id, defaultValue, required, hint }: {
+  label: ReactNode;
+  name: string;
+  id: string;
+  defaultValue?: string;
+  required?: boolean;
+  hint?: ReactNode;
+}) {
+  const hintId = hint != null ? `${id}-hint` : undefined;
+  return (
+    <div className="pn-field">
+      <label htmlFor={id}>{label}{required && <span className="pn-small pn-muted"> (required)</span>}</label>
+      <div className="pn-amount">
+        <input className="pn-input" id={id} name={name} type="text" inputMode="decimal" autoComplete="off"
+               defaultValue={defaultValue} required={required} maxLength={14} aria-describedby={hintId} />
+      </div>
+      {hint != null && <p className="pn-hint pn-small pn-muted" id={hintId}>{hint}</p>}
+    </div>
+  );
+}
+
+/** Badge tones are meanings, not colours: a person or a secret, money, settled, still open, needs attention. */
+export type BadgeTone = 'human' | 'money' | 'done' | 'open' | 'alert' | 'neutral';
+
 export function Badge({
   children,
   tone = 'neutral',
 }: {
   children: ReactNode;
-  tone?: 'pink' | 'blue' | 'green' | 'neutral' | 'warning';
+  tone?: BadgeTone;
 }) {
   return (
     <span className={`pn-badge pn-badge-${tone}`}>
-      {tone === 'green' && <span aria-hidden="true">✓ </span>}
-      {tone === 'warning' && <span aria-hidden="true">! </span>}
+      {tone === 'done' && <span aria-hidden="true">✓ </span>}
+      {tone === 'alert' && <span aria-hidden="true">! </span>}
       {children}
     </span>
   );
+}
+
+const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/** A calendar date ("2026-11-15") as people say it: "Sun 15 Nov 2026". Read in UTC, so the
+ *  server and every phone print the same day. Unbreakable, like an amount. */
+export function EventDate({ iso }: { iso: string }) {
+  const date = new Date(`${iso}T00:00:00Z`);
+  const label = Number.isNaN(date.getTime())
+    ? iso
+    : `${WEEKDAYS[date.getUTCDay()]} ${date.getUTCDate()} ${MONTHS[date.getUTCMonth()]} ${date.getUTCFullYear()}`;
+  return <time className="pn-money" dateTime={iso}>{label}</time>;
+}
+
+/** One amount as an unbreakable token, for amounts that sit inside a sentence. */
+export function Money({ children }: { children: ReactNode }) {
+  return <span className="pn-money">{children}</span>;
 }
 
 /** Settled against target, as a piñata-stripe fill. Amounts stay the source of truth; the
@@ -241,7 +299,7 @@ export function Meter({ settled, target, percent, done }: {
   return (
     <div className={`pn-meter${state}`}>
       <div className="pn-meter-head">
-        <p className="pn-eyebrow">Pool progress</p>
+        <p className="pn-eyebrow">In the piñata</p>
         <p className="pn-meter-pct">{clamped}%</p>
       </div>
       <div className="pn-meter-track" role="img" aria-label={`${settled} settled of ${target} target`}>

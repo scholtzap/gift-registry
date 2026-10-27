@@ -70,13 +70,13 @@ it('PUBLIC: renders literal owner wishes and navigation without friend or intake
     'The moon picnic', 'Birthday picnic', '2026-11-03',
     'Blue enamel kettle', 'Example outdoor shop', 'R1 249.50', 'A sky map',
     'Shoe size', '43', 'EU', 'Colour', 'Ocean blue',
-    'Confirmed', 'Needs your confirmation', 'Price not added',
+    'On your list', 'Check and confirm', 'Price not added',
   ]) {
     expect(html).toContain(literal);
   }
   expect(html).toMatch(/<h1\b[^>]*>Your wishes<\/h1>/);
   expect(html).toMatch(/<p class="pn-context-name">The moon picnic<\/p>/);
-  expect(html).toContain('<time dateTime="2026-11-03">2026-11-03</time>');
+  expect(html).toContain('<time class="pn-money" dateTime="2026-11-03">Tue 3 Nov 2026</time>');
   expect(html).toMatch(/<a\b[^>]*href="\/owner\/moon-picnic\/draft"[^>]*>Add a wish<\/a>/);
   expect(html).toContain('href="/owner/moon-picnic/items/wish%2Fone"');
   expect(html).toContain('href="/owner/moon-picnic/items/wish-two"');
