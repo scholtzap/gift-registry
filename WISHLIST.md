@@ -44,6 +44,7 @@ cell.
 **Where it should live:** global toolchain + the `draw-io` skill; then `.githooks` or the docs CI job for the export.
 **Status:** open (checker written, not yet promoted)
 
+
 ## 2026-10-26 — PDFs are unreadable by the Read tool on this host
 **Kind:** inefficiency
 **Requested by:** agent (had to ingest three hackathon PDFs)

@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { Actor } from '@/server/db/client';
-import { getCard, saveCardEntry, renderCard } from '@/server/cards';
+import { generateCardPun, getCard, saveCardEntry, renderCard } from '@/server/cards';
 import { seedCircle, type CircleFixture } from '../leak/fixtures';
 
 // Parent runs this file with the normal real-Postgres setup after the ledger worker stops.
@@ -66,6 +66,25 @@ describe('gift-giver card database boundary', () => {
     const second = await fixture.db.withActor(otherFriend, (tx) => getCard(tx, otherFriend, fixture.itemOwnId));
     expect(second?.myEntry).toEqual({ ...changed, displayNameShown: 'Anonymous' });
     expect(second?.entries).toEqual([{ ...changed, displayNameShown: 'Anonymous' }]);
+  });
+
+  it('caches one generated pun per item and refuses the owner', async () => {
+    let calls = 0;
+    const client = {
+      generatePun: async () => {
+        calls++;
+        return { candidates: ['Grind news!', 'From all of us.', 'Bean thinking of you.'] as [string, string, string], evidence: { model: 'muse-spark-1.2', mode: 'live' as const } };
+      },
+    };
+    expect(await generateCardPun(fixture.db, otherFriend, fixture.itemOwnId, client)).toBe('Grind news!');
+    expect(await generateCardPun(fixture.db, otherFriend, fixture.itemOwnId, client)).toBe('Grind news!');
+    expect(calls).toBe(1);
+    const stored = await fixture.db.prisma.giftCard.findUniqueOrThrow({ where: { itemId: fixture.itemOwnId } });
+    expect(stored).toMatchObject({ pun: 'Grind news!', tagline: 'From all of us.', modelUsed: 'muse-spark-1.2' });
+    const card = await fixture.db.withActor(otherFriend, (tx) => getCard(tx, otherFriend, fixture.itemOwnId));
+    expect(card?.pun).toBe('Grind news!');
+    await expect(generateCardPun(fixture.db, owner, fixture.itemOwnId, client)).rejects.toThrow('card_not_found');
+    expect(calls).toBe(1);
   });
 
   it('rejects an identity override and a URL without changing another gift-giver\'s entry', async () => {

@@ -1,10 +1,10 @@
 ---
 title: Gift card (F10) — group card with every gift-giver's name and message
 type: spec
-status: ready
+status: implementing
 priority: P2
 rank: 3
-updated: 2026-10-26
+updated: 2026-10-27
 apps: []
 related: [SPEC.md, ARCHITECTURE.md, docs/plans/gift-circles-ten-day-build-plan.md]
 evidence: null
@@ -15,7 +15,38 @@ superseded_by: null
 
 # Gift card (F10)
 
-**Status:** Decided into v1 on day 5–6 of the ten-day plan. Everything below is the build shape; the
+**Status:** Core built and tested; live-model and real-WhatsApp proofs open. Re-triaged
+2026-10-27 — was `ready`, which understated shipped code and overstated nothing else.
+
+## Re-triage (2026-10-27)
+
+Built, with evidence in `parallel-build-closeout.md` (100 card cases) and
+`docs/operations/parallel-agent-outputs/cards.md`:
+
+- `card_entries` / `gift_cards` tables in `prisma/schema.prisma`, friend-only projection in
+  `src/server/cards/index.ts`: owner, non-member and non-giver all get the same `null` → 404.
+- Verbatim contributor messages, `anonymous` opt-out, URL rejection and validation in
+  `src/server/cards/validation.ts`, own-entry composer screen + browser flows green.
+- Deterministic SVG → PNG in `src/server/cards/render.ts` (satori + resvg): screen variant
+  and A6 print variant at 300 DPI with 3 mm bleed (`render.ts:120-122,182`).
+- No `og:` surface, no delivery path — download only, per the human-act rule.
+
+Still open — why this is `implementing`, not `implemented`:
+
+- **Live proof, not live code.** Pun generation is built (2026-10-27, `feat/day-3-followups`
+  #5): `generatePun` in `src/server/models/client.ts` (flat `json_schema`, muse-spark-1.2),
+  gated by `modelsForActor`'s `card_pun` authorisation, cached once per item on `gift_cards`
+  with `model_used` via `generateCardPun` in `src/server/cards/index.ts`, deterministic
+  wording retained when off/unconfigured. No live API call has been made, so the
+  `model_used` row is still unproven against the real endpoint. Buyer-picks-from-three is
+  not built: the first candidate is cached, the other two are returned but not persisted.
+- **No `muse-image` background** (`lib/cards/art.ts` equivalent absent) — optional layer only.
+- **Real-WhatsApp preview proof never run** — acceptance item 3 below stays a day-9 manual check.
+- Paths differ from the build shape below: shipped code lives in `src/server/cards/` behind the
+  `/c/<slug>` route surface, not `lib/cards/` + `app/(friend)/items/[id]/card/`. Behaviour
+  matches; the map below is historical.
+
+**Original status note:** Decided into v1 on day 5–6 of the ten-day plan. Everything below is the build shape; the
 product decision and its rationale live in `SPEC.md` §Decisions (F10) and the "reveal is a human act"
 rule in `AGENTS.md`.
 

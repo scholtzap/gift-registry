@@ -276,12 +276,26 @@ def _run_git(args: list[str], cwd: Path) -> str:
         return ""
 
 
-def _mistakes_status(repo_root: Path) -> dict:
+def _mistakes_status(repo_root: Path, transcript_path: str | None = None) -> dict:
     mistakes = repo_root / "MISTAKES.md"
     # Untracked files (fresh repo, pre-first-commit) still show in --porcelain.
     porcelain = _run_git(["status", "--porcelain", "MISTAKES.md"], repo_root).strip()
     exists = mistakes.is_file()
-    touched = bool(porcelain)
+    # A committed log is also "touched": the hygiene rule requires committing the doc,
+    # so accepting only a dirty file makes the two hooks contradict forever. A commit
+    # counts when it landed after this session's transcript file was created.
+    committed_this_session = False
+    if exists and transcript_path:
+        try:
+            stat = Path(transcript_path).stat()
+            started = getattr(stat, "st_birthtime", stat.st_ctime)
+            latest_raw = _run_git(
+                ["log", "-1", "--format=%ct", "--", "MISTAKES.md"], repo_root
+            ).strip()
+            committed_this_session = bool(latest_raw) and int(latest_raw) >= int(started)
+        except (OSError, ValueError):
+            committed_this_session = False
+    touched = bool(porcelain) or committed_this_session
     if not exists:
         state = "missing"
     elif touched:
@@ -357,7 +371,7 @@ def main() -> int:
         return 0
 
     git_roots = _git_roots(workspace_roots)
-    statuses = [_mistakes_status(r) for r in git_roots] if git_roots else []
+    statuses = [_mistakes_status(r, transcript_path) for r in git_roots] if git_roots else []
     all_logged = bool(statuses) and all(s["touched"] for s in statuses)
 
     print(

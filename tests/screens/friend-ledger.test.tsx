@@ -9,6 +9,9 @@ const friendView: FriendCircleView = {
   name: "Nadia's 30th",
   occasion: 'birthday',
   eventDate: '2026-12-05',
+  eventDateLabel: 'Sat 5 Dec',
+  countdown: '12 days to go',
+  birthday: '3 Apr',
   items: [
     {
       id: 'trail-runners',
@@ -20,6 +23,7 @@ const friendView: FriendCircleView = {
       secret: false,
       addedByMe: false,
       claimedByMe: false,
+      canReveal: false,
       pool: null,
     },
     {
@@ -32,6 +36,7 @@ const friendView: FriendCircleView = {
       secret: true,
       addedByMe: true,
       claimedByMe: true,
+      canReveal: false,
       pool: {
         id: 'grinder-pool',
         target: 'R4 200.00',
@@ -54,6 +59,7 @@ const friendView: FriendCircleView = {
       secret: false,
       addedByMe: false,
       claimedByMe: true,
+      canReveal: false,
       pool: {
         id: 'pan-pool',
         target: 'R2 400.00',
@@ -109,7 +115,8 @@ describe('FriendLedgerScreen public static render', () => {
     expect(text(markup)).toContain('Friends only');
     expect(text(markup)).toContain('Keep this screen away from them.');
     expect(text(markup)).toContain('birthday');
-    expect(markup).toMatch(/<time[^>]*datetime="2026-12-05"[^>]*>Sat 5 Dec 2026<\/time>/i);
+    expect(markup).toMatch(/<time dateTime="2026-12-05">Sat 5 Dec<\/time> · 12 days to go/i);
+    expect(text(markup)).toContain('Birthday: 3 Apr');
     expect(text(itemMarkup(markup, 'Trail runners, burnt orange'))).toContain('R1 899.00');
     expect(text(grinder)).toContain('Coffee shop');
     expect(text(grinder)).toContain('R4 200.00');
@@ -192,7 +199,40 @@ describe('FriendLedgerScreen public static render', () => {
     expect(markup).toContain('Suggest a secret gift');
     expect(markup).toContain(`href="${path}/settings"`);
     expect(markup).toContain('Your AI settings');
-    expect(markup).not.toMatch(/<button|<form/);
+    // Exactly one control form on the friend ledger: the native party-date write.
+    expect(markup).toMatch(/<form\b[^>]*action="\/friend\/custom-circle\/date"[^>]*method="post"/);
+    expect(markup.match(/<form\b/g)).toHaveLength(1);
+    expect(markup.match(/<button\b/g)).toHaveLength(1);
+    expect(markup).not.toMatch(/<script\b|\bhref="#"/);
+  });
+
+  it('never reads who wrote the party date', () => {
+    const view: FriendCircleView = { ...friendView };
+    Object.defineProperty(view, 'eventDateSetByUserId', {
+      enumerable: true,
+      get() { throw new Error('Friend screen read the party-date writer'); },
+    });
+    expect(render(view)).toContain('<time dateTime="2026-12-05">Sat 5 Dec</time>');
+  });
+
+  it('leaves the date line and countdown out when the circle has no party date yet', () => {
+    const markup = render({ ...friendView, eventDate: null, eventDateLabel: null, countdown: null });
+    expect(markup).not.toMatch(/<time\b|days to go|>Today<|>Tomorrow</);
+    expect(markup).toContain('Birthday: 3 Apr');
+    expect(markup).toMatch(/<form\b[^>]*action="\/c\/nadia-30th\/date"[^>]*method="post"/);
+    expect(markup).not.toMatch(/value="2\d{3}-\d{2}-\d{2}"/);
+  });
+
+  it('re-renders the rejected draft with the notice, keeping the form usable', () => {
+    const markup = renderToStaticMarkup(createElement(FriendLedgerScreen, {
+      view: friendView,
+      basePath,
+      notice: 'Enter a real date, in the form 2026-12-05.',
+      eventDateDraft: '2026-02-30',
+    }));
+    expect(markup).toContain('Enter a real date, in the form 2026-12-05.');
+    expect(markup).toContain('value="2026-02-30"');
+    expect(markup).toContain('role="alert"');
   });
 
   it('offers a clear empty state while retaining secret suggestion and settings links', () => {

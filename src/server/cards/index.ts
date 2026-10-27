@@ -20,6 +20,7 @@ export class CardNotFoundError extends Error {
 interface CardData {
   composer: CardComposerData;
   artwork: CardArtworkData;
+  storedPun: string | null;
 }
 
 async function loadCardData(tx: Tx, actor: Actor, itemId: string): Promise<CardData | null> {
@@ -80,6 +81,7 @@ async function loadCardData(tx: Tx, actor: Actor, itemId: string): Promise<CardD
   const entries = giftGivers.map(projectEntry);
   const pun = card?.pun ?? DETERMINISTIC_CARD_PUN;
   return {
+    storedPun: card?.pun ?? null,
     composer: {
       itemId, title: item.title, pun,
       tagline: card ? null : 'Plain card wording — no AI call.',
@@ -109,6 +111,42 @@ export async function saveCardEntry(tx: Tx, actor: Actor, itemId: string, input:
     update: saved,
     select: { id: true },
   });
+}
+
+export interface PunClient {
+  generatePun(input: { title: string; recipientFirstName: string; occasion: string }): Promise<{
+    candidates: [string, string, string];
+    evidence: { model: string; mode: 'live' | 'demo_fixture' };
+  }>;
+}
+
+/**
+ * One cached pun per item (`item_id UNIQUE`): a stored card is returned without spending.
+ * The client authorises `card_pun` before any external call; when it throws (capability off,
+ * not configured) nothing is written and the deterministic wording stays on the composer.
+ */
+export async function generateCardPun(db: Db, actor: Actor, itemId: string, client: PunClient): Promise<string> {
+  const data = await db.withActor(actor, (tx) => loadCardData(tx, actor, itemId));
+  if (!data) throw new CardNotFoundError();
+  if (data.storedPun) return data.storedPun;
+  const result = await client.generatePun({
+    title: data.artwork.itemTitle, recipientFirstName: data.artwork.recipientName, occasion: data.artwork.occasion,
+  });
+  const pun = result.candidates[0];
+  await db.withActor(actor, async (tx) => {
+    const again = await loadCardData(tx, actor, itemId);
+    if (!again) throw new CardNotFoundError();
+    if (again.storedPun) return;
+    await tx.giftCard.create({
+      data: {
+        itemId, pun, tagline: result.candidates[1],
+        modelUsed: result.evidence.mode === 'demo_fixture' ? 'demo_fixture' : result.evidence.model,
+        createdByUserId: actor.userId,
+      },
+      select: { id: true },
+    });
+  });
+  return pun;
 }
 
 /** PNG bytes are never persisted to a public path; the private HTTP adapter owns delivery. */

@@ -134,6 +134,12 @@ export function CardComposerScreen({
                 </form>
                 <a className="pn-button pn-button-secondary" href={`${cardPath}/png`} download>Download PNG</a>
               </div>
+              {card.tagline && (
+                <form action={cardPath} method="post" className="pn-actions">
+                  <input type="hidden" name="intent" value="pun" />
+                  <Button type="submit" variant="secondary">Suggest a pun with AI</Button>
+                </form>
+              )}
               <p className="pn-small">Share or print it yourself when you’re ready. Piñata never sends the card or notifies the recipient.</p>
             </section>
           </Panel>
