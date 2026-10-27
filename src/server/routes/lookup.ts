@@ -94,7 +94,7 @@ export async function handleLookupPost(db: Db, request: Request): Promise<Respon
   const intent = String(form.get("intent") ?? "lookup");
   const keyPhoneRaw = String(form.get(intent === "create" ? "recipientPhone" : "phone") ?? "");
   const normalizedKey = normalizeE164(keyPhoneRaw);
-  const pepper = env.SESSION_SECRET;
+  const pepper = env.PHONE_HASH_PEPPER;
   const hashPart = normalizedKey ? hashPhone(normalizedKey, pepper) : "invalid";
   const throttleKey = `${hashPart}:${trustedClientAddress(request)}`;
 

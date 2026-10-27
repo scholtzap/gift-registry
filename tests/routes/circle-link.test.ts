@@ -201,7 +201,7 @@ describe('the circle link', () => {
 describe('the allowlist gate that mints a session', () => {
   async function invite(phone: string) {
     await db.prisma.allowlistEntry.create({
-      data: { circleId: fx.circleId, phoneE164Hash: hashPhone(phone, env.SESSION_SECRET), addedBy: fx.ownerUserId },
+      data: { circleId: fx.circleId, phoneE164Hash: hashPhone(phone, env.PHONE_HASH_PEPPER), addedBy: fx.ownerUserId },
     });
   }
 
@@ -230,7 +230,7 @@ describe('the allowlist gate that mints a session', () => {
     expect(membership).toEqual({ role: 'friend', status: 'active' });
 
     const entry = await db.prisma.allowlistEntry.findUnique({
-      where: { circleId_phoneE164Hash: { circleId: fx.circleId, phoneE164Hash: hashPhone(phone, env.SESSION_SECRET) } },
+      where: { circleId_phoneE164Hash: { circleId: fx.circleId, phoneE164Hash: hashPhone(phone, env.PHONE_HASH_PEPPER) } },
       select: { status: true },
     });
     expect(entry?.status).toBe('accepted');
@@ -295,7 +295,7 @@ describe('the allowlist gate that mints a session', () => {
     const phone = syntheticPhone();
     await invite(phone);
     await db.prisma.allowlistEntry.update({
-      where: { circleId_phoneE164Hash: { circleId: fx.circleId, phoneE164Hash: hashPhone(phone, env.SESSION_SECRET) } },
+      where: { circleId_phoneE164Hash: { circleId: fx.circleId, phoneE164Hash: hashPhone(phone, env.PHONE_HASH_PEPPER) } },
       data: { status: 'removed' },
     });
 

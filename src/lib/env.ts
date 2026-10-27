@@ -14,6 +14,13 @@ const schema = z.object({
     .string()
     .min(32)
     .describe("32+ chars; signs the role-scoped session cookie"),
+  // RN-D M6/Gate 5: the phone-hash pepper is a separate secret from the
+  // session signer, so one leaked secret cannot both mint sessions and crack
+  // hashed phone numbers offline. Boot-checked below.
+  PHONE_HASH_PEPPER: z
+    .string()
+    .min(32)
+    .describe("32+ chars; peppers every keyed phone hash, distinct from SESSION_SECRET"),
   CIRCLE_BASE_URL: z.string().url(),
   PORT: z.coerce.number().int().positive().default(3000),
 
@@ -35,6 +42,14 @@ const schema = z.object({
   MEDIA_DIR: z.string().default("/data/media"),
   FFMPEG_PATH: z.string().default("ffmpeg"),
   DEMO_MODE: z.enum(["on", "off"]).default("off"),
+}).superRefine((value, ctx) => {
+  if (value.PHONE_HASH_PEPPER === value.SESSION_SECRET) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["PHONE_HASH_PEPPER"],
+      message: "must differ from SESSION_SECRET (RN-D M6: one secret, one failure domain)",
+    });
+  }
 });
 
 export type Env = z.infer<typeof schema>;

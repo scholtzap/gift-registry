@@ -17,6 +17,7 @@ import { issueSession, sessionCookie, sessionFromRequest } from "@/server/auth/s
 import { AI_CAPABILITIES, assertCan, CAPABILITY_COPY, CapabilityOffError, setCapability } from "@/server/entitlements";
 import { addItem, claimItem, contribute, createPool, markPaid, purchasePool, releaseClaim } from '@/server/ledger';
 import { env } from "@/lib/env";
+import { isArchived } from "@/server/lifecycle";
 
 // Native-form HTML uses Node SSR, not the App Route's react-server export condition.
 const { renderToStaticMarkup } = createRequire(import.meta.url)('react-dom/server') as typeof import('react-dom/server');
@@ -291,7 +292,10 @@ async function circlePost(db: Db, request: Request, slug: string): Promise<Respo
     return pathname === basePath ? gateForm('That submission could not be verified as coming from this page. Open the link again and try.') : notFound();
   }
 
-  const circle = await db.prisma.circle.findUnique({ where: { shareSlug: slug }, select: { id: true } });
+  const circle = await db.prisma.circle.findUnique({
+    where: { shareSlug: slug },
+    select: { id: true, status: true, createdAt: true, eventDate: true, ownerUserId: true },
+  });
   if (!circle) return notFound();
   if (pathname !== basePath) {
     const actor = await privateActor(db, request, circle.id);
@@ -363,6 +367,13 @@ async function circlePost(db: Db, request: Request, slug: string): Promise<Respo
       if (moneyIntent && (!amount.success || fields.get('currency') !== 'ZAR')) {
         return screenResponse(item.title, createElement(ItemDetailScreen, { item, basePath, notice: 'Enter a whole number of cents above zero.' }), 422);
       }
+      // RN-E: an archived proxy circle stays readable but takes no new
+      // claims or pledges. Settling what already exists (release, mark
+      // paid, purchase) stays possible; the ledger is never destroyed.
+      const newMoneyIntent = ['claim', 'create_pool', 'contribute'].includes(intent.data);
+      if (newMoneyIntent && isArchived(circle)) {
+        return screenResponse(item.title, createElement(ItemDetailScreen, { item, basePath, notice: 'This circle has archived, so it is not taking new claims or pledges.' }), 409);
+      }
       const poolIntent = ['contribute', 'mark_paid', 'purchase'].includes(intent.data);
       const poolId = String(fields.get('poolId') ?? '');
       if (poolIntent && !z.uuid().safeParse(poolId).success) return notFound();
@@ -409,7 +420,7 @@ async function circlePost(db: Db, request: Request, slug: string): Promise<Respo
     return gateForm("Add the name you want on the card, and the number in full international form.");
   }
 
-  const pepper = env.SESSION_SECRET;
+  const pepper = env.PHONE_HASH_PEPPER;
   const phoneHash = hashPhone(normalized, pepper);
 
   // Authorise before writing anything. `removed` is not an invite.

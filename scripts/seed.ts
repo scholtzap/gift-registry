@@ -12,7 +12,7 @@ import { env } from "../src/lib/env";
  * recording shows data the same script produced. Money is ZAR cents — R2 400 is 240000.
  */
 
-const PEPPER = env.SESSION_SECRET;
+const PEPPER = env.PHONE_HASH_PEPPER;
 
 const CAST = {
   nadia: { name: "Nadia Petersen", bsuid: "AAseednadia000000000000000000001" },
