@@ -1,4 +1,4 @@
-import { AttributeList, Badge, Cta, EmptyState, Meter, Notice, Panel, Screen, Stat, StatList } from '@/components/ui';
+import { AttributeList, Badge, Cta, DateLine, EmptyState, EventDateForm, Meter, Notice, Panel, Screen, Stat, StatList } from '@/components/ui';
 import type { NavItem } from '@/components/ui';
 import type { FriendCircleView, FriendItemView } from '@/server/views';
 
@@ -75,7 +75,12 @@ function LedgerRow({ item, basePath }: { item: FriendItemView; basePath: string 
 }
 
 // Friend projection only; the parent route owns authentication and role selection.
-export function FriendLedgerScreen({ view, basePath }: { view: FriendCircleView; basePath: string }) {
+export function FriendLedgerScreen({ view, basePath, notice, eventDateDraft }: {
+  view: FriendCircleView;
+  basePath: string;
+  notice?: string;
+  eventDateDraft?: string | null;
+}) {
   const nav: NavItem[] = [
     { href: basePath, label: 'Ledger', icon: 'ledger', current: true },
     { href: `${basePath}/draft`, label: 'Suggest', icon: 'add' },
@@ -106,10 +111,11 @@ export function FriendLedgerScreen({ view, basePath }: { view: FriendCircleView;
 
         {/* Rail last in the DOM so mobile reads ledger first; CSS puts it on the right at desktop. */}
         <div className="pn-rail">
-          <Panel>
-            <p className="pn-muted">
-              {view.occasion} · <time dateTime={view.eventDate}>{view.eventDate}</time>
-            </p>
+          <Panel className="pn-stack">
+            <p className="pn-muted">{view.occasion}</p>
+            {view.birthday !== null && <p className="pn-small">Birthday: {view.birthday}</p>}
+            <DateLine date={view.eventDate} label={view.eventDateLabel} countdown={view.countdown} />
+            <EventDateForm basePath={basePath} defaultValue={eventDateDraft ?? view.eventDate} notice={notice} />
             <Cta href={`${basePath}/draft`}>Suggest a secret gift</Cta>
             <Cta href={`${basePath}/settings`}>Your AI settings</Cta>
           </Panel>

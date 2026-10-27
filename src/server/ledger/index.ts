@@ -1,5 +1,6 @@
 import type { Actor, Tx } from '@/server/db/client';
 import type { Circle, Claim, Contribution, Item, Pool, Prisma, TombstoneReason } from '@/generated/prisma/client';
+import { isCalendarDate } from '@/lib/dates';
 
 async function session(tx: Tx, actor: Actor, role?: Actor['role']) {
   if (role !== undefined && actor.role !== role) throw new Error('ledger_role_denied');
@@ -263,4 +264,22 @@ export async function tombstoneItem(tx: Tx, actor: Actor, itemId: string, reason
   if (item.addedByUserId !== actor.userId || item.visibility !== 'owner_visible') throw new Error('ledger_not_found');
   // app_owned cannot see or update pools, so it cannot determine or preserve their state.
   throw new Error('ledger_policy_blocked:tombstone_pool_pivot');
+}
+
+/**
+ * Set the day the gift is handed over, and record that *this* actor wrote it — the pair of
+ * columns the secrecy rule reads. Both roles write through `app_set_event_date` rather than a
+ * Prisma update, because the writer has to come from the session: a route bug that passed a
+ * user id as a field would otherwise hand anyone the owner's view of the date.
+ *
+ * Last writer wins, in both directions: a friend overwriting an owner-set date makes it secret,
+ * an owner overwriting makes it visible again. That is the whole model, not an edge case.
+ */
+export async function setEventDate(tx: Tx, actor: Actor, eventDate: string): Promise<void> {
+  await scope(tx, actor);
+  if (!isCalendarDate(eventDate)) throw new Error('ledger_invalid_event_date');
+  const [result] = await tx.$queryRaw<{ written: number }[]>`SELECT app_set_event_date(${eventDate}::date) AS written`;
+  // Zero rows means the session's membership predicate did not hold. Nothing was stored, and
+  // the caller answers 404 — the same indistinguishable no every other refusal here gives.
+  if (result?.written !== 1) throw new Error('ledger_not_found');
 }

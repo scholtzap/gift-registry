@@ -166,6 +166,43 @@ DROP POLICY IF EXISTS circles_owner_write ON circles;
 CREATE POLICY circles_owner_write ON circles FOR ALL TO app_owned
   USING (app_actor_owns_circle(id)) WITH CHECK (owner_user_id = app_user_id());
 
+-- The event date is the one circle column a friend may write, and the whole secrecy rule rests
+-- on the writer being who the database says it is. A friend UPDATE *policy* cannot express that
+-- narrowly: WITH CHECK pins rows, never columns, so a policy loose enough to let a friend set a
+-- date would also let them rename the circle, move `share_slug` (the one URL that never moves),
+-- archive the circle, or name themselves the writer of a date they never set.
+--
+-- So the write is a function that accepts **only a date**. The circle comes from the session GUC,
+-- the writer comes from the session GUC, and no caller can name either — which is the same
+-- argument that made the gate hash the number instead of taking a user id.
+--
+-- SECURITY DEFINER because the friend role has no UPDATE policy on this table by design, and the
+-- definer runs as the table owner, which is the one principal allowed to write it. That is a
+-- deliberate, single-column-shaped exception: it reaches `event_date` and
+-- `event_date_set_by_user_id` and nothing else, and the membership predicate is the same
+-- `app_actor_owns_circle` / `app_actor_joined_circle` pair every policy in this file uses.
+--
+-- Returns the number of rows written so the caller can fail closed on a no-op rather than
+-- reporting a date it did not store.
+CREATE OR REPLACE FUNCTION app_set_event_date(event_day date) RETURNS integer
+  LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS
+$$
+DECLARE written integer;
+BEGIN
+  UPDATE circles
+     SET event_date = event_day,
+         event_date_set_by_user_id = app_user_id()
+   WHERE id = app_circle_id()
+     AND app_user_id() IS NOT NULL
+     AND (app_actor_owns_circle(app_circle_id()) OR app_actor_joined_circle(app_circle_id()));
+  GET DIAGNOSTICS written = ROW_COUNT;
+  RETURN written;
+END
+$$;
+
+REVOKE EXECUTE ON FUNCTION app_set_event_date(date) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION app_set_event_date(date) TO app_owned, app_friend;
+
 -- ---------------------------------------------------------------------------
 -- memberships
 -- ---------------------------------------------------------------------------

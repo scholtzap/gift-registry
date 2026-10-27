@@ -63,7 +63,12 @@ export async function seedCircle(connectionString: string): Promise<CircleFixtur
     data: {
       name: "Naledi's 30th",
       occasion: 'birthday',
+      // The two dates, in the state every pre-existing row was backfilled into: a birthday with
+      // no year, and a party date the owner wrote — which is what makes it visible to them.
+      birthMonth: 4,
+      birthDay: 3,
       eventDate: new Date('2026-12-05T00:00:00.000Z'),
+      eventDateSetByUserId: owner.id,
       ownerUserId: owner.id,
       shareSlug: `t-${owner.id.slice(0, 12)}`,
       memberships: {

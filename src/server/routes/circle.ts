@@ -15,7 +15,8 @@ import { friendCircleView, ownerCircleView } from "@/server/views";
 import { hashPhone, normalizeE164 } from "@/server/auth/phone-hash";
 import { issueSession, sessionCookie, sessionFromRequest } from "@/server/auth/session";
 import { AI_CAPABILITIES, assertCan, CAPABILITY_COPY, CapabilityOffError, setCapability } from "@/server/entitlements";
-import { addItem, claimItem, contribute, createPool, markPaid, purchasePool, releaseClaim } from '@/server/ledger';
+import { addItem, claimItem, contribute, createPool, markPaid, purchasePool, releaseClaim, setEventDate } from '@/server/ledger';
+import { isCalendarDate } from '@/lib/dates';
 import { env } from "@/lib/env";
 
 // Native-form HTML uses Node SSR, not the App Route's react-server export condition.
@@ -107,17 +108,33 @@ function gateForm(notice?: string): Response {
   });
 }
 
-function renderOwner(view: NonNullable<Awaited<ReturnType<typeof ownerCircleView>>>, basePath: string): Response {
-  return new Response(page(view.name, renderToStaticMarkup(createElement(OwnerLedgerScreen, { view, basePath }))), {
+function renderOwner(view: NonNullable<Awaited<ReturnType<typeof ownerCircleView>>>, basePath: string, date?: { notice?: string; eventDateDraft?: string | null }): Response {
+  return new Response(page(view.name, renderToStaticMarkup(createElement(OwnerLedgerScreen, { view, basePath, ...date }))), {
+    status: date?.notice ? 422 : 200,
     headers: headers({ 'Content-Type': 'text/html; charset=utf-8' }),
   });
 }
 
-function renderFriend(view: NonNullable<Awaited<ReturnType<typeof friendCircleView>>>, basePath: string): Response {
+function renderFriend(view: NonNullable<Awaited<ReturnType<typeof friendCircleView>>>, basePath: string, date?: { notice?: string; eventDateDraft?: string | null }): Response {
   return new Response(
-    page(view.name, renderToStaticMarkup(createElement(FriendLedgerScreen, { view, basePath }))),
-    { status: 200, headers: headers({ "Content-Type": "text/html; charset=utf-8" }) },
+    page(view.name, renderToStaticMarkup(createElement(FriendLedgerScreen, { view, basePath, ...date }))),
+    { status: date?.notice ? 422 : 200, headers: headers({ "Content-Type": "text/html; charset=utf-8" }) },
   );
+}
+
+/**
+ * The ledger for the caller's own role, with a rejected date put back in the field. Both
+ * projections re-render through here so neither can accidentally render the *other*: the secrecy
+ * rule lives in the builders, and a route that picked the wrong builder would spoil a surprise
+ * on its own.
+ */
+async function renderLedger(db: Db, actor: Actor, circleId: string, basePath: string, date?: { notice?: string; eventDateDraft?: string | null }): Promise<Response> {
+  if (actor.role === 'owner') {
+    const view = await db.withActor(actor, tx => ownerCircleView(tx, circleId));
+    return view === null ? notFound() : renderOwner(view, basePath, date);
+  }
+  const view = await db.withActor(actor, tx => friendCircleView(tx, circleId, actor.userId));
+  return view === null ? notFound() : renderFriend(view, basePath, date);
 }
 
 function screenResponse(title: string, content: ReactNode, status = 200): Response {
@@ -228,12 +245,7 @@ async function circleGet(db: Db, request: Request, slug: string): Promise<Respon
     return item ? screenResponse(item.title, createElement(ItemDetailScreen, { item, basePath, circle: circleContext })) : notFound();
   }
   if (pathname !== basePath) return notFound();
-  if (actor.role === 'owner') {
-    const view = await db.withActor(actor, tx => ownerCircleView(tx, circle.id));
-    return view === null ? notFound() : renderOwner(view, basePath);
-  }
-  const view = await db.withActor(actor, tx => friendCircleView(tx, circle.id, actor.userId));
-  return view === null ? notFound() : renderFriend(view, basePath);
+  return renderLedger(db, actor, circle.id, basePath);
 }
 
 /**
@@ -298,6 +310,24 @@ async function circlePost(db: Db, request: Request, slug: string): Promise<Respo
     if (!actor) return notFound();
     let fields: FormData;
     try { fields = await readForm(request); } catch { return notFound(); }
+    if (pathname === `${basePath}/date`) {
+      if (fields.get('intent') !== 'set_event_date') return notFound();
+      const draft = String(fields.get('eventDate') ?? '');
+      // 422 with the value preserved, never a 403: the person gets their own date back and a
+      // sentence about the format, not a verdict on their rights.
+      if (!isCalendarDate(draft)) {
+        return renderLedger(db, actor, circle.id, basePath, {
+          notice: 'Enter a real date, in the form 2026-12-05.', eventDateDraft: draft,
+        });
+      }
+      try {
+        await db.withActor(actor, tx => setEventDate(tx, actor, draft));
+      } catch (error) {
+        if (error instanceof Error && error.message === 'ledger_not_found') return notFound();
+        throw error;
+      }
+      return new Response(null, { status: 303, headers: headers({ Location: basePath }) });
+    }
     const cardMatch = pathname.slice(basePath.length).match(/^\/items\/([^/]+)\/card$/);
     if (cardMatch) {
       const itemId = cardMatch[1]!;
