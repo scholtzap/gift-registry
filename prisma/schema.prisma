@@ -28,6 +28,8 @@ enum AttributeVisibility {
 enum CircleStatus {
   active
   closed
+  // RN-E: terminal state for a once-off (proxy) circle after its day.
+  archived
 }
 
 enum AllowlistStatus {
