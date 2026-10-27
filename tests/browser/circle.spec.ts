@@ -80,7 +80,7 @@ test('manual draft confirmation creates one friend-only item with an unknown pri
   await page.goto(`${path}/draft`);
   await page.getByLabel('Title', { exact: false }).fill('Fictional picnic blanket');
   await page.getByLabel('Retailer (optional)').fill('Fictional shop');
-  await page.getByLabel('Price in cents').fill('');
+  await page.getByLabel('Price in rand').fill('');
   await page.getByRole('button', { name: 'Confirm and add item', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Fictional picnic blanket', exact: true })).toBeVisible();
   const rows = await fixture.db.prisma.item.findMany({ where: { circleId: fixture.circleId, title: 'Fictional picnic blanket' } });
@@ -96,18 +96,20 @@ test('native claim release pool contribution and paid recording persist', async 
   page.on('pageerror', error => errors.push(error.message));
   await authenticate(context, 'friend');
   await page.goto(`${path}/items/${fixture.itemOwnId}`);
-  await page.getByRole('button', { name: 'Claim this gift', exact: true }).click();
+  await page.getByRole('button', { name: 'I’ll buy it myself', exact: true }).click();
   await expect(page.getByText('You claimed this', { exact: true })).toBeVisible();
-  await page.getByRole('button', { name: 'Release my claim', exact: true }).click();
-  await page.getByLabel('Pool target in cents').fill('10000');
-  await page.getByRole('button', { name: 'Start a pool as buyer', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'You are the buyer', exact: true })).toBeVisible();
-  await page.getByLabel('Your contribution in cents').fill('10000');
-  await page.getByRole('button', { name: 'Record my contribution', exact: true }).click();
-  await page.getByRole('button', { name: 'Mark my contribution as paid', exact: true }).click();
-  await expect(page.getByText('Funded', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Let someone else take it', exact: true }).click();
+  // Amounts are typed in rand; the route stores integer cents.
+  await page.getByLabel('Pool target').fill('R 100');
+  await page.getByRole('button', { name: 'Start a pool · I’ll buy it', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'You’re the buyer', exact: true })).toBeVisible();
+  // The quick pick is its own native submit: one tap, no JavaScript.
+  await page.getByRole('button', { name: 'The rest · R100', exact: true }).click();
+  await page.getByRole('button', { name: 'I’ve paid my pledge', exact: true }).click();
+  const fullyPooled = page.locator('.pn-badge', { hasText: 'Fully pooled' }).first();
+  await expect(fullyPooled).toBeVisible();
   await page.reload();
-  await expect(page.getByText('Funded', { exact: true })).toBeVisible();
+  await expect(fullyPooled).toBeVisible();
   const pool = await fixture.db.prisma.pool.findFirstOrThrow({ where: { itemId: fixture.itemOwnId } });
   expect(pool.status).toBe('funded');
   expect(await fixture.db.prisma.contribution.findUnique({ where: { poolId_userId: { poolId: pool.id, userId: fixture.friendAUserId } } })).toMatchObject({ amountMinor: 10000, status: 'marked_paid' });

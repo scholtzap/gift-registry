@@ -17,7 +17,7 @@ export function JoinScreen({ notice, action = '' }: JoinScreenProps) {
       <div className="pn-measure-sm pn-stack pn-stack-lg">
         <Panel className="pn-stack">
           <div className="pn-row">
-            <Badge tone="pink">Invite list</Badge>
+            <Badge tone="human">Invite list</Badge>
             <span className="pn-small pn-muted">For invited friends</span>
           </div>
           <p>Enter the name you want on the card and the WhatsApp number on the invite list.</p>

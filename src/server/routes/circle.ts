@@ -17,6 +17,7 @@ import { issueSession, sessionCookie, sessionFromRequest } from "@/server/auth/s
 import { AI_CAPABILITIES, assertCan, CAPABILITY_COPY, CapabilityOffError, setCapability } from "@/server/entitlements";
 import { addItem, claimItem, contribute, createPool, markPaid, purchasePool, releaseClaim } from '@/server/ledger';
 import { env } from "@/lib/env";
+import { parseRandToMinor } from "@/lib/money";
 import { isArchived } from "@/server/lifecycle";
 import { checkGateThrottle } from "@/server/auth/throttle";
 import { trustedClientAddress } from "@/server/auth/client-address";
@@ -167,6 +168,17 @@ const draftSchema = z.object({
 });
 const centsSchema = z.string().regex(/^(0|[1-9]\d*)$/).transform(Number).pipe(z.number().int().min(0).max(2147483647));
 const positiveCentsSchema = centsSchema.pipe(z.number().positive());
+
+// Forms post rands ("R 400", "99,50"); the integer-cents field stays accepted for callers that
+// already send it. The result is a cents string for `centsSchema`, '' for blank, or a value
+// that fails it.
+function minorField(fields: FormData, randName: string, minorName: string): FormDataEntryValue | null {
+  const rand = fields.get(randName);
+  if (rand === null) return fields.get(minorName);
+  if (String(rand).trim() === '') return '';
+  const minor = parseRandToMinor(rand);
+  return minor === null ? 'invalid' : String(minor);
+}
 
 async function circleGet(db: Db, request: Request, slug: string): Promise<Response> {
   const basePath = `/c/${encodeURIComponent(slug)}`;
@@ -331,7 +343,7 @@ async function circlePost(db: Db, request: Request, slug: string): Promise<Respo
       if (fields.get('intent') !== 'confirm') return notFound();
       const draft = {
         title: String(fields.get('title') ?? ''), retailer: String(fields.get('retailer') ?? ''),
-        priceMinor: fields.get('priceMinor'), currency: fields.get('currency'),
+        priceMinor: minorField(fields, 'priceRand', 'priceMinor'), currency: fields.get('currency'),
         ingestEventId: fields.get('ingestEventId') ?? undefined,
       };
       const parsed = z.object({
@@ -340,8 +352,8 @@ async function circlePost(db: Db, request: Request, slug: string): Promise<Respo
         ingestEventId: z.uuid().optional(),
       }).safeParse(draft);
       if (!parsed.success) return screenResponse('Check item details', createElement(DraftConfirmScreen, {
-        draft: { id: draft.ingestEventId === undefined ? undefined : String(draft.ingestEventId), title: draft.title, retailer: draft.retailer, priceMinor: draft.priceMinor === null ? null : String(draft.priceMinor), currency: String(draft.currency ?? '') }, basePath, role: actor.role,
-        notice: 'Enter a title of up to 200 characters and a whole number of cents, or leave the price blank.',
+        draft: { id: draft.ingestEventId === undefined ? undefined : String(draft.ingestEventId), title: draft.title, retailer: draft.retailer, priceMinor: null, priceRand: String(fields.get('priceRand') ?? ''), currency: String(draft.currency ?? '') }, basePath, role: actor.role,
+        notice: 'Enter a title of up to 200 characters and a price in rand, like 1899 or 249.50, or leave the price blank.',
       }), 422);
       try {
         const item = await db.withActor(actor, tx => addItem(tx, actor, {
@@ -365,9 +377,9 @@ async function circlePost(db: Db, request: Request, slug: string): Promise<Respo
       const intent = z.enum(['claim', 'release', 'create_pool', 'contribute', 'mark_paid', 'purchase']).safeParse(fields.get('intent'));
       if (!intent.success) return notFound();
       const moneyIntent = intent.data === 'create_pool' || intent.data === 'contribute';
-      const amount = positiveCentsSchema.safeParse(fields.get(intent.data === 'create_pool' ? 'targetMinor' : 'amountMinor'));
+      const amount = positiveCentsSchema.safeParse(intent.data === 'create_pool' ? minorField(fields, 'targetRand', 'targetMinor') : minorField(fields, 'amountRand', 'amountMinor'));
       if (moneyIntent && (!amount.success || fields.get('currency') !== 'ZAR')) {
-        return screenResponse(item.title, createElement(ItemDetailScreen, { item, basePath, notice: 'Enter a whole number of cents above zero.' }), 422);
+        return screenResponse(item.title, createElement(ItemDetailScreen, { item, basePath, notice: 'Enter an amount in rand above zero, like 400 or 99.50.' }), 422);
       }
       // RN-E: an archived proxy circle stays readable but takes no new
       // claims or pledges. Settling what already exists (release, mark

@@ -8,14 +8,11 @@ importers:
 
   .:
     dependencies:
-      '@fontsource/manrope':
-        specifier: 5.3.0
+      '@fontsource/bricolage-grotesque':
+        specifier: ^5.3.0
         version: 5.3.0
-      '@fontsource/space-grotesk':
-        specifier: 5.3.0
-        version: 5.3.0
-      '@fontsource/syne':
-        specifier: 5.3.0
+      '@fontsource/dm-sans':
+        specifier: ^5.3.0
         version: 5.3.0
       '@prisma/adapter-pg':
         specifier: ^7.10.1
@@ -284,14 +281,11 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@fontsource/manrope@5.3.0':
-    resolution: {integrity: sha512-obJ1Dv3+uCA6HlHgW8u4BGYxJR9In2HW7gjJhlflEvkrj1X1iSEwu0fToL+JYGC/FEKFfIz1sBuPduvcL2gIAA==}
+  '@fontsource/bricolage-grotesque@5.3.0':
+    resolution: {integrity: sha512-MdOVb/5in11IfN/IQJOExMuu6AroCIQbirl0yX7NUvKk+h0HYIKfGaVAXRS/gCPil4aFxWhjZnOw28tUwv7tFw==}
 
-  '@fontsource/space-grotesk@5.3.0':
-    resolution: {integrity: sha512-ksnGizDPXIDuvqcTYTSrmZ+evx9sDlS8rp7+42BQ7wU+spt3twEoXfbJz672C+5CLg6VeUQwRy5RXshWb67LcQ==}
-
-  '@fontsource/syne@5.3.0':
-    resolution: {integrity: sha512-kRWNVsrdYw+08I4EM1SYPe2JovdTzUI0kMVALVRsKmjRdkrVoun1qddSlDAglz5J9LbgUpJSkWmw6BYnmKdGuw==}
+  '@fontsource/dm-sans@5.3.0':
+    resolution: {integrity: sha512-lYJtMXXO28q1z+yz+z8XKd0s4hXaa9QdkETzkyD760sidCv5heI86weYA0sx0Nc4pAMAQTUuyf4gO44cYKKS9g==}
 
   '@img/colour@1.1.0':
     resolution: {integrity: sha512-Td76q7j57o/tLVdgS746cYARfSyxk8iEfRxewL9h4OMzYhbW4TAcppl0mT4eyqXddh6L/jwoM75mo7ixa/pCeQ==}
@@ -2119,11 +2113,9 @@ snapshots:
   '@esbuild/win32-x64@0.28.2':
     optional: true
 
-  '@fontsource/manrope@5.3.0': {}
+  '@fontsource/bricolage-grotesque@5.3.0': {}
 
-  '@fontsource/space-grotesk@5.3.0': {}
-
-  '@fontsource/syne@5.3.0': {}
+  '@fontsource/dm-sans@5.3.0': {}
 
   '@img/colour@1.1.0': {}
 

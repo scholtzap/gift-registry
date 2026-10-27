@@ -28,7 +28,7 @@
  * worker that refuses to be replaced is a worker that refuses to be fixed.
  */
 
-const VERSION = 'v1';
+const VERSION = 'v2';
 const SHELL_CACHE = `pinata-shell-${VERSION}`;
 const OFFLINE_URL = '/offline';
 
@@ -37,10 +37,10 @@ const OFFLINE_URL = '/offline';
 // manifest, and the offline document.
 const SHELL_URLS = Object.freeze([
   '/pinata.css',
-  '/fonts/syne-latin-700-normal.woff2',
-  '/fonts/manrope-latin-400-normal.woff2',
-  '/fonts/manrope-latin-600-normal.woff2',
-  '/fonts/space-grotesk-latin-600-normal.woff2',
+  '/fonts/bricolage-grotesque-latin-800-normal.woff2',
+  '/fonts/dm-sans-latin-400-normal.woff2',
+  '/fonts/dm-sans-latin-600-normal.woff2',
+  '/fonts/dm-sans-latin-700-normal.woff2',
   '/icon.png',
   '/apple-icon.png',
   '/icons/icon-192.png',
