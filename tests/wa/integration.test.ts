@@ -30,6 +30,11 @@ beforeAll(async () => {
   vi.stubGlobal('fetch', externalHttp);
   const { seedCircle } = await import('../leak/fixtures');
   fx = await seedCircle(process.env.DATABASE_URL_TEST!);
+  // The task cast has the assistant switched on (user choice beats the free plan default,
+  // which has no assistant_reply); the capability-off test below flips friend A off and back.
+  await fx.db.prisma.entitlement.createMany({ data: [fx.ownerUserId, fx.friendAUserId, fx.friendBUserId].map((userId) => ({
+    userId, capability: 'assistant_reply' as const, enabled: true, source: 'user' as const,
+  })) });
   sender = (await fx.db.prisma.user.findUniqueOrThrow({ where: { id: fx.friendAUserId } })).bsuid!;
   ownerSender = (await fx.db.prisma.user.findUniqueOrThrow({ where: { id: fx.ownerUserId } })).bsuid!;
   slug = (await fx.db.prisma.circle.findUniqueOrThrow({ where: { id: fx.circleId } })).shareSlug;
@@ -144,7 +149,10 @@ describe('signed WhatsApp intake on real PostgreSQL', () => {
   });
 
   it('refuses task dispatch when assistant_reply is off, menu still free', async () => {
-    await fx.db.prisma.entitlement.create({ data: { userId: fx.friendAUserId, capability: 'assistant_reply', enabled: false, source: 'user' } });
+    await fx.db.prisma.entitlement.update({
+      where: { userId_capability: { userId: fx.friendAUserId, capability: 'assistant_reply' } },
+      data: { enabled: false },
+    });
     try {
       const row = await interactive({ task: 'check_status' });
       const result = await processIngest(fx.db, row.id);
@@ -153,7 +161,10 @@ describe('signed WhatsApp intake on real PostgreSQL', () => {
       const failed = await fx.db.prisma.ingestEvent.findUniqueOrThrow({ where: { id: row.id } });
       expect(failed.error).toBe('capability_off:assistant_reply');
     } finally {
-      await fx.db.prisma.entitlement.deleteMany({ where: { userId: fx.friendAUserId, capability: 'assistant_reply' } });
+      await fx.db.prisma.entitlement.update({
+        where: { userId_capability: { userId: fx.friendAUserId, capability: 'assistant_reply' } },
+        data: { enabled: true },
+      });
     }
   });
 

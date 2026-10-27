@@ -260,13 +260,19 @@ export async function createCircle(tx: Tx, actor: Actor, input: CreateCircleInpu
   // The three writes are one fact: a circle without its owner membership is ownerless, and
   // `memberships_owner_join` is the policy that admits the second write. Allowlist hashes
   // arrive hashed — the ledger never sees a number.
-  const circle = await tx.circle.create({
+  //
+  // createMany, not create: Prisma's create is INSERT ... RETURNING, and the RETURNING
+  // visibility check runs on the statement-start snapshot, where `app_actor_owns_circle`
+  // cannot yet see the row being inserted (the same trap `memberships_self_join` documents).
+  // The read-back is a new statement, so the policy sees the circle and admits its owner.
+  await tx.circle.createMany({
     data: {
       name: input.name.trim(), occasion: input.occasion.trim(),
       eventDate: new Date(input.eventDate), eventDateSetByUserId: actor.userId,
       ownerUserId: actor.userId, shareSlug,
     },
   });
+  const circle = await tx.circle.findFirstOrThrow({ where: { shareSlug } });
   await tx.membership.create({ data: { circleId: circle.id, userId: actor.userId, role: 'owner', status: 'active' } });
   if (input.phoneHashes?.length) {
     await tx.allowlistEntry.createMany({
