@@ -1,6 +1,7 @@
+import { randomUUID } from 'node:crypto';
 import type { Actor, Tx } from '@/server/db/client';
 import type { Circle, Claim, Contribution, Item, Pool, Prisma, TombstoneReason } from '@/generated/prisma/client';
-import { isCalendarDate } from '@/lib/dates';
+import { daysUntil, isCalendarDate, zoneDay } from '@/lib/dates';
 
 async function session(tx: Tx, actor: Actor, role?: Actor['role']) {
   if (role !== undefined && actor.role !== role) throw new Error('ledger_role_denied');
@@ -244,6 +245,7 @@ export interface CreateCircleInput {
   name: string;
   occasion: string;
   eventDate: Date | string;
+  shareSlug?: string;
   phoneHashes?: string[];
 }
 
@@ -253,17 +255,45 @@ export async function createCircle(tx: Tx, actor: Actor, input: CreateCircleInpu
       input.phoneHashes?.some((hash) => !/^[a-f0-9]{64}$/.test(hash))) {
     throw new Error('ledger_invalid_circle');
   }
-  // No app_owned INSERT policy exists on memberships. Never create an ownerless circle.
-  throw new Error('ledger_policy_blocked:circle_membership');
+  const shareSlug = input.shareSlug ?? `${input.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'circle'}-${randomUUID().slice(0, 8)}`;
+  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(shareSlug) || shareSlug.length > 64) throw new Error('ledger_invalid_circle');
+  // The three writes are one fact: a circle without its owner membership is ownerless, and
+  // `memberships_owner_join` is the policy that admits the second write. Allowlist hashes
+  // arrive hashed — the ledger never sees a number.
+  const circle = await tx.circle.create({
+    data: {
+      name: input.name.trim(), occasion: input.occasion.trim(),
+      eventDate: new Date(input.eventDate), eventDateSetByUserId: actor.userId,
+      ownerUserId: actor.userId, shareSlug,
+    },
+  });
+  await tx.membership.create({ data: { circleId: circle.id, userId: actor.userId, role: 'owner', status: 'active' } });
+  if (input.phoneHashes?.length) {
+    await tx.allowlistEntry.createMany({
+      data: input.phoneHashes.map((phoneE164Hash) => ({ circleId: circle.id, phoneE164Hash, addedBy: actor.userId })),
+      skipDuplicates: true,
+    });
+  }
+  await tx.ledgerEvent.create({
+    data: { circleId: circle.id, actorUserId: actor.userId, entity: 'circle', entityId: circle.id, action: 'circle.created' },
+  });
+  return circle;
 }
 
 export async function tombstoneItem(tx: Tx, actor: Actor, itemId: string, reason: TombstoneReason): Promise<Item> {
   await scope(tx, actor, 'owner');
   if (!['bought_self', 'no_longer_wants', 'duplicate'].includes(reason)) throw new Error('ledger_invalid_reason');
   const item = await lockItem(tx, actor, itemId);
-  if (item.addedByUserId !== actor.userId || item.visibility !== 'owner_visible') throw new Error('ledger_not_found');
-  // app_owned cannot see or update pools, so it cannot determine or preserve their state.
-  throw new Error('ledger_policy_blocked:tombstone_pool_pivot');
+  if (item.addedByUserId !== actor.userId || item.visibility !== 'owner_visible' || item.status !== 'active') throw new Error('ledger_not_found');
+  // The write itself is `app_tombstone_item`: app_owned has no pool policy at all (that is
+  // the owner's blindness working), so a Prisma update here could neither see a surviving
+  // pool nor pivot it. The function returns only the pool's status word — never a count,
+  // a contributor, or an amount — and the owner learns nothing the tombstone does not
+  // already tell them: their own deleted item had a pool, and friends now need a new plan.
+  const [result] = await tx.$queryRaw<{ state: string | null }[]>`SELECT app_tombstone_item(${itemId}::uuid, ${reason}) AS state`;
+  if (!result?.state) throw new Error('ledger_not_found');
+  await append(tx, actor, 'item', item.id, 'item.tombstoned', { reason, pool: result.state });
+  return { ...item, status: 'tombstoned', tombstoneReason: reason, tombstonedAt: new Date() };
 }
 
 /**
@@ -282,4 +312,26 @@ export async function setEventDate(tx: Tx, actor: Actor, eventDate: string): Pro
   // Zero rows means the session's membership predicate did not hold. Nothing was stored, and
   // the caller answers 404 — the same indistinguishable no every other refusal here gives.
   if (result?.written !== 1) throw new Error('ledger_not_found');
+}
+
+/**
+ * F14: hand a secret suggestion to the owner after the day. Friend-only, date-gated,
+ * author-vetoed, and one guarded UPDATE — zero rows is the same `ledger_not_found` as
+ * "not yours", so the response cannot probe which half refused. No notification is sent;
+ * the reveal stays a human act the owner discovers in their own ledger.
+ */
+export async function revealItem(tx: Tx, actor: Actor, itemId: string, today: string = zoneDay()): Promise<Item> {
+  const circle = await scope(tx, actor, 'friend');
+  const item = await lockItem(tx, actor, itemId);
+  if (item.status !== 'active' || item.visibility !== 'friend_only' || !item.revealOk || !circle.eventDate) {
+    throw new Error('ledger_not_found');
+  }
+  if (daysUntil(circle.eventDate.toISOString().slice(0, 10), today) >= 0) throw new Error('ledger_not_found');
+  const { count } = await tx.item.updateMany({
+    where: { id: item.id, status: 'active', visibility: 'friend_only', revealOk: true },
+    data: { status: 'revealed', revealedAt: new Date(), revealedByUserId: actor.userId },
+  });
+  if (count !== 1) throw new Error('ledger_not_found');
+  await append(tx, actor, 'item', item.id, 'item.revealed');
+  return tx.item.findFirstOrThrow({ where: { id: item.id } });
 }
