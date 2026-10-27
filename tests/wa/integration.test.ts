@@ -143,6 +143,20 @@ describe('signed WhatsApp intake on real PostgreSQL', () => {
     expect(externalHttp).not.toHaveBeenCalled();
   });
 
+  it('refuses task dispatch when assistant_reply is off, menu still free', async () => {
+    await fx.db.prisma.entitlement.create({ data: { userId: fx.friendAUserId, capability: 'assistant_reply', enabled: false, source: 'user' } });
+    try {
+      const row = await interactive({ task: 'check_status' });
+      const result = await processIngest(fx.db, row.id);
+      expect(result.status).toBe('failed');
+      expect(result.reply).toContain('six tasks only');
+      const failed = await fx.db.prisma.ingestEvent.findUniqueOrThrow({ where: { id: row.id } });
+      expect(failed.error).toBe('capability_off:assistant_reply');
+    } finally {
+      await fx.db.prisma.entitlement.deleteMany({ where: { userId: fx.friendAUserId, capability: 'assistant_reply' } });
+    }
+  });
+
   it('keeps owner status free of friend coordination and messages', async () => {
     const row = await interactive({ task: 'check_status' }, ownerSender);
     const result = await processIngest(fx.db, row.id);
