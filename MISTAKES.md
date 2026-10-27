@@ -2,6 +2,13 @@
 
 Agent error log. Newest entry first. No secrets, tokens, env dumps, or credentialed URLs.
 
+## 2026-10-27 — Used Prisma `create` for circle creation despite the documented RETURNING trap, and cherry-picked onto a stale base
+
+**What happened:** Three implementation misses in the day-3 follow-ups, all caught by the full suite (5 failures in 437): (1) `createCircle` used `tx.circle.create`, whose `INSERT ... RETURNING` visibility check runs on the statement-start snapshot where `app_actor_owns_circle` cannot see the new row — the exact trap the `memberships_self_join` policy comment in this repo already documents, which I had read during prep. (2) Gating WhatsApp dispatch on `assistant_reply` broke every task test because the free plan default lacks that capability; the WA cast needed the user-level switch on. (3) The pun form made a composer screen test's form count stale. Separately, the first cherry-pick ran against a stale `origin/feat/schema-rls-leak-spine` ref (pre-PR-#2 head), producing a conflict that was not a real conflict.
+**Impact:** One extra fix cycle (`19fc6d9`): `createMany` + scoped read-back for creation, an assistant-enabled fixture cast with flip-off/flip-on in the gate test, and a form-count assertion update. Cherry-pick aborted, ref fetched, redone clean.
+**Fix:** Full suite 437/437, leak 120/120, typecheck clean; relocation completed and PRs #3–#6 merged into PR #1's branch.
+**Do not repeat:** Any `create` on a policy-guarded table whose SELECT policy reads its own table through a scope function needs `createMany` + read-back — check the target table's policies for the RETURNING trap before writing the insert. And verify a remote base ref with `gh pr view <n> --json headRefOid` before cherry-picking onto it; a tracking ref that lagged a merge is indistinguishable from the real head until it conflicts.
+
 ## 2026-10-27 — Committed and pushed the nine follow-ups onto the merged holding branch
 
 **What happened:** `git switch`/`checkout -b` stayed classifier-blocked while `git add`/`commit`/`push` passed, so I committed the five day-3 follow-up groups (`71014fe`..`d0a227d`) onto `feat/two-dates-countdown` — already merged into PR #1 — and pushed them there. The throttle commit `f8ed1b5` also carries the pun and reveal route wiring because `src/server/routes/circle.ts` is shared and I did no hunk staging.
