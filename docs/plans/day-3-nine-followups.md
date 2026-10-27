@@ -22,6 +22,15 @@ superseded_by: null
 
 # Day-3 nine follow-ups
 
+**Closeout 2026-10-27:** all nine items are built, tested and merged into PR #1's branch
+(`feat/schema-rls-leak-spine`) via PRs #3 (items 1–9), #4 (screenshot PNGs) and #5 (mistakes
+sync). Evidence: `pnpm typecheck` clean, `pnpm leak` 120/120, `pnpm test` 437/437 (36 files),
+screenshot capture spec 1 passed with visual verification. This plan stays `implementing`
+until PR #1 itself merges to `main`. Item 2 (branch hygiene) is done: the four merged
+branches were deleted locally and remotely. Item 4's creation UI remains gated on the D4
+owner-session decision in `user-management-and-billing-path.md` — the ledger layer is what
+this item unblocked.
+
 Scope picked by the user on 2026-10-27: all nine. Branch `feat/day-3-followups`, stacked on
 PR #1 (`feat/schema-rls-leak-spine`). One commit per item; certify (typecheck + leak + full
 test) before the stacked PR.
