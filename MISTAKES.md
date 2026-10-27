@@ -2,6 +2,13 @@
 
 Agent error log. Newest entry first. No secrets, tokens, env dumps, or credentialed URLs.
 
+## 2026-10-27 — Switched this worktree to pre-app `main` during branch cleanup
+
+**What happened:** After deleting the merged topic branches, I switched this worktree to `main` before deleting the local branch refs. This repo's `main` predates the Piñata app, so the tracked product tree immediately appeared as untracked `src/`, browser-build, and test-result paths.
+**Impact:** A careless `git add -A` on that perch could have staged the whole product tree onto the wrong branch. No files were staged or committed from the bad perch.
+**Fix:** Immediately created `feat/day-3-closeout` from the current PR #1 head, restoring a tracked, clean tree, then synced that perch to the latest PR #1 tip.
+**Do not repeat:** During branch cleanup in a repo whose trunk lags the PR stack, switch to the PR head (or a throwaway perch off it) before deleting local refs — never to a stale trunk just because it exists.
+
 ## 2026-10-27 — Used Prisma `create` for circle creation despite the documented RETURNING trap, and cherry-picked onto a stale base
 
 **What happened:** Three implementation misses in the day-3 follow-ups, all caught by the full suite (5 failures in 437): (1) `createCircle` used `tx.circle.create`, whose `INSERT ... RETURNING` visibility check runs on the statement-start snapshot where `app_actor_owns_circle` cannot see the new row — the exact trap the `memberships_self_join` policy comment in this repo already documents, which I had read during prep. (2) Gating WhatsApp dispatch on `assistant_reply` broke every task test because the free plan default lacks that capability; the WA cast needed the user-level switch on. (3) The pun form made a composer screen test's form count stale. Separately, the first cherry-pick ran against a stale `origin/feat/schema-rls-leak-spine` ref (pre-PR-#2 head), producing a conflict that was not a real conflict.
