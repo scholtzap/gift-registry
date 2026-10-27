@@ -47,7 +47,7 @@ describe('the owner projection', () => {
     expect(Object.keys(view.items[0]!).sort()).toEqual(['confirmed', 'id', 'price', 'retailer', 'title']);
     // And no slot for a writer either — the date is the owner's own or absent.
     expect(Object.keys(view).sort()).toEqual([
-      'attributes', 'birthday', 'countdown', 'eventDate', 'eventDateLabel', 'items', 'name', 'occasion', 'shareSlug',
+      'accessRequests', 'attributes', 'birthday', 'countdown', 'eventDate', 'eventDateLabel', 'items', 'name', 'occasion', 'shareSlug',
     ]);
   });
 
