@@ -1,6 +1,6 @@
 ---
 title: Piñata parallel build and verification closeout
-type: plan
+type: todo
 status: implementing
 priority: P1
 rank: 2

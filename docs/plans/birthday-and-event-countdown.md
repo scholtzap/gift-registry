@@ -1,7 +1,7 @@
 ---
 title: Two dates, and a countdown that does not spoil the gift
 type: spec
-status: done
+status: implemented
 priority: P1
 rank: 11
 updated: 2026-10-27

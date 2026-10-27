@@ -1,7 +1,7 @@
 ---
 title: Leak suite cannot prove red — LEAK_SKIP_POLICIES=1 leaves the previous run's policies in place
 type: bugfix
-status: done
+status: implemented
 priority: P1
 rank: 10
 updated: 2026-10-26
