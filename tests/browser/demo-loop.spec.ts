@@ -47,7 +47,7 @@ test('step 4: the creator claims the gift on the proxy circle', async ({ page })
   await expect(page).toHaveURL(/\/c\/[A-Za-z0-9_-]{16,}$/);
 
   await page.getByRole('link', { name: /Demo claimable gift/ }).first().click();
-  await page.getByRole('button', { name: 'Claim this gift', exact: true }).click();
+  await page.getByRole('button', { name: 'I’ll buy it myself', exact: true }).click();
   await expect(page.getByText('You claimed this', { exact: true })).toBeVisible();
 });
 
