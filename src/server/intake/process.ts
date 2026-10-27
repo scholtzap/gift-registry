@@ -98,6 +98,10 @@ export async function processIngest(db: Db, eventId: string): Promise<ProcessRes
     }
     try {
       if (event.kind === 'text') {
+        // The fixed menu above is the compliance floor and is never gated. Choosing and
+        // running a task is assistant work: `assistant_reply` decides, before any state
+        // can change. Off lands in failure() as fixed menu + degraded copy.
+        await db.withActor(actor, tx => assertCan(tx, actor, 'assistant_reply'));
         const reply = await db.withActor(actor, async tx => {
           const answer = await dispatchTask(tx, actor, route.intent);
           await tx.ingestEvent.update({ where: { id: eventId }, data: { status: 'parsed', error: null, draft: json({ ...state, reply: answer }) } });

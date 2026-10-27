@@ -203,6 +203,51 @@ $$;
 REVOKE EXECUTE ON FUNCTION app_set_event_date(date) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION app_set_event_date(date) TO app_owned, app_friend;
 
+-- The owner's soft delete has the same shape problem as the event date, one table over:
+-- `app_owned` holds no policy on `pools` at all, because pools are friends' money state
+-- and the owner must stay blind to them. A tombstone that cannot see a surviving pool
+-- cannot mark it `pivot_needed`, so friends would keep funding a gift the owner deleted.
+--
+-- So the delete is a function shaped like the deletion and nothing else. It takes an item
+-- and a reason, proves ownership from the session GUCs, tombstones only the owner's own
+-- active owner-visible item, pivots only open/funded pools, and returns a single status
+-- word ('open', 'funded', 'purchased', 'pivot_needed', or 'none') — never a count, a
+-- contributor, or an amount. SECURITY DEFINER for the same reason as above: the definer
+-- is the one principal allowed to touch both tables.
+CREATE OR REPLACE FUNCTION app_tombstone_item(target_item uuid, tomb_reason text) RETURNS text
+  LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS
+$$
+DECLARE
+  pool_state text;
+  updated integer;
+BEGIN
+  IF tomb_reason NOT IN ('bought_self', 'no_longer_wants', 'duplicate') THEN
+    RETURN NULL;
+  END IF;
+  UPDATE items
+     SET status = 'tombstoned',
+         tombstone_reason = tomb_reason::"TombstoneReason",
+         tombstoned_at = now()
+   WHERE id = target_item
+     AND circle_id = app_circle_id()
+     AND added_by_user_id = app_user_id()
+     AND visibility = 'owner_visible'
+     AND status = 'active'
+     AND app_actor_owns_circle(app_circle_id());
+  GET DIAGNOSTICS updated = ROW_COUNT;
+  IF updated <> 1 THEN
+    RETURN NULL;
+  END IF;
+  UPDATE pools SET status = 'pivot_needed'
+   WHERE item_id = target_item AND status IN ('open', 'funded');
+  SELECT status::text INTO pool_state FROM pools WHERE item_id = target_item ORDER BY created_at DESC LIMIT 1;
+  RETURN COALESCE(pool_state, 'none');
+END
+$$;
+
+REVOKE EXECUTE ON FUNCTION app_tombstone_item(uuid, text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION app_tombstone_item(uuid, text) TO app_owned;
+
 -- ---------------------------------------------------------------------------
 -- memberships
 -- ---------------------------------------------------------------------------
@@ -233,6 +278,20 @@ CREATE POLICY memberships_self_join ON memberships FOR INSERT TO app_friend
     AND role = 'friend'
     AND status = 'active'
     AND circle_id = app_circle_id()
+  );
+
+-- Circle creation: the owner membership is the second half of creating a circle, and
+-- without this policy `createCircle` could only ever produce an ownerless circle (the
+-- ledger refuses on purpose). Pinned to the session user, the owner role, and a circle
+-- the row itself proves they own — the same `app_actor_owns_circle` predicate as every
+-- other owner write, evaluated on the just-inserted circle in the same transaction.
+DROP POLICY IF EXISTS memberships_owner_join ON memberships;
+CREATE POLICY memberships_owner_join ON memberships FOR INSERT TO app_owned
+  WITH CHECK (
+    user_id = app_user_id()
+    AND role = 'owner'
+    AND status = 'active'
+    AND app_actor_owns_circle(circle_id)
   );
 
 -- ---------------------------------------------------------------------------

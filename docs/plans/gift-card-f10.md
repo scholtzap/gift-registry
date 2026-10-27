@@ -33,9 +33,13 @@ Built, with evidence in `parallel-build-closeout.md` (100 card cases) and
 
 Still open — why this is `implementing`, not `implemented`:
 
-- **No live Spark pun.** `src/server/cards/index.ts:11` ships `DETERMINISTIC_CARD_PUN` with
-  the tagline "Plain card wording — no AI call." The three-candidate Spark choice below is
-  unbuilt; `model_used` evidence row therefore cannot exist yet.
+- **Live proof, not live code.** Pun generation is built (2026-10-27, `feat/day-3-followups`
+  #5): `generatePun` in `src/server/models/client.ts` (flat `json_schema`, muse-spark-1.2),
+  gated by `modelsForActor`'s `card_pun` authorisation, cached once per item on `gift_cards`
+  with `model_used` via `generateCardPun` in `src/server/cards/index.ts`, deterministic
+  wording retained when off/unconfigured. No live API call has been made, so the
+  `model_used` row is still unproven against the real endpoint. Buyer-picks-from-three is
+  not built: the first candidate is cached, the other two are returned but not persisted.
 - **No `muse-image` background** (`lib/cards/art.ts` equivalent absent) — optional layer only.
 - **Real-WhatsApp preview proof never run** — acceptance item 3 below stays a day-9 manual check.
 - Paths differ from the build shape below: shipped code lives in `src/server/cards/` behind the
