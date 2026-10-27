@@ -142,6 +142,27 @@ describe('the switch is the security boundary, not a naming convention', () => {
     expect(await join(fx.friendBUserId, fx.otherCircleId, fx.otherCircleId)).toBe(1);
   });
 
+  it('refuses all friend-only records when the circle owner selects the friend role', async () => {
+    const disguised = friend(fx.ownerUserId);
+    const counts = await db.withActor(disguised, async tx => ({
+      claims: await tx.claim.count(), pools: await tx.pool.count(), contributions: await tx.contribution.count(),
+      entries: await tx.cardEntry.count(), cards: await tx.giftCard.count(),
+    }));
+    expect(counts).toEqual({ claims: 0, pools: 0, contributions: 0, entries: 0, cards: 0 });
+    const legitimate = await db.withActor(friend(fx.friendAUserId), tx => tx.contribution.count());
+    expect(legitimate).toBe(2);
+  });
+
+  it('correlates friend membership with the current circle even when the actor joined both', async () => {
+    const rows = await db.withActor(friend(fx.friendBUserId), tx => tx.$queryRaw<{ current: boolean; other: boolean }[]>`
+      SELECT app_actor_joined_circle(${fx.circleId}::uuid) AS current,
+             app_actor_joined_circle(${fx.otherCircleId}::uuid) AS other`);
+    expect(rows).toEqual([{ current: true, other: false }]);
+    const other = await db.withActor({ ...friend(fx.friendBUserId), circleId: fx.otherCircleId }, tx => tx.$queryRaw<{ joined: boolean }[]>`
+      SELECT app_actor_joined_circle(${fx.otherCircleId}::uuid) AS joined`);
+    expect(other).toEqual([{ joined: true }]);
+  });
+
   it('fails closed on a malformed actor id instead of returning the world', async () => {
     await expect(
       db.withActor(

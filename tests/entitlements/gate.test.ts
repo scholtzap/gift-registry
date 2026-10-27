@@ -81,6 +81,25 @@ describe('the gate decides before a token is spent', () => {
     expect(await db.withActor(actor, (tx) => can(tx, actor, AiCapability.deal_search))).toBe(false);
   });
 
+  it.each([-60_000, 60_000])('keeps an opt-out after replacing a grant with expiry offset %i', async offset => {
+    const actor = friend(fx.friendAUserId);
+    await db.prisma.entitlement.upsert({
+      where: { userId_capability: { userId: actor.userId, capability: AiCapability.photo_extract } },
+      create: { userId: actor.userId, capability: AiCapability.photo_extract, enabled: true, source: 'subscription', expiresAt: new Date(Date.now() + offset) },
+      update: { enabled: true, source: 'subscription', expiresAt: new Date(Date.now() + offset) },
+    });
+    await db.withActor(actor, tx => setCapability(tx, actor, AiCapability.photo_extract, false));
+    expect(await db.withActor(actor, tx => can(tx, actor, AiCapability.photo_extract))).toBe(false);
+    expect((await db.prisma.entitlement.findUniqueOrThrow({ where: { userId_capability: { userId: actor.userId, capability: AiCapability.photo_extract } } })).expiresAt).toBeNull();
+    await expect(db.withActor(actor, tx => assertCan(tx, actor, AiCapability.photo_extract))).rejects.toThrow(CapabilityOffError);
+  });
+
+  it('honours an existing user opt-out even when its inherited expiry is past', async () => {
+    const actor = friend(fx.friendAUserId);
+    await db.prisma.entitlement.create({ data: { userId: actor.userId, capability: AiCapability.assistant_reply, enabled: false, source: 'user', expiresAt: new Date(Date.now() - 60_000) } });
+    expect(await db.withActor(actor, tx => can(tx, actor, AiCapability.assistant_reply))).toBe(false);
+  });
+
   it('writes one row however often the switch is tapped', async () => {
     const actor = friend(fx.friendAUserId);
     await db.withActor(actor, (tx) => setCapability(tx, actor, AiCapability.voice_transcribe, false));

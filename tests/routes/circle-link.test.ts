@@ -39,7 +39,8 @@ afterAll(async () => {
   await db?.disconnect();
 });
 
-const url = (s = slug) => `https://circles.example.test/c/${s}`;
+const appOrigin = new URL(env.CIRCLE_BASE_URL).origin;
+const url = (s = slug) => `${appOrigin}/c/${s}`;
 
 // Generated per run rather than written down: this repo is public, and a committed number — even a
 // fake-looking one — is a number someone may be assigned. Nothing here is dialled or stored as
@@ -53,7 +54,7 @@ const cookieFor = (input: { userId: string; circleId?: string; role: 'owner' | '
 const get = (s: string, cookie?: string) =>
   handleCircleGet(db, new Request(url(s), cookie ? { headers: { cookie } } : {}), s);
 
-const post = (s: string, fields: Record<string, string>, origin = 'https://circles.example.test') =>
+const post = (s: string, fields: Record<string, string>, origin = appOrigin) =>
   handleCirclePost(
     db,
     new Request(url(s), {
@@ -77,6 +78,29 @@ const postWithoutOrigin = (s: string, fields: Record<string, string>, headers: R
   );
 
 describe('the circle link', () => {
+  it('loads the Piñata stylesheet at the unauthenticated gate without disclosing the circle', async () => {
+    const res = await get(slug);
+    const body = await res.text();
+    expect(body).toContain('Piñata');
+    expect(body).toContain('href="/pinata.css"');
+    expect(body).not.toContain(slug);
+    expect(body).not.toContain('Trail runners');
+  });
+
+  it('renders actor-private settings at the circle settings URL', async () => {
+    const res = await handleCircleGet(
+      db,
+      new Request(`${url(slug)}/settings`, { headers: { cookie: cookieFor({ userId: fx.friendAUserId, role: 'friend' }) } }),
+      slug,
+    );
+    expect(res.status).toBe(200);
+    const body = await res.text();
+    expect(body).toContain('AI capabilities');
+    expect(body).toContain('voice_transcribe');
+    expect(body).not.toContain('Same shoe');
+    expect(res.headers.get('Cache-Control')).toContain('no-store');
+  });
+
   it('resolves for the owner, which is the rule that never moves', async () => {
     const res = await get(slug, cookieFor({ userId: fx.ownerUserId, role: 'owner' }));
     expect(res.status).toBe(200);

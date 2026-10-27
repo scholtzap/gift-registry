@@ -18,7 +18,14 @@ export default async function globalSetup() {
   const parsed = new URL(testUrl);
   const dbName = decodeURIComponent(parsed.pathname.slice(1));
   // Interpolated into DDL below, so it is validated rather than quoted-and-hoped.
-  if (!/^[a-z][a-z0-9_]{0,62}$/.test(dbName)) throw new Error(`unsafe test database name: ${dbName}`);
+  if (!/^[a-z][a-z0-9_]{0,62}$/.test(dbName)) throw new Error('unsafe test database name');
+  if (!dbName.endsWith('_test')) throw new Error('test database name must end in _test');
+  if (process.env.DATABASE_URL) {
+    const development = new URL(process.env.DATABASE_URL);
+    if (development.hostname === parsed.hostname && development.port === parsed.port && development.pathname === parsed.pathname) {
+      throw new Error('test database must be separate from the application database');
+    }
+  }
 
   parsed.pathname = '/postgres';
   const admin = new Pool({ connectionString: parsed.toString(), max: 1 });
@@ -31,7 +38,7 @@ export default async function globalSetup() {
 
   const prismaCli = resolve(process.cwd(), 'node_modules', 'prisma', 'build', 'index.js');
   const env = { ...process.env, DATABASE_URL: testUrl };
-  execFileSync(process.execPath, [prismaCli, 'migrate', 'deploy'], { env, cwd: process.cwd(), stdio: 'pipe' });
+  execFileSync(process.execPath, [prismaCli, 'migrate', 'deploy', '--config', 'prisma7.config.ts'], { env, cwd: process.cwd(), stdio: 'pipe' });
 
   if (process.env.LEAK_SKIP_POLICIES === '1') {
     // Dropping, not skipping: the test DB is persistent, and RLS enabled with no policies denies everything, which reads green.

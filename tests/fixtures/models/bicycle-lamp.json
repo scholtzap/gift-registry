@@ -1,0 +1,12 @@
+{
+  "fixture": "fictional-bicycle-lamp-v1",
+  "transcript": "I would like a fictional bicycle lamp.",
+  "wish": {
+    "title": "Fictional bicycle lamp",
+    "brand": null,
+    "size": null,
+    "price_minor": 12500,
+    "currency": "ZAR",
+    "canonical_url_guess": null
+  }
+}
