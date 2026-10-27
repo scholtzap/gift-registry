@@ -71,6 +71,10 @@ describe('the public Piñata landing', () => {
       'A card, shared by a friend For the next sunny afternoon. The message and the moment are yours.',
     );
     expect(html).not.toMatch(/data-(?:circle|user|actor|contributor)|circleId|shareSlug|userId|\+\d{8,}/);
+    // The seeded demo circle and cast are the concrete leak this guards: none of their
+    // identifiers or names may ever reach the public page.
+    expect(html).not.toContain('nadia-30th');
+    expect(html).not.toMatch(/Nadia|Thabo|Lerato|Sibusiso|Petersen|Mokoena|Dube|Khumalo/);
     expect(text).not.toMatch(/\b(?:R\s*\d|ZAR|USD|GBP|pledged|funded|remaining|contributors?|testimonials?|certified|GDPR|POPIA)\b/i);
     expect(html).not.toMatch(/<form\b|<input\b|<iframe\b|<video\b/);
   });
@@ -102,7 +106,10 @@ describe('the public Piñata landing', () => {
     expect(html).toContain('id="how-it-works"');
     expect(html).toContain('aria-labelledby="landing-story-title"');
     expect(html).toMatch(/<img\b[^>]*src="\/icon.png"[^>]*alt=""/);
-    expect(html.match(/<img\b/g)).toHaveLength(1);
+    expect(html.match(/<img\b/g)).toHaveLength(4);
+    for (const shot of ['owner-ledger', 'friend-ledger', 'gift-card']) {
+      expect(html).toContain(`src="/screenshots/${shot}.png"`);
+    }
     expect(html.match(/<header\b/g)).toHaveLength(1);
     expect(html.match(/<footer\b/g)).toHaveLength(1);
     expect(html).toContain('href="#pn-content"');

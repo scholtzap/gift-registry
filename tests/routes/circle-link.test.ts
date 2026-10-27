@@ -311,6 +311,25 @@ describe('the allowlist gate that mints a session', () => {
     expect(await res.text()).toContain('full international form');
   });
 
+  it('throttles the gate after five tries for one number and address (M-02)', async () => {
+    const phone = syntheticPhone();
+    const headers = { referer: url(slug), 'x-forwarded-for': '198.51.100.23' };
+    for (let attempt = 0; attempt < 5; attempt++) {
+      expect((await postWithoutOrigin(slug, { name: 'Grinder', phone }, headers)).status).toBe(200);
+    }
+    const sixth = await postWithoutOrigin(slug, { name: 'Grinder', phone }, headers);
+    expect(sixth.status).toBe(429);
+    const retryAfter = Number(sixth.headers.get('Retry-After'));
+    expect(retryAfter).toBeGreaterThan(0);
+    expect(retryAfter).toBeLessThanOrEqual(60);
+    expect(sixth.headers.get('Cache-Control')).toContain('no-store');
+    // Same uniform surface as every other gate refusal: no number, no verdict on the invite.
+    const body = await sixth.text();
+    expect(body).not.toContain(phone);
+    // A different number from the same address is a different key and is not throttled.
+    expect((await postWithoutOrigin(slug, { name: 'Other', phone: syntheticPhone() }, headers)).status).toBe(200);
+  });
+
   it('404s on a slug that does not exist rather than explaining the gate', async () => {
     expect((await post('not-a-real-circle', { name: 'Someone', phone: syntheticPhone() })).status).toBe(404);
   });

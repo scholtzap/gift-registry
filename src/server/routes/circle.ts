@@ -9,18 +9,19 @@ import { SettingsScreen } from "@/components/screens/settings";
 import { DraftConfirmScreen } from '@/components/screens/draft-confirm';
 import { ItemDetailScreen } from '@/components/screens/item-detail';
 import { CardComposerScreen } from '@/components/screens/card-composer';
-import { CardEntryValidationError, CardNotFoundError, getCard, renderCardVariant, saveCardEntry } from '@/server/cards';
+import { CardEntryValidationError, CardNotFoundError, generateCardPun, getCard, renderCardVariant, saveCardEntry } from '@/server/cards';
+import { modelsForActor } from '@/server/models/client';
 import { Screen } from '@/components/ui';
 import { friendCircleView, ownerCircleView } from "@/server/views";
 import { hashPhone, normalizeE164 } from "@/server/auth/phone-hash";
+import { checkGateThrottle } from "@/server/auth/throttle";
 import { issueSession, sessionCookie, sessionFromRequest } from "@/server/auth/session";
 import { AI_CAPABILITIES, assertCan, CAPABILITY_COPY, CapabilityOffError, setCapability } from "@/server/entitlements";
-import { addItem, claimItem, contribute, createPool, markPaid, purchasePool, releaseClaim } from '@/server/ledger';
+import { addItem, claimItem, contribute, createPool, markPaid, purchasePool, releaseClaim, revealItem, setEventDate } from '@/server/ledger';
+import { isCalendarDate } from '@/lib/dates';
 import { env } from "@/lib/env";
 import { parseRandToMinor } from "@/lib/money";
 import { isArchived } from "@/server/lifecycle";
-import { checkGateThrottle } from "@/server/auth/throttle";
-import { trustedClientAddress } from "@/server/auth/client-address";
 
 // Native-form HTML uses Node SSR, not the App Route's react-server export condition.
 const { renderToStaticMarkup } = createRequire(import.meta.url)('react-dom/server') as typeof import('react-dom/server');
@@ -111,17 +112,33 @@ function gateForm(notice?: string): Response {
   });
 }
 
-function renderOwner(view: NonNullable<Awaited<ReturnType<typeof ownerCircleView>>>, basePath: string): Response {
-  return new Response(page(view.name, renderToStaticMarkup(createElement(OwnerLedgerScreen, { view, basePath }))), {
+function renderOwner(view: NonNullable<Awaited<ReturnType<typeof ownerCircleView>>>, basePath: string, date?: { notice?: string; eventDateDraft?: string | null }): Response {
+  return new Response(page(view.name, renderToStaticMarkup(createElement(OwnerLedgerScreen, { view, basePath, ...date }))), {
+    status: date?.notice ? 422 : 200,
     headers: headers({ 'Content-Type': 'text/html; charset=utf-8' }),
   });
 }
 
-function renderFriend(view: NonNullable<Awaited<ReturnType<typeof friendCircleView>>>, basePath: string): Response {
+function renderFriend(view: NonNullable<Awaited<ReturnType<typeof friendCircleView>>>, basePath: string, date?: { notice?: string; eventDateDraft?: string | null }): Response {
   return new Response(
-    page(view.name, renderToStaticMarkup(createElement(FriendLedgerScreen, { view, basePath }))),
-    { status: 200, headers: headers({ "Content-Type": "text/html; charset=utf-8" }) },
+    page(view.name, renderToStaticMarkup(createElement(FriendLedgerScreen, { view, basePath, ...date }))),
+    { status: date?.notice ? 422 : 200, headers: headers({ "Content-Type": "text/html; charset=utf-8" }) },
   );
+}
+
+/**
+ * The ledger for the caller's own role, with a rejected date put back in the field. Both
+ * projections re-render through here so neither can accidentally render the *other*: the secrecy
+ * rule lives in the builders, and a route that picked the wrong builder would spoil a surprise
+ * on its own.
+ */
+async function renderLedger(db: Db, actor: Actor, circleId: string, basePath: string, date?: { notice?: string; eventDateDraft?: string | null }): Promise<Response> {
+  if (actor.role === 'owner') {
+    const view = await db.withActor(actor, tx => ownerCircleView(tx, circleId));
+    return view === null ? notFound() : renderOwner(view, basePath, date);
+  }
+  const view = await db.withActor(actor, tx => friendCircleView(tx, circleId, actor.userId));
+  return view === null ? notFound() : renderFriend(view, basePath, date);
 }
 
 function screenResponse(title: string, content: ReactNode, status = 200): Response {
@@ -243,12 +260,7 @@ async function circleGet(db: Db, request: Request, slug: string): Promise<Respon
     return item ? screenResponse(item.title, createElement(ItemDetailScreen, { item, basePath, circle: circleContext })) : notFound();
   }
   if (pathname !== basePath) return notFound();
-  if (actor.role === 'owner') {
-    const view = await db.withActor(actor, tx => ownerCircleView(tx, circle.id));
-    return view === null ? notFound() : renderOwner(view, basePath);
-  }
-  const view = await db.withActor(actor, tx => friendCircleView(tx, circle.id, actor.userId));
-  return view === null ? notFound() : renderFriend(view, basePath);
+  return renderLedger(db, actor, circle.id, basePath);
 }
 
 /**
@@ -316,6 +328,24 @@ async function circlePost(db: Db, request: Request, slug: string): Promise<Respo
     if (!actor) return notFound();
     let fields: FormData;
     try { fields = await readForm(request); } catch { return notFound(); }
+    if (pathname === `${basePath}/date`) {
+      if (fields.get('intent') !== 'set_event_date') return notFound();
+      const draft = String(fields.get('eventDate') ?? '');
+      // 422 with the value preserved, never a 403: the person gets their own date back and a
+      // sentence about the format, not a verdict on their rights.
+      if (!isCalendarDate(draft)) {
+        return renderLedger(db, actor, circle.id, basePath, {
+          notice: 'Enter a real date, in the form 2026-12-05.', eventDateDraft: draft,
+        });
+      }
+      try {
+        await db.withActor(actor, tx => setEventDate(tx, actor, draft));
+      } catch (error) {
+        if (error instanceof Error && error.message === 'ledger_not_found') return notFound();
+        throw error;
+      }
+      return new Response(null, { status: 303, headers: headers({ Location: basePath }) });
+    }
     const cardMatch = pathname.slice(basePath.length).match(/^\/items\/([^/]+)\/card$/);
     if (cardMatch) {
       const itemId = cardMatch[1]!;
@@ -323,6 +353,20 @@ async function circlePost(db: Db, request: Request, slug: string): Promise<Respo
       const card = await db.withActor(actor, tx => getCard(tx, actor, itemId));
       if (!card) return notFound();
       if (fields.get('intent') === 'render') return cardPng(db, actor, itemId);
+      if (fields.get('intent') === 'pun') {
+        try {
+          const models = modelsForActor(db, actor, { demoMode: env.DEMO_MODE, apiKey: env.MODEL_API_KEY, baseUrl: env.MODEL_API_BASE_URL });
+          await generateCardPun(db, actor, itemId, models);
+        } catch (error) {
+          if (error instanceof CardNotFoundError) return notFound();
+          if (error instanceof CapabilityOffError) return screenResponse('Gift card', createElement(CardComposerScreen, { card, basePath, notice: error.degraded }), 422);
+          if (error instanceof Error && ['model_not_configured', 'model_output_rejected', 'model_url_rejected'].includes(error.message)) {
+            return screenResponse('Gift card', createElement(CardComposerScreen, { card, basePath, notice: 'Pun suggestions are unavailable right now. The plain card wording still works.' }), 422);
+          }
+          throw error;
+        }
+        return new Response(null, { status: 303, headers: headers({ Location: `${basePath}/items/${itemId}/card` }) });
+      }
       if (fields.get('intent') !== 'save_entry') return notFound();
       const anonymous = fields.get('anonymous');
       if (anonymous !== null && !['on', 'true', 'false'].includes(String(anonymous))) return notFound();
@@ -374,7 +418,7 @@ async function circlePost(db: Db, request: Request, slug: string): Promise<Respo
       const view = await db.withActor(actor, tx => friendCircleView(tx, circle.id, actor.userId));
       const item = view?.items.find(row => row.id === itemId);
       if (!item) return notFound();
-      const intent = z.enum(['claim', 'release', 'create_pool', 'contribute', 'mark_paid', 'purchase']).safeParse(fields.get('intent'));
+      const intent = z.enum(['claim', 'release', 'create_pool', 'contribute', 'mark_paid', 'purchase', 'reveal']).safeParse(fields.get('intent'));
       if (!intent.success) return notFound();
       const moneyIntent = intent.data === 'create_pool' || intent.data === 'contribute';
       const amount = positiveCentsSchema.safeParse(intent.data === 'create_pool' ? minorField(fields, 'targetRand', 'targetMinor') : minorField(fields, 'amountRand', 'amountMinor'));
@@ -401,6 +445,7 @@ async function circlePost(db: Db, request: Request, slug: string): Promise<Respo
             case 'contribute': await contribute(tx, actor, poolId, amount.data!); break;
             case 'mark_paid': await markPaid(tx, actor, poolId); break;
             case 'purchase': await purchasePool(tx, actor, poolId); break;
+            case 'reveal': await revealItem(tx, actor, itemId); break;
           }
         });
       } catch (error) {
@@ -467,13 +512,27 @@ async function circlePost(db: Db, request: Request, slug: string): Promise<Respo
   const pepper = env.PHONE_HASH_PEPPER;
   const phoneHash = hashPhone(normalized, pepper);
 
+  // M-02: count every attempt before the lookup, successes and failures alike. The key is
+  // circle + phone hash + forwarded address — never a raw number — and the denial is the
+  // same for invited and uninvited numbers, so throttling cannot walk the phone list.
+  // This single mount also covers the RN-J request branch below.
+  const address = (request.headers.get("x-forwarded-for") ?? "").split(",")[0]?.trim() || "unknown";
+  const throttle = checkGateThrottle(`${circle.id}:${phoneHash}:${address}`);
+  if (!throttle.allowed) {
+    console.warn("gate_throttled", { circleId: circle.id, retryAfter: throttle.retryAfter });
+    const form = gateForm("Too many tries. Wait a minute, then try again.");
+    return new Response(form.body, {
+      status: 429,
+      headers: headers({ "Content-Type": "text/html; charset=utf-8", "Retry-After": String(throttle.retryAfter) }),
+    });
+  }
+
   // RN-J: asking for access. The answer is the gate's ordinary "no" whether
   // or not anyone is listening: a proxy circle has nobody to ask, and a real
   // owner merely finds the request next time they open their own link.
-  // Nothing is sent. Requests are throttled like any unauthenticated write.
+  // Nothing is sent.
   if (intent === "request_access") {
-    const gate = checkGateThrottle(`${phoneHash}:${trustedClientAddress(request)}`);
-    if (gate.allowed && circle.ownerUserId !== null) {
+    if (circle.ownerUserId !== null) {
       const existing = await db.prisma.allowlistEntry.findUnique({
         where: { circleId_phoneE164Hash: { circleId: circle.id, phoneE164Hash: phoneHash } },
         select: { id: true, status: true, requesterName: true },
@@ -504,6 +563,7 @@ async function circlePost(db: Db, request: Request, slug: string): Promise<Respo
   });
   if (!invited || invited.status === "removed" || invited.requesterName !== null) {
     // One message for every kind of no, so this form cannot be used to walk a phone list.
+    console.warn("gate_denied", { circleId: circle.id });
     return gateForm("We could not let you in with that number.");
   }
 

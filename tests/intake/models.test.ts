@@ -62,6 +62,29 @@ it('passes photo bytes as data rather than a remote URL and gates the photo extr
   expect(permissions).toEqual(['photo_extract']);
 });
 
+it('generates card pun copy behind card_pun with a flat schema and no contributor text', async () => {
+  const permissions: string[] = [];
+  const http: typeof fetch = async (_url, init) => {
+    const body = JSON.parse(String(init?.body));
+    expect(body.model).toBe('muse-spark-1.2');
+    expect(body.response_format.json_schema.schema.additionalProperties).toBe(false);
+    expect(body.response_format.json_schema.schema.required).toEqual(['pun', 'one_line', 'alternate']);
+    expect(String(body.messages[1].content)).not.toContain('Grind it fine');
+    return Response.json({ choices: [{ message: { content: JSON.stringify({ pun: 'Grind news!', one_line: 'From all of us.', alternate: 'Bean thinking of you.' }) } }], usage: { prompt_tokens: 9, completion_tokens: 7 } });
+  };
+  const models = createModelClient({ demoMode: 'off', apiKey: 'synthetic-model-key', baseUrl: 'https://api.meta.ai/v1' }, async c => { permissions.push(c); }, http);
+  const result = await models.generatePun({ title: 'Coffee grinder', recipientFirstName: 'Nadia', occasion: '30th birthday' });
+  expect(result.candidates).toEqual(['Grind news!', 'From all of us.', 'Bean thinking of you.']);
+  expect(result.evidence).toMatchObject({ model: 'muse-spark-1.2', mode: 'live' });
+  expect(permissions).toEqual(['card_pun']);
+
+  let calls = 0;
+  const offHttp: typeof fetch = async () => { calls++; return Response.json({}); };
+  const off = createModelClient({ demoMode: 'off', apiKey: 'synthetic-model-key', baseUrl: 'https://api.meta.ai/v1' }, async () => { throw new Error('capability_off'); }, offHttp);
+  await expect(off.generatePun({ title: 'Coffee grinder', recipientFirstName: 'Nadia', occasion: '30th birthday' })).rejects.toThrow('capability_off');
+  expect(calls).toBe(0);
+});
+
 it.each([
   { title: 'Fictional lamp', brand: null, size: null, price_minor: 1.25, currency: 'ZAR', canonical_url_guess: null },
   { title: 'Fictional lamp', brand: null, size: null, price_minor: 12500, currency: 'ZAR', canonical_url_guess: null, action: 'reveal_all' },

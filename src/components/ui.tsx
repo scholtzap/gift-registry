@@ -359,6 +359,59 @@ export function AttributeList({ items }: {
   );
 }
 
+/**
+ * The party date and its countdown on one line, identical markup on both projections. `date` is
+ * the ISO value the `<time>` element carries; `label` and `countdown` are what a person reads.
+ * All three come from the projection, because that is where a role's right to see them is
+ * decided — this component never derives anything, and it renders nothing when the projection
+ * withheld the date, so a screen has no branch left to get wrong.
+ */
+export function DateLine({ date, label, countdown }: {
+  date: string | null;
+  label: string | null;
+  countdown: string | null;
+}) {
+  if (date === null || label === null || countdown === null) return null;
+  return (
+    <p className="pn-small">
+      <time dateTime={date}>{label}</time> · {countdown}
+    </p>
+  );
+}
+
+/**
+ * The one native form that writes the event date, used by both projections — last writer wins,
+ * and the writer is whoever the session says it is, not a field in this form. No JavaScript:
+ * `/c/<slug>` is the URL pasted into a WhatsApp group and it stays framework-free.
+ *
+ * `defaultValue` is the value the caller is allowed to see (the projection decided that already)
+ * or the rejected draft, so a 422 re-render never empties the field the person just filled in.
+ */
+export function EventDateForm({ basePath, defaultValue, notice }: {
+  basePath: string;
+  defaultValue: string | null;
+  notice?: string;
+}) {
+  return (
+    <form method="post" action={`${basePath}/date`} className="pn-stack pn-stack-sm">
+      <input type="hidden" name="intent" value="set_event_date" />
+      {notice !== undefined && <Notice kind="error">{notice}</Notice>}
+      <Field
+        label="When is the party?"
+        name="eventDate"
+        id="event-date"
+        type="date"
+        defaultValue={defaultValue ?? undefined}
+        required
+        hint="The day the gift is handed over."
+      />
+      <div className="pn-actions">
+        <Button type="submit" variant="primary">Save the date</Button>
+      </div>
+    </form>
+  );
+}
+
 /** Status copy with a severity. `alert` for a rejection, `status` for something that just happened. */
 export function Notice({ children, kind = 'info', title }: {
   children: ReactNode;

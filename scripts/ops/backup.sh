@@ -15,7 +15,7 @@ exec 9>"$BACKUP_DIR/.backup.lock"
 flock -n 9 || fail
 # A quiet ledger plus quiet media is a consistent recovery point. Do not stop writers implicitly.
 running="$("${COMPOSE[@]}" ps --status running --services 2>/dev/null)"
-case $'\n'"$running"$'\n' in *$'\napp\n'*) fail ;; esac
+case $'\n'"$running"$'\n' in *$'\napp\n'*|*$'\nworker\n'*) fail ;; esac
 bundle="$(mktemp -d "$BACKUP_DIR/.gifts-$(date -u +%Y%m%dT%H%M%SZ)-XXXXXX")"
 cleanup() { if [[ -n "${bundle:-}" && -d "$bundle" ]]; then rm -rf -- "$bundle"; fi; }
 trap cleanup EXIT

@@ -156,6 +156,7 @@ model User {
   giftCards       GiftCard[]
   entitlements    Entitlement[]
   revealedItems   Item[]          @relation("revealed")
+  eventDateWrites Circle[]        @relation("event_date_writer")
 
   @@map("users")
 }
@@ -200,7 +201,15 @@ model Circle {
   id          String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name        String
   occasion    String
-  eventDate   DateTime      @map("event_date") @db.Date
+  /// The real birthday, never derived from `eventDate`. Month and day only unless the owner
+  /// chose to supply a year: a full date of birth is sensitive data and lets anyone compute an age.
+  birthMonth  Int?          @map("birth_month") @db.SmallInt
+  birthDay    Int?          @map("birth_day") @db.SmallInt
+  birthYear   Int?          @map("birth_year") @db.SmallInt
+  eventDate   DateTime?     @map("event_date") @db.Date
+  /// Who last wrote `eventDate`, and the whole secrecy rule: the owner projection renders the
+  /// date only when this names the owner. Null only after that person was deleted.
+  eventDateSetByUserId String?   @map("event_date_set_by_user_id") @db.Uuid
   // Nullable for proxy circles (RN-A D2): a registry created for someone with
   // no account has no owner row, and must not invent one.
   ownerUserId String?       @map("owner_user_id") @db.Uuid
@@ -213,6 +222,7 @@ model Circle {
   createdAt   DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
 
   owner          User?            @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
+  eventDateSetBy User?            @relation("event_date_writer", fields: [eventDateSetByUserId], references: [id], onDelete: SetNull)
   allowlist      AllowlistEntry[]
   memberships    Membership[]
   items          Item[]
