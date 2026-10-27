@@ -2,6 +2,12 @@
 
 Agent error log. Newest entry first. No secrets, tokens, env dumps, or credentialed URLs.
 
+## 2026-10-27 — Pushed the rebrand before running the browser suite
+**What happened:** the Paper Fiesta commit was pushed after vitest, typecheck and build passed, but before `pnpm test:browser`; two Playwright flows then failed on renamed labels ("Claim this gift", "Pool target in cents").
+**Impact:** the pushed branch briefly carried a red browser suite; caught before the PR was opened and fixed in a second commit (11/11 green).
+**Fix:** browser spec updated to the new labels and the rand quick-pick flow; PR #9 opened only after the full browser run.
+**Do not repeat:** any copy or label change runs `pnpm test:browser` (with the test DB) before the first push, not after.
+
 ## 2026-10-27 — Stitch mocks shipped wrong dates
 **What happened:** the round-2 Stitch prompts said "Sat 15 Nov" for 2026-11-15 (a Sunday), and the summary to the owner said "18 days" where the mocks said 19.
 **Impact:** mocks presented as reviewable carried a wrong weekday and a contradicting count; caught only when the real `<EventDate>` render printed "Sun".
