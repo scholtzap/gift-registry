@@ -1,4 +1,4 @@
-import { AttributeList, Badge, Cta, EmptyState, Panel, Screen, type CircleContext, type NavItem } from '@/components/ui';
+import { AttributeList, Badge, Cta, EmptyState, EventDate, Panel, Screen, type CircleContext, type NavItem } from '@/components/ui';
 import type { OwnerCircleView, OwnerItemView } from '@/server/views';
 
 // Owner projection only; this screen never fetches data or reads coordination state.
@@ -48,8 +48,8 @@ export function OwnerLedgerScreen({ view, basePath }: { view: OwnerCircleView; b
                         <p className={item.price === null ? 'pn-muted' : 'pn-price'}>
                           {item.price ?? 'Price not added'}
                         </p>
-                        <Badge tone={item.confirmed ? 'green' : 'warning'}>
-                          {item.confirmed ? 'Confirmed' : 'Needs your confirmation'}
+                        <Badge tone={item.confirmed ? 'done' : 'open'}>
+                          {item.confirmed ? 'On your list' : 'Check and confirm'}
                         </Badge>
                       </div>
                     </Panel>
@@ -67,10 +67,10 @@ export function OwnerLedgerScreen({ view, basePath }: { view: OwnerCircleView; b
                   <li key={request.id}>
                     <div className="pn-between">
                       <p>{request.requesterName}</p>
-                      <form method="post" action={`${basePath}/requests`}>
+                      <form method="post" action={`${basePath}/requests`} className="pn-actions">
                         <input type="hidden" name="requestId" value={request.id} />
                         <button type="submit" name="intent" value="accept">Let them in</button>
-                        <button type="submit" name="intent" value="reject">Not now</button>
+                        <button type="submit" name="intent" value="reject" className="pn-button pn-button-secondary">Not now</button>
                       </form>
                     </div>
                   </li>
@@ -101,7 +101,7 @@ export function OwnerLedgerScreen({ view, basePath }: { view: OwnerCircleView; b
             <div className="pn-stack pn-stack-sm">
               <p>{view.occasion}</p>
               <p className="pn-small">
-                Event date: <time dateTime={view.eventDate}>{view.eventDate}</time>
+                Party day: <EventDate iso={view.eventDate} />
               </p>
             </div>
             <hr className="pn-divider" />
@@ -143,8 +143,8 @@ export function OwnerItemScreen({ item, basePath, circle }: {
           <h2>Your wish</h2>
           <div className="pn-between">
             <p className={item.price === null ? 'pn-muted' : 'pn-price'}>{item.price ?? 'Price not added'}</p>
-            <Badge tone={item.confirmed ? 'green' : 'warning'}>
-              {item.confirmed ? 'Confirmed' : 'Needs your confirmation'}
+            <Badge tone={item.confirmed ? 'done' : 'open'}>
+              {item.confirmed ? 'On your list' : 'Check and confirm'}
             </Badge>
           </div>
           {item.retailer !== null && <p className="pn-small pn-muted">{item.retailer}</p>}

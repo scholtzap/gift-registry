@@ -1,11 +1,13 @@
-import { Badge, Button, Field, Notice, Panel, Screen, type CircleContext, type NavItem } from '@/components/ui';
-import { formatMinor } from '@/lib/money';
+import { AmountField, Badge, Button, Field, Notice, Panel, Screen, type CircleContext, type NavItem } from '@/components/ui';
+import { minorToRandInput } from '@/lib/money';
 
 export type DraftScreenData = {
   id?: string;
   title: string;
   retailer: string | null;
-  priceMinor: number | string | null;
+  priceMinor: number | null;
+  /** What the person typed, echoed back unchanged after a rejected submit. */
+  priceRand?: string;
   currency: string;
   source?: string;
 };
@@ -22,6 +24,8 @@ export function DraftConfirmScreen({ draft, basePath, role, notice, circle }: {
   const currency = draft?.currency ?? 'ZAR';
   const supportsCurrency = currency === 'ZAR';
   const isOwner = role === 'owner';
+  const priceDefault = !supportsCurrency ? ''
+    : draft?.priceRand ?? (typeof draft?.priceMinor === 'number' ? minorToRandInput(draft.priceMinor) : '');
   const nav: NavItem[] = [
     { href: basePath, label: isOwner ? 'Wishes' : 'Ledger', icon: 'ledger' },
     { href: `${basePath}/draft`, label: isOwner ? 'Add' : 'Suggest', icon: 'add', current: true },
@@ -53,8 +57,8 @@ export function DraftConfirmScreen({ draft, basePath, role, notice, circle }: {
         )}
 
         <div className="pn-row">
-          <Badge tone="blue">{draft ? 'Unconfirmed draft' : 'Manual entry'}</Badge>
-          {role === 'friend' && <Badge tone="pink">Friends only</Badge>}
+          <Badge tone="open">{draft ? 'Unconfirmed draft' : 'Manual entry'}</Badge>
+          {role === 'friend' && <Badge tone="human">Friends only</Badge>}
         </div>
 
         {/* One note, not two stacked surfaces: both sentences answer the same question,
@@ -91,19 +95,15 @@ export function DraftConfirmScreen({ draft, basePath, role, notice, circle }: {
             />
           </Panel>
 
-          {/* The only toned surface on the screen: this panel is about money, so it takes the blue. */}
+          {/* The only toned surface on the screen: this panel is about money, so it takes the green. */}
           <Panel className="pn-stack" tone="money">
             <h2>Price</h2>
-            <Badge>ZAR cents</Badge>
-            <Field
-              label="Price in cents"
-              name="priceMinor"
+            <AmountField
+              label="Price in rand"
+              name="priceRand"
               id="draft-price"
-              type="number"
-              defaultValue={supportsCurrency ? draft?.priceMinor ?? '' : ''}
-              min={0}
-              step={1}
-              hint={`A whole number of cents: 10000 = ${formatMinor(10000, 'ZAR')}. Leave blank if the price is unknown.`}
+              defaultValue={priceDefault}
+              hint="Like 1899 or 249.50. Leave blank if the price is unknown."
             />
             <p className="pn-small pn-muted">Check the price yourself before confirming.</p>
           </Panel>

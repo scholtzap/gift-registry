@@ -30,9 +30,8 @@
     "worker": "tsx src/worker.ts"
   },
   "dependencies": {
-    "@fontsource/manrope": "5.3.0",
-    "@fontsource/space-grotesk": "5.3.0",
-    "@fontsource/syne": "5.3.0",
+    "@fontsource/bricolage-grotesque": "^5.3.0",
+    "@fontsource/dm-sans": "^5.3.0",
     "@prisma/adapter-pg": "^7.10.1",
     "@prisma/client": "7.10.1",
     "@resvg/resvg-js": "2.6.2",
