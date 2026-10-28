@@ -8,7 +8,7 @@
 python scripts/ops/refresh_plans_index.py --write
 ```
 
-Generated: 2026-10-27 23:51 · repo: `gifts-registry`
+Generated: 2026-10-28 09:31 · repo: `qoder-gifts-registry-finish`
 
 ## P1
 
@@ -19,6 +19,7 @@ Generated: 2026-10-27 23:51 · repo: `gifts-registry`
 | 2 | Piñata parallel build and verification closeout | implementing | `parallel-build-closeout.md` |  |
 | 3 | Day-2 remaining-work inventory handover (voice-to-deploy queue) | implementing | `day-2-inventory-handover.md` | - First two-minute user item: §1.5 — send one message to the sandbox number and record whether |
 | 4 | Design system, brand round and the seven in-app screens | ready | `design-system-and-brand.md` |  |
+| 5 | Handover finish-line outcome (site DNS, app follow-ups, remaining gates) | done | `handover-finish-line-outcome.md` |  |
 | 5 | WhatsApp task-bot surface — six bounded tasks, fixed menu, no free chat | ready | `whatsapp-task-bot-surface.md` |  |
 | 6 | Day-3 nine follow-ups (throttle, creation, pun, reveal, dispatch, landing) | implementing | `day-3-nine-followups.md` |  |
 | 12 | Registry-network tracks — order, dependencies and what can run in parallel | ready | `rn-tracks.md` |  |
