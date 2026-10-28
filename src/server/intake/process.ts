@@ -119,6 +119,10 @@ export async function processIngest(db: Db, eventId: string): Promise<ProcessRes
         ffmpegPath: env.FFMPEG_PATH,
         demoMode: env.DEMO_MODE,
         imagePath: event.kind === 'image' ? mediaFilePath(env.MEDIA_DIR, eventId) : undefined,
+        currency: await db.withActor(actor, async tx => {
+          const c = await tx.circle.findFirst({ where: { id: actor.circleId! }, select: { defaultCurrency: true } });
+          return c?.defaultCurrency ?? undefined;
+        }).catch(() => undefined),
         // This is an explicit demo fixture, never an error fallback in the live path.
         convert: env.DEMO_MODE === 'on' ? async () => Buffer.from(silence.wavBase64, 'base64') : undefined,
       })) {

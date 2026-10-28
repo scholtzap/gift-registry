@@ -217,6 +217,8 @@ model Circle {
   recipientLabel         String? @map("recipient_label")
   recipientPhoneE164Hash String? @map("recipient_phone_e164_hash")
   proxyCreatedByUserId   String? @map("proxy_created_by_user_id") @db.Uuid
+  /// Currency new items in this circle default to. Per-item currency still wins.
+  defaultCurrency String    @default("USD") @map("default_currency") @db.Char(3)
   shareSlug   String        @unique @map("share_slug")
   status      CircleStatus  @default(active)
   createdAt   DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)

@@ -297,6 +297,21 @@ export function ItemPhoto({ basePath, itemId, large }: { basePath: string; itemI
   );
 }
 
+/** Add/replace a product photo. Rendered only where the projection allows editing. */
+export function PhotoUploadForm({ basePath, itemId, hasPhoto }: { basePath: string; itemId: string; hasPhoto: boolean }) {
+  return (
+    <form action={`${basePath}/items/${encodeURIComponent(itemId)}/photo`} method="post" encType="multipart/form-data" className="pn-stack pn-stack-sm">
+      <input type="hidden" name="intent" value="set_photo" />
+      <div className="pn-field">
+        <label htmlFor={`photo-${itemId}`}>{hasPhoto ? 'Replace photo' : 'Add a photo'}</label>
+        <input className="pn-input" id={`photo-${itemId}`} name="photo" type="file" accept="image/jpeg,image/png,image/webp" required />
+        <p className="pn-hint pn-small pn-muted">Product photo only, not people. JPEG, PNG or WebP, up to 5 MB; location and camera details are removed.</p>
+      </div>
+      <div className="pn-actions"><Button type="submit" variant="secondary">{hasPhoto ? 'Replace photo' : 'Add photo'}</Button></div>
+    </form>
+  );
+}
+
 /** One amount as an unbreakable token, for amounts that sit inside a sentence. */
 export function Money({ children }: { children: ReactNode }) {
   return <span className="pn-money">{children}</span>;

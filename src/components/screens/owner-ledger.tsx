@@ -1,4 +1,4 @@
-import { AttributeList, Badge, Cta, DateLine, EmptyState, EventDate, EventDateForm, ItemPhoto, Panel, Screen, type CircleContext, type NavItem } from '@/components/ui';
+import { AttributeList, Badge, Cta, DateLine, EmptyState, EventDate, EventDateForm, ItemPhoto, PhotoUploadForm, Panel, Screen, type CircleContext, type NavItem } from '@/components/ui';
 import type { OwnerCircleView, OwnerItemView } from '@/server/views';
 
 // Owner projection only; this screen never fetches data or reads coordination state.
@@ -159,6 +159,7 @@ export function OwnerItemScreen({ item, basePath, circle }: {
             </Badge>
           </div>
           {item.retailer !== null && <p className="pn-small pn-muted">{item.retailer}</p>}
+          <PhotoUploadForm basePath={basePath} itemId={item.id} hasPhoto={item.hasPhoto} />
         </Panel>
         <p className="pn-note">You choose what is on your list. How it gets bought stays with your friends until the gift is handed over.</p>
       </div>
