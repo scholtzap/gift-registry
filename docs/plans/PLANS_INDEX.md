@@ -8,7 +8,14 @@
 python scripts/ops/refresh_plans_index.py --write
 ```
 
-Generated: 2026-10-28 10:36 · repo: `qoder-gifts-registry-finish`
+Generated: 2026-10-28 13:51 · repo: `qoder-gifts-registry-finish`
+
+## P0
+
+| Rank | Title | Status | Path | Next |
+|------|-------|--------|------|------|
+| 3 | UX CR-01: one entry door and a self-serve create-circle (registration) flow | ready | `ux-entry-and-registration.md` |  |
+| 3 | UX CR-02: put the lookup/proxy creation flow inside the app shell | ready | `ux-lookup-shell.md` |  |
 
 ## P1
 
@@ -23,6 +30,9 @@ Generated: 2026-10-28 10:36 · repo: `qoder-gifts-registry-finish`
 | 5 | Handover finish-line outcome (site DNS, app follow-ups, remaining gates) | done | `handover-finish-line-outcome.md` |  |
 | 5 | WhatsApp task-bot surface — six bounded tasks, fixed menu, no free chat | ready | `whatsapp-task-bot-surface.md` |  |
 | 6 | Day-3 nine follow-ups (throttle, creation, pun, reveal, dispatch, landing) | implementing | `day-3-nine-followups.md` |  |
+| 6 | UX CR-06: align site/guide/app copy with what is actually live | ready | `ux-copy-alignment.md` |  |
+| 6 | UX CR-04: join-gate error recovery | ready | `ux-join-recovery.md` |  |
+| 6 | UX CR-03: fix or remove the broken screenshot strip | ready | `ux-landing-strip-assets.md` |  |
 | 12 | Registry-network tracks — order, dependencies and what can run in parallel | ready | `rn-tracks.md` |  |
 | 13 | RN-I — submission-window triage: what of the registry network fits before 2026-11-04 | ready | `rn-i-submission-window-triage.md` |  |
 | 14 | RN-A - proxy registry data model and authority rules | ready | `rn-a-proxy-registry-spec.md` | - **Pepper: distinct.** `recipient_phone_e164_hash` uses a separate `PHONE_HASH_PEPPER`, not |
@@ -37,6 +47,7 @@ Generated: 2026-10-28 10:36 · repo: `qoder-gifts-registry-finish`
 | 6 | Photo to cutout candidates on SAM 3.1 (intake and card art) | ready | `vision-cutout-intake.md` |  |
 | 7 | Post-event reveal of secret suggestions (F14) | implementing | `post-event-reveal.md` |  |
 | 8 | User management, the path to paid, and which open source to adopt | ready | `user-management-and-billing-path.md` | 1. **D4, the owner session.** Bot-minted or script-minted for the recording? Decide with the cast on day 7. |
+| 8 | UX CR-05: owner date form and in-app navigation targets | ready | `ux-owner-date-and-nav.md` |  |
 | 16 | RN-B — the resolution lookup route: one key in, always 200 out | backlog | `rn-b-lookup-route.md` | Does the found branch render inline or redirect to `/c/<slug>`? (A redirect re-introduces the slug oracle.) Is the |
 | 17 | RN-C — proxy circle creation, its share link, and the RLS that breaks without it | backlog | `rn-c-proxy-circle.md` | Does the creator gifter get any elevated right, or are they a plain member (RN-A says plain member — confirm it |
 | 22 | RN-J — ask for access: the permission request and the owner inbox that is never pushed | draft | `rn-j-permission-request.md` |  |
