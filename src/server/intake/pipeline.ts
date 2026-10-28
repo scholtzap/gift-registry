@@ -4,7 +4,7 @@ import { expandRetailerLink } from './link';
 
 export interface CandidateDraft {
   index: number; state: 'pending'; title: string; brand: string | null; size: string | null;
-  priceMinor: number | null; currency: 'ZAR'; canonicalUrl: string | null; imagePath: string | null;
+  priceMinor: number | null; currency: string; canonicalUrl: string | null; imagePath: string | null;
 }
 export interface IntakeInput {
   kind: 'audio' | 'image' | 'url'; bytes?: Uint8Array; mimeType?: string; url?: string;
@@ -14,10 +14,10 @@ export interface IntakeStep {
   status: 'converted' | 'transcribed' | 'parsed'; evidence: ModelEvidence[];
   transcript?: string; candidates?: CandidateDraft[];
 }
-export interface PipelineOptions { ffmpegPath: string; demoMode?: 'on' | 'off'; convert?: (bytes: Uint8Array) => Promise<Buffer>; imagePath?: string; http?: typeof fetch }
+export interface PipelineOptions { ffmpegPath: string; demoMode?: 'on' | 'off'; convert?: (bytes: Uint8Array) => Promise<Buffer>; imagePath?: string; http?: typeof fetch; currency?: string }
 
-function candidate(wish: WishDraft, imagePath: string | null = null): CandidateDraft {
-  return { index: 0, state: 'pending', title: wish.title, brand: wish.brand, size: wish.size, priceMinor: wish.price_minor, currency: 'ZAR', canonicalUrl: wish.canonical_url_guess, imagePath };
+function candidate(wish: WishDraft, imagePath: string | null = null, currency = 'USD'): CandidateDraft {
+  return { index: 0, state: 'pending', title: wish.title, brand: wish.brand, size: wish.size, priceMinor: wish.price_minor, currency, canonicalUrl: wish.canonical_url_guess, imagePath };
 }
 
 /** Caller persists each yield in a short transaction; no transaction spans an external call. */
@@ -36,22 +36,22 @@ export async function* intakeSteps(input: IntakeInput, models: ReturnType<typeof
     }
     const result = await models.parseWish(transcript, 'voice_transcribe');
     evidence.push(result.evidence);
-    yield { status: 'parsed', transcript, evidence, candidates: [candidate(result.wish)] };
+    yield { status: 'parsed', transcript, evidence, candidates: [candidate(result.wish, null, options.currency)] };
     return;
   }
   if (input.kind === 'image') {
     if (!input.bytes || !input.mimeType) throw new Error('media_missing');
     const result = await models.parseWish('Extract the product in this supplied screenshot. Return one draft, not a cutout or an action.', 'photo_extract', { bytes: input.bytes, mimeType: input.mimeType });
     evidence.push(result.evidence);
-    yield { status: 'parsed', evidence, candidates: [candidate(result.wish, options.imagePath ?? null)] };
+    yield { status: 'parsed', evidence, candidates: [candidate(result.wish, options.imagePath ?? null, options.currency)] };
     return;
   }
   if (!input.url) throw new Error('retailer_url_missing');
   await models.requireCapability('link_expand');
   // Explicit demos use the committed model fixture; they never scrape a live retailer.
   const metadata = options.demoMode === 'on' ? null : await expandRetailerLink(input.url, options.http);
-  if (metadata) { yield { status: 'parsed', evidence, candidates: [candidate(metadata)] }; return; }
+  if (metadata) { yield { status: 'parsed', evidence, candidates: [candidate(metadata, null, options.currency)] }; return; }
   const result = await models.parseWish(`Extract a draft for the supplied retailer link. Never invent a price: ${input.url}`, 'link_expand');
   evidence.push(result.evidence);
-  yield { status: 'parsed', evidence, candidates: [candidate({ ...result.wish, canonical_url_guess: input.url })] };
+  yield { status: 'parsed', evidence, candidates: [candidate({ ...result.wish, canonical_url_guess: input.url }, null, options.currency)] };
 }
