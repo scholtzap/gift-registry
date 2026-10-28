@@ -1,5 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Set PINATA_BASE_PATH=/app for the single-domain deployment
+  // (pinata.scholtz.work/ is the landing page, pinata.scholtz.work/app is the app).
+  // Unset everywhere else, including tests: circle URLs stay /c/<slug> at the root.
+  ...(process.env.PINATA_BASE_PATH ? { basePath: process.env.PINATA_BASE_PATH } : {}),
   reactStrictMode: true,
   distDir: process.env.NEXT_DIST_DIR ?? '.next',
   // RLS is per-connection GUC state; a pooled connection must never be reused
