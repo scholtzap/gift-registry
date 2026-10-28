@@ -4,7 +4,8 @@
 
 - Site: https://gifts.scholtz.work/
 - Privacy notice: https://gifts.scholtz.work/privacy
-- Status: early testing; contact through the form on the home page.
+- How-to guide: https://gifts.scholtz.work/guide
+- Status: opening circles in small batches; sign up on the home page for a setup link, or use the contact form.
 - Money: Piñata holds no money; friends pay each other directly. Prices default to US dollars, with rand, euro or pounds per gift.
 
 ## Builder
