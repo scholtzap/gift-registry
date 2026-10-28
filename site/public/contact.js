@@ -40,18 +40,17 @@
     form.addEventListener("submit", async (event) => {
       event.preventDefault();
 
-      const name = (form.querySelector("#contact-name")?.value || "").trim();
-      const email = (form.querySelector("#contact-email")?.value || "")
-        .trim()
-        .toLowerCase();
-      const topic = (form.querySelector("#contact-topic")?.value || "general").trim();
-      const message = (form.querySelector("#contact-message")?.value || "").trim();
-      const website = (form.querySelector("#website")?.value || "").trim();
+      const field = (n) => form.querySelector(`[name="${n}"]`);
+      const name = (field("name")?.value || "").trim();
+      const email = (field("email")?.value || "").trim().toLowerCase();
+      const topic = (field("topic")?.value || "general").trim();
+      const message = (field("message")?.value || "").trim();
+      const website = (field("website")?.value || "").trim();
 
       statusEl.hidden = false;
       statusEl.classList.remove("ok", "err");
 
-      const emailInput = form.querySelector("#contact-email");
+      const emailInput = field("email");
       if (!emailInput?.checkValidity() || !email) {
         statusEl.classList.add("err");
         statusEl.textContent = "Enter a valid email so we can reply.";
@@ -62,7 +61,7 @@
       if (message.length < 4) {
         statusEl.classList.add("err");
         statusEl.textContent = "Add a short message (a few words is enough).";
-        form.querySelector("#contact-message")?.focus();
+        field("message")?.focus();
         return;
       }
 
@@ -83,10 +82,8 @@
         statusEl.textContent =
           result.via === "mailto"
             ? "Opening your email app…"
-            : "Message sent. We will reply by email.";
+            : form.dataset.success || "Message sent. We will reply by email.";
         form.reset();
-        const topicSelect = form.querySelector("#contact-topic");
-        if (topicSelect) topicSelect.value = "early-access";
       } catch (err) {
         statusEl.classList.add("err");
         statusEl.textContent = `Could not send. Email ${CONTACT_TO} instead.`;
@@ -98,9 +95,7 @@
   }
 
   document.addEventListener("DOMContentLoaded", () => {
-    bindForm(
-      document.getElementById("contact-form"),
-      document.getElementById("contact-status")
-    );
+    bindForm(document.getElementById("contact-form"), document.getElementById("contact-status"));
+    bindForm(document.getElementById("signup-form"), document.getElementById("signup-status"));
   });
 })();
