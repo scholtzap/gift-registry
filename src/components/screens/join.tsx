@@ -4,6 +4,7 @@ import { Badge, Button, Field, Notice, Panel, Screen } from '@/components/ui';
 // `initialName`/`initialPhone` are only what this visitor just typed (CR-UX-04:
 // keep them in place on rejection so Ask to be added needs no retyping).
 export interface JoinScreenProps {
+  basePath?: string;
   notice?: string;
   action?: string;
   initialName?: string;
@@ -11,10 +12,10 @@ export interface JoinScreenProps {
   rejected?: boolean;
 }
 
-export function JoinScreen({ notice, action = '', initialName, initialPhone, rejected }: JoinScreenProps) {
+export function JoinScreen({ basePath = '', notice, action = '', initialName, initialPhone, rejected }: JoinScreenProps) {
   // A door, not a room: no circle context, no section nav, one measure column on wide rhythm.
   return (
-    <Screen
+    <Screen homeHref={`${basePath}/app`} privacyHref={`${basePath}/privacy`}
       title="Join this circle"
       eyebrow="Keep the surprise"
       lede="Plan the gift with the rest of the group. The person you're buying for can't see any of it."

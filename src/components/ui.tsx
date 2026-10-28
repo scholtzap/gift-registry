@@ -7,9 +7,9 @@ export type NavItem = { href: string; label: string; icon?: 'ledger' | 'add' | '
 export type CircleContext = { name: string; role: 'owner' | 'friend' };
 
 // Presentation only: both projections may use these primitives with already-authorised content.
-export function Brand() {
+export function Brand({ href = '/' }: { href?: string } = {}) {
   return (
-    <a className="pn-brand" href="/" aria-label="Piñata home">
+    <a className="pn-brand" href={href} aria-label="Piñata home">
       <img src="/icon.png" alt="" width={40} height={40} />
       <span className="pn-wordmark">Piñata</span>
     </a>
@@ -57,6 +57,8 @@ export function Screen({
   circle,
   nav,
   footer,
+  homeHref,
+  privacyHref,
 }: {
   children: ReactNode;
   title?: ReactNode;
@@ -67,13 +69,19 @@ export function Screen({
   circle?: CircleContext;
   nav?: NavItem[];
   footer?: ReactNode;
+  /** Where the brand link goes. Defaults to the user's circle (first nav item) when signed in. */
+  homeHref?: string;
+  /** The app's own privacy route. Defaults to it under the deployment base path (CR-UX-05). */
+  privacyHref?: string;
 }) {
+  const resolvedHomeHref = homeHref ?? (circle && nav && nav.length > 0 ? nav[0]!.href : '/');
+  const resolvedPrivacyHref = privacyHref ?? `${process.env.PINATA_BASE_PATH ?? ''}/privacy`;
   return (
     <div className="pn-screen">
       <a className="pn-skip" href="#pn-content">Skip to content</a>
       <header className="pn-header">
         <div className="pn-bar">
-          <Brand />
+          <Brand href={resolvedHomeHref} />
           {circle && (
             <div className="pn-context">
               <p className={`pn-sticker${circle.role === 'owner' ? ' pn-sticker-owner' : ''}`}>
@@ -121,7 +129,7 @@ export function Screen({
       )}
       <footer className="pn-footer pn-between">
         <p>{footer ?? 'Group gifts nobody can spoil.'}</p>
-        <a className="pn-link pn-link-target" href="/privacy">Privacy notice</a>
+        <a className="pn-link pn-link-target" href={resolvedPrivacyHref}>Privacy notice</a>
       </footer>
     </div>
   );
@@ -425,18 +433,21 @@ export function EventDateForm({ basePath, defaultValue, notice }: {
   defaultValue: string | null;
   notice?: string;
 }) {
+  // Pre-filled from the projection, so saving an unchanged date is never demanded:
+  // the field is only required when no date is set yet (CR-UX-05).
+  const hasDate = defaultValue !== null && defaultValue !== '';
   return (
     <form method="post" action={`${basePath}/date`} className="pn-stack pn-stack-sm">
       <input type="hidden" name="intent" value="set_event_date" />
       {notice !== undefined && <Notice kind="error">{notice}</Notice>}
       <Field
-        label="When is the party?"
+        label="Party date"
         name="eventDate"
         id="event-date"
         type="date"
         defaultValue={defaultValue ?? undefined}
-        required
-        hint="The day the gift is handed over."
+        required={!hasDate}
+        hint="The day the gift is handed over. Whoever sets it last decides whether it stays secret."
       />
       <div className="pn-actions">
         <Button type="submit" variant="primary">Save the date</Button>

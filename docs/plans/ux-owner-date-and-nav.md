@@ -1,7 +1,7 @@
 ---
 title: "UX CR-05: owner date form and in-app navigation targets"
 type: plan
-status: ready
+status: done
 priority: P2
 rank: 8
 updated: 2026-10-28
