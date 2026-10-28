@@ -17,7 +17,7 @@ superseded_by: null
 
 State at 2026-10-28: the marketing site leads with sign-up (`/`, `/guide`,
 `/privacy` on gifts.scholtz.work), and the app deploys on the shared Oracle VM
-under `pinata.scholtz.work/app` in DEMO_MODE with the seeded fictional cast.
+under `pinata.scholtz.work/app` in DEMO_MODE with the seeded fictional cast. Primary site CTAs now point at the live app (PR #27).
 What follows is ordered by value for the 2026-11-04 submission, then for real
 users. Each item names its blocker and the exact steps to clear it.
 
@@ -60,10 +60,10 @@ users. Each item names its blocker and the exact steps to clear it.
 
 ## Next high-value tasks
 
-7. **Point the landing CTAs at the live app and retire the batch form.**
-   Once real circles can be created: change primary buttons on `/` and
-   `/guide` from `#start` to `https://pinata.scholtz.work/app`, and rename the
-   `#start` section to a help/waitlist form for groups that need a hand.
+7. **Retire the batch form once live WhatsApp intake works.** Done for the
+   CTA itself (PR #27: primary buttons point at the app; `#start` is now the
+   email alternative). When DEMO_MODE goes off, delete `#start` or turn it
+   into a help form.
 8. **Serve the app landing at `/app` with the demo video embedded** (the
    `docs/plans/public-landing-page.md` F15 shape), once the video exists.
 9. **GitHub Actions re-enable or a local CI script.** Actions is billing
