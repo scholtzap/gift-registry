@@ -8,6 +8,12 @@ Agent error log. Newest entry first. No secrets, tokens, env dumps, or credentia
 **Fix:** `pnpm prisma:generate` (gitignored output, prod Dockerfile regenerates anyway) turned the whole suite green: 553/553 vitest, 175/175 leak, typecheck 0.
 **Do not repeat:** when route tests fail on amounts/currency or the client type disagrees with `schema.prisma`, run `pnpm prisma:generate` first and re-run before theorizing.
 
+## 2026-10-27 — Meta tier setup shipped untested: absent model, wrong launcher path, guessed repo slug
+**What happened:** (1) I wired `llama-3.3-70b-instruct` as the Low tier from the user's paste without checking it against the Meta Model API; `/v1/messages` returns 404 for it, so Low had to move to `muse-spark-1.1`. (2) The first `meta-claude.js` resolved `claude` with `where`, took the extensionless npm shim, and every launch died with `spawn failed: ENOENT`; I had reported the launcher as ready before running it. (3) I vaulted the GIFT key under the guessed repo slug `gifts-registry` (folder name) instead of the GitHub repo name `gift-registry`, and fixed it later. (4) I ran `git switch main` with `.env.example` modified, which failed, then switched around branches while `src/` differed between trunk and the feature branch.
+**Impact:** Two rounds of "done" claims that were not true; the user hit a master-password prompt and a model that did not exist. No secret was exposed and no data was lost.
+**Fix:** Low tier = `muse-spark-1.1`; launcher picks `.exe`/`.cmd`; vault `repo` field corrected to `gift-registry`; branch work moved to a worktree-free `chore/` branch cut from `main`.
+**Do not repeat:** List a gateway's models (`GET /v1/models`) and send one real request per tier before calling a setup done. Run a new launcher once before reporting it. Take repo slugs from the git remote, not the folder name. Never switch branches with a dirty tracked file; commit or stash first.
+
 ## 2026-10-27 — Pushed the rebrand before running the browser suite
 **What happened:** the Paper Fiesta commit was pushed after vitest, typecheck and build passed, but before `pnpm test:browser`; two Playwright flows then failed on renamed labels ("Claim this gift", "Pool target in cents").
 **Impact:** the pushed branch briefly carried a red browser suite; caught before the PR was opened and fixed in a second commit (11/11 green).
