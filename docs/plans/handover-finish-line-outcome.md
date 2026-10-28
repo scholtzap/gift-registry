@@ -49,8 +49,8 @@ Recorded 2026-10-28 from the "HANDOVER — Piñata / Gift Circles: finish line" 
 - **Repo visibility:** repo is still private; the hackathon requires public before
   2026-11-04 21:00 ET. Flip when ready (phone check above is clean; re-run before pushing).
 - **Demo video (submission step 7):** record from a green demo-loop tree; fictional cast
-  only. The three `docs/diagrams/*.drawio` pass the geometry checker; PNG export still
-  needs draw.io Desktop or one manual open — no renderer is installed here.
+  only. The three `docs/diagrams/*.drawio` pass the geometry checker; PNGs exported
+  with draw.io Desktop CLI after repairing unescaped markup in the .drawio XML (PR #17).
 - **RN-F OTP:** externally gated on Meta Business Verification + conversation-tier
   history (see `docs/plans/rn-f-claim-merge.md`). Owner starts the clock; do not build a
   fake OTP door.
