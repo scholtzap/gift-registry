@@ -233,9 +233,13 @@ export async function addItem(tx: Tx, actor: Actor, input: AddItemInput): Promis
     if (ingest.status !== 'parsed' || ingest.itemId !== null) throw new Error('ledger_draft_unavailable');
     ingestId = ingest.id;
   }
+  const circleRow = input.currency === undefined
+    ? await tx.circle.findFirst({ where: { id: actor.circleId! }, select: { defaultCurrency: true } })
+    : null;
   const item = await tx.item.create({ data: {
     circleId: actor.circleId!, addedByUserId: actor.userId, title,
-    retailer: input.retailer, priceMinor: input.priceMinor, currency: input.currency ?? DEFAULT_CURRENCY,
+    retailer: input.retailer, priceMinor: input.priceMinor,
+    currency: input.currency ?? (circleRow && isCurrency(circleRow.defaultCurrency) ? circleRow.defaultCurrency : DEFAULT_CURRENCY),
     imagePath: input.imagePath, visibility, confirmed: true,
   } });
   if (ingestId) {
@@ -245,16 +249,35 @@ export async function addItem(tx: Tx, actor: Actor, input: AddItemInput): Promis
   return item;
 }
 
+/**
+ * Add or replace an item's product photo. Owner: their own wishes only. Friend: only ideas
+ * they added themselves. Anything else is ledger_not_found, so the route 404s.
+ */
+export async function setItemPhoto(tx: Tx, actor: Actor, itemId: string, imagePath: string): Promise<Item> {
+  await scope(tx, actor);
+  if (!imagePath) throw new Error('ledger_invalid_item');
+  const item = await lockItem(tx, actor, itemId);
+  const mine = actor.role === 'owner'
+    ? item.visibility === 'owner_visible'
+    : item.addedByUserId === actor.userId;
+  if (!mine || item.status === 'tombstoned') throw new Error('ledger_not_found');
+  const updated = await tx.item.update({ where: { id: item.id }, data: { imagePath } });
+  await append(tx, actor, 'item', item.id, 'item.photo_set');
+  return updated;
+}
+
 export interface CreateCircleInput {
   name: string;
   occasion: string;
   eventDate: Date | string;
   shareSlug?: string;
   phoneHashes?: string[];
+  defaultCurrency?: string;
 }
 
 export async function createCircle(tx: Tx, actor: Actor, input: CreateCircleInput): Promise<Circle> {
   await session(tx, actor, 'owner');
+  if (input.defaultCurrency !== undefined && !isCurrency(input.defaultCurrency)) throw new Error('ledger_currency_unsupported');
   if (!input.name.trim() || !input.occasion.trim() || !Number.isFinite(new Date(input.eventDate).getTime()) ||
       input.phoneHashes?.some((hash) => !/^[a-f0-9]{64}$/.test(hash))) {
     throw new Error('ledger_invalid_circle');
@@ -272,6 +295,7 @@ export async function createCircle(tx: Tx, actor: Actor, input: CreateCircleInpu
   await tx.circle.createMany({
     data: {
       name: input.name.trim(), occasion: input.occasion.trim(),
+      ...(input.defaultCurrency !== undefined ? { defaultCurrency: input.defaultCurrency } : {}),
       eventDate: new Date(input.eventDate), eventDateSetByUserId: actor.userId,
       ownerUserId: actor.userId, shareSlug,
     },

@@ -17,8 +17,12 @@ import { hashPhone, normalizeE164 } from "@/server/auth/phone-hash";
 import { checkGateThrottle } from "@/server/auth/throttle";
 import { issueSession, sessionCookie, sessionFromRequest } from "@/server/auth/session";
 import { AI_CAPABILITIES, assertCan, CAPABILITY_COPY, CapabilityOffError, setCapability } from "@/server/entitlements";
-import { addItem, claimItem, contribute, createPool, markPaid, purchasePool, releaseClaim, revealItem, setEventDate } from '@/server/ledger';
+import { addItem, claimItem, contribute, createPool, markPaid, purchasePool, releaseClaim, revealItem, setEventDate, setItemPhoto } from '@/server/ledger';
 import { isCalendarDate } from '@/lib/dates';
+import { readStoredMedia } from '@/server/wa/store';
+import { guardNoPersonPixels, type VisionServices } from '@/server/vision';
+
+export interface CircleRouteDeps { visionServices?: VisionServices }
 import { env } from "@/lib/env";
 import { CURRENCIES, parseAmountToMinor } from "@/lib/money";
 import { PHOTO_MAX_BYTES, PhotoRejectedError, deletePhoto, readPhoto, storePhoto } from "@/server/photos";
@@ -181,7 +185,7 @@ const draftSchema = z.object({
   candidates: z.tuple([z.object({
     index: z.literal(0), state: z.literal('pending'), title: z.string().min(1).max(200),
     brand: z.string().max(100).nullable(), priceMinor: z.number().int().min(0).max(2147483647).nullable(),
-    currency: z.literal('ZAR'),
+    currency: z.enum(CURRENCIES), imagePath: z.string().nullable().optional(),
   })]),
 });
 const centsSchema = z.string().regex(/^(0|[1-9]\d*)$/).transform(Number).pipe(z.number().int().min(0).max(2147483647));
@@ -201,7 +205,7 @@ function minorField(fields: FormData, amountName: string, minorName: string, cur
 async function circleGet(db: Db, request: Request, slug: string): Promise<Response> {
   const basePath = `/c/${encodeURIComponent(slug)}`;
   const pathname = new URL(request.url).pathname;
-  const circle = await db.prisma.circle.findUnique({ where: { shareSlug: slug }, select: { id: true, name: true } });
+  const circle = await db.prisma.circle.findUnique({ where: { shareSlug: slug }, select: { id: true, name: true, defaultCurrency: true } });
   if (!circle) return notFound();
   const session = sessionFromRequest(request);
   if (!session || session.circleId !== circle.id) return pathname === basePath ? gateForm() : notFound();
@@ -235,7 +239,7 @@ async function circleGet(db: Db, request: Request, slug: string): Promise<Respon
     if (parsed && !parsed.success) return screenResponse('Draft unavailable', createElement(Screen, { title: 'Draft unavailable', backHref: basePath, circle: circleContext, children: 'This draft could not be read. Return to the circle and add the item manually.' }), 503);
     const candidate = parsed?.success ? parsed.data.candidates[0] : null;
     const draft = candidate ? { id: ingest!.id, title: candidate.title, retailer: candidate.brand, priceMinor: candidate.priceMinor, currency: candidate.currency } : null;
-    return screenResponse('Review your draft', createElement(DraftConfirmScreen, { draft, basePath, role: actor.role, circle: circleContext }));
+    return screenResponse('Review your draft', createElement(DraftConfirmScreen, { draft, basePath, role: actor.role, circle: circleContext, defaultCurrency: circle.defaultCurrency }));
   }
   const cardMatch = pathname.slice(basePath.length).match(/^\/items\/([^/]+)\/card(\/png)?$/);
   if (cardMatch) {
@@ -327,7 +331,38 @@ async function readForm(request: Request, limit = 16_384): Promise<FormData> {
   return new Response(body, { headers: { 'Content-Type': request.headers.get('content-type') ?? '' } }).formData();
 }
 
-async function circlePost(db: Db, request: Request, slug: string): Promise<Response> {
+function intakeMime(bytes: Buffer): string | null {
+  if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8) return 'image/jpeg';
+  if (bytes.length >= 4 && bytes[0] === 0x89 && bytes[1] === 0x50) return 'image/png';
+  if (bytes.length >= 12 && bytes.toString('ascii', 0, 4) === 'RIFF' && bytes.toString('ascii', 8, 12) === 'WEBP') return 'image/webp';
+  return null;
+}
+
+/**
+ * Carry a WhatsApp intake photo onto the item being confirmed. Fail closed: capability off,
+ * no person detector, a person in frame, or unreadable media all drop the photo and the item
+ * still confirms (the person can add a photo manually afterwards).
+ */
+async function carryIntakePhoto(db: Db, actor: Actor, ingestId: string, deps: CircleRouteDeps): Promise<string | undefined> {
+  try {
+    const ingest = await db.withActor(actor, tx => tx.ingestEvent.findFirst({
+      where: { id: ingestId, circleId: actor.circleId!, userId: actor.userId, status: 'parsed' },
+      select: { kind: true, draft: true },
+    }));
+    if (!ingest || ingest.kind !== 'image') return undefined;
+    const parsed = draftSchema.safeParse(ingest.draft);
+    if (!parsed.success || !parsed.data.candidates[0].imagePath) return undefined;
+    await db.withActor(actor, tx => assertCan(tx, actor, 'photo_extract'));
+    const bytes = await readStoredMedia(env.MEDIA_DIR, ingestId, PHOTO_MAX_BYTES);
+    if (!bytes) return undefined;
+    await guardNoPersonPixels(bytes, deps.visionServices);
+    const mime = intakeMime(bytes);
+    if (!mime) return undefined;
+    return await storePhoto(env.MEDIA_DIR, new File([new Uint8Array(bytes)], 'intake-photo', { type: mime }));
+  } catch { return undefined; }
+}
+
+async function circlePost(db: Db, request: Request, slug: string, deps: CircleRouteDeps = {}): Promise<Response> {
   const basePath = `/c/${encodeURIComponent(slug)}`;
   const pathname = new URL(request.url).pathname;
   if (!isSameOrigin(request)) {
@@ -336,18 +371,19 @@ async function circlePost(db: Db, request: Request, slug: string): Promise<Respo
 
   const circle = await db.prisma.circle.findUnique({
     where: { shareSlug: slug },
-    select: { id: true, status: true, createdAt: true, eventDate: true, ownerUserId: true },
+    select: { id: true, status: true, createdAt: true, eventDate: true, ownerUserId: true, name: true },
   });
   if (!circle) return notFound();
   if (pathname !== basePath) {
     const actor = await privateActor(db, request, circle.id);
     if (!actor) return notFound();
-    // Only the add-item form may carry a photo, so only it gets a multipart-sized body.
+    // Only the add-item form and the item-photo form may carry a photo.
     const isDraft = pathname === `${basePath}/draft`;
+    const isPhotoPost = /^\/items\/[^/]+\/photo$/.test(pathname.slice(basePath.length));
     const multipart = (request.headers.get('content-type') ?? '').startsWith('multipart/form-data');
-    if (multipart && !isDraft) return notFound();
+    if (multipart && !isDraft && !isPhotoPost) return notFound();
     let fields: FormData;
-    try { fields = await readForm(request, isDraft && multipart ? PHOTO_MAX_BYTES + 65_536 : 16_384); } catch { return notFound(); }
+    try { fields = await readForm(request, (isDraft || isPhotoPost) && multipart ? PHOTO_MAX_BYTES + 65_536 : 16_384); } catch { return notFound(); }
     if (pathname === `${basePath}/date`) {
       if (fields.get('intent') !== 'set_event_date') return notFound();
       const draft = String(fields.get('eventDate') ?? '');
@@ -429,6 +465,7 @@ async function circlePost(db: Db, request: Request, slug: string): Promise<Respo
           throw error;
         }
       }
+      if (!imagePath && parsed.data.ingestEventId) imagePath = await carryIntakePhoto(db, actor, parsed.data.ingestEventId, deps);
       try {
         const item = await db.withActor(actor, tx => addItem(tx, actor, {
           title: parsed.data.title, retailer: parsed.data.retailer || undefined,
@@ -443,6 +480,39 @@ async function circlePost(db: Db, request: Request, slug: string): Promise<Respo
         if (error instanceof Error && ['ledger_not_found', 'ledger_draft_unavailable'].includes(error.message)) return notFound();
         throw error;
       }
+    }
+    const photoPostMatch = pathname.slice(basePath.length).match(/^\/items\/([^/]+)\/photo$/);
+    if (photoPostMatch) {
+      const itemId = photoPostMatch[1]!;
+      if (!z.uuid().safeParse(itemId).success || fields.get('intent') !== 'set_photo') return notFound();
+      const upload = fields.get('photo');
+      if (!(upload instanceof File) || upload.size === 0) return notFound();
+      const circleContext = { name: circle.name, role: actor.role };
+      let newPath: string;
+      try { newPath = await storePhoto(env.MEDIA_DIR, upload); }
+      catch (error) {
+        if (error instanceof PhotoRejectedError) {
+          if (actor.role === 'owner') {
+            const view = await db.withActor(actor, tx => ownerCircleView(tx, circle.id));
+            const item = view?.items.find(row => row.id === itemId);
+            return item ? screenResponse(item.title, createElement(OwnerItemScreen, { item, basePath, circle: circleContext }), 422) : notFound();
+          }
+          const view = await db.withActor(actor, tx => friendCircleView(tx, circle.id, actor.userId));
+          const item = view?.items.find(row => row.id === itemId);
+          return item ? screenResponse(item.title, createElement(ItemDetailScreen, { item, basePath, notice: 'Use a JPEG, PNG or WebP photo under 5 MB, or leave the photo out.', circle: circleContext }), 422) : notFound();
+        }
+        throw error;
+      }
+      const oldRow = await db.withActor(actor, tx => tx.item.findFirst({ where: { id: itemId, circleId: circle.id }, select: { imagePath: true } })).catch(() => null);
+      try {
+        await db.withActor(actor, tx => setItemPhoto(tx, actor, itemId, newPath));
+      } catch (error) {
+        await deletePhoto(env.MEDIA_DIR, newPath);
+        if (error instanceof Error && error.message === 'ledger_not_found') return notFound();
+        throw error;
+      }
+      if (oldRow?.imagePath && oldRow.imagePath !== newPath) await deletePhoto(env.MEDIA_DIR, oldRow.imagePath);
+      return new Response(null, { status: 303, headers: headers({ Location: `${basePath}/items/${itemId}` }) });
     }
     const itemMatch = pathname.slice(basePath.length).match(/^\/items\/([^/]+)$/);
     if (itemMatch) {
@@ -639,6 +709,6 @@ export async function handleCircleGet(db: Db, request: Request, slug: string): P
   try { return await circleGet(db, request, slug); } catch (error) { return unavailable(error); }
 }
 
-export async function handleCirclePost(db: Db, request: Request, slug: string): Promise<Response> {
-  try { return await circlePost(db, request, slug); } catch (error) { return unavailable(error); }
+export async function handleCirclePost(db: Db, request: Request, slug: string, deps: CircleRouteDeps = {}): Promise<Response> {
+  try { return await circlePost(db, request, slug, deps); } catch (error) { return unavailable(error); }
 }

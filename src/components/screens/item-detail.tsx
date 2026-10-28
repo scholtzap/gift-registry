@@ -1,4 +1,4 @@
-import { AmountField, Badge, Button, Cta, ItemPhoto, Meter, Money, Notice, Panel, Screen } from '@/components/ui';
+import { AmountField, Badge, Button, Cta, ItemPhoto, Meter, Money, Notice, PhotoUploadForm, Panel, Screen } from '@/components/ui';
 import type { CircleContext, NavItem } from '@/components/ui';
 import { itemStatus, poolPercent, remainingMinor } from '@/components/status';
 import { formatMinor, minorToInput } from '@/lib/money';
@@ -102,6 +102,7 @@ export function ItemDetailScreen({
                 ? <p className="pn-price">{item.price}</p>
                 : <p className="pn-muted">No shop price yet.</p>}
               {item.retailer && <p className="pn-muted">{item.retailer}</p>}
+              {item.addedByMe && <PhotoUploadForm basePath={basePath} itemId={item.id} hasPhoto={item.hasPhoto} />}
             </section>
           </Panel>
 
