@@ -105,6 +105,9 @@ test('native claim release pool contribution and paid recording persist', async 
   await expect(page.getByRole('heading', { name: 'You’re the buyer', exact: true })).toBeVisible();
   // The quick pick is its own native submit: one tap, no JavaScript.
   await page.getByRole('button', { name: 'The rest · $100', exact: true }).click();
+  // The tap must answer visibly: the pledger sees their own pledge and reference.
+  await expect(page.getByRole('heading', { name: 'Your pledge', exact: true })).toBeVisible();
+  await expect(page.getByText('Use this reference when you pay:', { exact: false })).toBeVisible();
   await page.getByRole('button', { name: 'I’ve paid my pledge', exact: true }).click();
   const fullyPooled = page.locator('.pn-badge', { hasText: 'Fully pooled' }).first();
   await expect(fullyPooled).toBeVisible();

@@ -59,6 +59,21 @@ describe('the owner cannot see what the group is doing', () => {
     expect(await db.withActor(friend(fx.friendAUserId), (tx) => tx.giftCard.count())).toBe(1);
   });
 
+  it('cannot see bank details even after the buyer shares them with pledgers', async () => {
+    await db.prisma.poolPayout.create({
+      data: {
+        poolId: fx.poolId, buyerUserId: fx.friendAUserId, accountHolder: 'Leak Buyer',
+        bankName: 'Leak Bank', accountNumber: '12345678', branchCode: '123456', shareConsent: true,
+      },
+    });
+    expect(await db.withActor(owner(), (tx) => tx.poolPayout.count())).toBe(0);
+    // The buyer reads their own row; a pledger on the pool reads the shared row.
+    expect(await db.withActor(friend(fx.friendAUserId), (tx) => tx.poolPayout.count())).toBe(1);
+    expect(await db.withActor(friend(fx.friendBUserId), (tx) => tx.poolPayout.count())).toBe(1);
+    // A joined friend with no pledge on the pool reads nothing.
+    expect(await db.withActor(friend(fx.outsiderUserId), (tx) => tx.poolPayout.count())).toBe(0);
+  });
+
   it('reads a ledger that has the money rows filtered out of it', async () => {
     const asOwner = await db.withActor(owner(), (tx) => tx.ledgerEvent.findMany({ select: { entity: true } }));
     const asFriend = await db.withActor(friend(fx.friendAUserId), (tx) => tx.ledgerEvent.findMany({ select: { entity: true } }));

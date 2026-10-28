@@ -28,6 +28,24 @@ const pivotItem: FriendItemView = {
     status: 'pivot_needed',
     iAmBuyer: true,
     contributors: 2,
+    pledged: 'R1 200.00',
+    pledgedMinor: 120000,
+    myContribution: {
+      amount: 'R400.00',
+      amountMinor: 40000,
+      status: 'promised',
+      reference: 'PN-ABC123',
+    },
+    payout: {
+      accountHolder: 'Fictional Buyer',
+      bankName: 'Fictional Bank',
+      accountNumber: '12345678',
+      branchCode: '123456',
+      accountType: 'cheque',
+      referencePrefix: null,
+      shareConsent: true,
+    },
+    tally: [],
   },
 };
 
@@ -54,6 +72,36 @@ const buyerItem: FriendItemView = {
     status: 'funded',
     iAmBuyer: true,
     contributors: 3,
+    pledged: 'R1 800.00',
+    pledgedMinor: 180000,
+    myContribution: null,
+    payout: {
+      accountHolder: 'Fictional Buyer',
+      bankName: 'Fictional Bank',
+      accountNumber: '12345678',
+      branchCode: '123456',
+      accountType: null,
+      referencePrefix: 'GIFTA',
+      shareConsent: true,
+    },
+    tally: [
+      {
+        userId: 'user-pledger-one',
+        displayName: 'Pledger One',
+        amount: 'R1 000.00',
+        amountMinor: 100000,
+        status: 'promised',
+        reference: 'GIFTA-111111',
+      },
+      {
+        userId: 'user-pledger-two',
+        displayName: 'Pledger Two',
+        amount: 'R800.00',
+        amountMinor: 80000,
+        status: 'marked_paid',
+        reference: 'GIFTA-222222',
+      },
+    ],
   },
 };
 
@@ -80,6 +128,24 @@ const contributorItem: FriendItemView = {
     status: 'open',
     iAmBuyer: false,
     contributors: 1,
+    pledged: 'R250.00',
+    pledgedMinor: 25000,
+    myContribution: {
+      amount: 'R250.00',
+      amountMinor: 25000,
+      status: 'promised',
+      reference: 'PN-DEF456',
+    },
+    payout: {
+      accountHolder: 'Fictional Buyer',
+      bankName: 'Fictional Bank',
+      accountNumber: '12345678',
+      branchCode: '123456',
+      accountType: 'savings',
+      referencePrefix: null,
+      shareConsent: true,
+    },
+    tally: [],
   },
 };
 
@@ -204,10 +270,12 @@ describe('ItemDetailScreen public friend render', () => {
       for (const form of forms(html)) {
         expect(form).toContain('method="post"');
         expect(form).toMatch(new RegExp(`action="${basePath}/items/${item.id}(?:/photo)?"`));
-        expect(form).toMatch(/<(?:button|input)\b[^>]*name="intent"[^>]*value="(?:claim|release|create_pool|contribute|mark_paid|purchase|set_photo)"/);
+        expect(form).toMatch(/<(?:button|input)\b[^>]*name="intent"[^>]*value="(?:claim|release|create_pool|contribute|mark_paid|purchase|save_payout|set_photo)"/);
         expect(form).toContain('type="submit"');
         if (item.pool && !form.includes('/photo"')) expect(form).toContain(`name="poolId" value="${item.pool.id}"`);
-        expect(form).not.toContain('name="userId"');
+        // Only the buyer's per-pledger mark-paid form names another user; the
+        // route answers anyone else with an indistinguishable 404.
+        if (!form.includes('value="mark_paid"')) expect(form).not.toContain('name="userId"');
         expect(form).not.toContain('name="contributionId"');
         expect(form).not.toContain('name="status"');
       }
@@ -282,8 +350,8 @@ describe('ItemDetailScreen public friend render', () => {
 
   it('does not infer my payment or purchase from formatted settled money', () => {
     const html = render({ ...buyerItem, pool: { ...buyerItem.pool!, status: 'open', settled: 'R1 800.00' } });
-    expect(html).toContain('R1 800.00</span> settled of');
-    expect(html).toContain('Your own pledge and payment status are not shown here.');
+    expect(html).toContain('R1 800.00</span> settled ·');
+    expect(html).toContain('Settled is not the same as marked paid');
     expect(html).toContain('Mark paid only once you pledged and sent that money outside Piñata.');
     expect(html).toContain('Settled is not the same as marked paid');
     expect(html).not.toContain('You have paid');
@@ -301,5 +369,39 @@ describe('ItemDetailScreen public friend render', () => {
     expect(html).toContain('role="alert"');
     expect(html).not.toContain('<script>');
     expect(render(soloItem)).not.toContain('role="alert"');
+  });
+
+  it('answers a chip tap with the pledger\u2019s own pledge, reference and share link', () => {
+    const html = render(contributorItem);
+    expect(html).toContain('Your pledge');
+    expect(html).toContain('R250.00');
+    expect(html).toContain('pledged, not yet paid');
+    expect(html).toContain('PN-DEF456');
+    expect(html).toContain('R250.00</span> pledged of');
+    expect(html).toContain(`href="${basePath}/items/gift-contributor/pay"`);
+  });
+
+  it('hides bank details from a pledger until the buyer switches sharing on', () => {
+    const unshared = render({
+      ...contributorItem,
+      pool: { ...contributorItem.pool!, payout: { ...contributorItem.pool!.payout!, shareConsent: false } },
+    });
+    expect(unshared).toContain('Your pledge');
+    expect(unshared).not.toContain('12345678');
+    expect(unshared).not.toContain('Fictional Bank');
+    expect(unshared).not.toContain('/pay"');
+  });
+
+  it('gives the buyer a payout form, a per-pledger tally and mark-paid controls', () => {
+    const html = render(buyerItem);
+    expect(formFor(html, 'save_payout')).toContain('Save payment details');
+    expect(html).toContain('name="shareConsent"');
+    expect(html).toContain('Pledger One');
+    expect(html).toContain('GIFTA-111111');
+    expect(html).toContain('Pledger Two');
+    expect(html).toContain('Marked paid');
+    expect(html).toContain('Mark Pledger One paid');
+    expect(html).not.toContain('Mark Pledger Two paid');
+    expect(html).toContain(`href="${basePath}/items/gift-buyer/pay"`);
   });
 });

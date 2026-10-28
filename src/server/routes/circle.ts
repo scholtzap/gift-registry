@@ -9,16 +9,17 @@ import { JoinScreen } from "@/components/screens/join";
 import { SettingsScreen } from "@/components/screens/settings";
 import { DraftConfirmScreen } from '@/components/screens/draft-confirm';
 import { ItemDetailScreen } from '@/components/screens/item-detail';
+import { PayoutShareScreen } from '@/components/screens/payout-share';
 import { CardComposerScreen } from '@/components/screens/card-composer';
 import { CardEntryValidationError, CardNotFoundError, generateCardPun, getCard, renderCardVariant, saveCardEntry } from '@/server/cards';
 import { modelsForActor } from '@/server/models/client';
 import { Screen } from '@/components/ui';
-import { friendCircleView, ownerCircleView } from "@/server/views";
+import { friendCircleView, ownerCircleView, payoutShareText } from "@/server/views";
 import { hashPhone, normalizeE164 } from "@/server/auth/phone-hash";
 import { checkGateThrottle } from "@/server/auth/throttle";
 import { issueSession, sessionCookie, sessionFromRequest } from "@/server/auth/session";
 import { AI_CAPABILITIES, assertCan, CAPABILITY_COPY, CapabilityOffError, setCapability } from "@/server/entitlements";
-import { addItem, claimItem, contribute, createPool, markPaid, purchasePool, releaseClaim, revealItem, setEventDate, setItemPhoto } from '@/server/ledger';
+import { addItem, claimItem, contribute, createPool, markPaid, markPaidFor, purchasePool, releaseClaim, revealItem, savePayout, setEventDate, setItemPhoto } from '@/server/ledger';
 import { isCalendarDate } from '@/lib/dates';
 import { readStoredMedia } from '@/server/wa/store';
 import { guardNoPersonPixels, type VisionServices } from '@/server/vision';
@@ -238,6 +239,26 @@ async function circleGet(db: Db, request: Request, slug: string): Promise<Respon
     const bytes = await readPhoto(env.MEDIA_DIR, row?.imagePath ?? null);
     if (!bytes) return notFound();
     return new Response(new Uint8Array(bytes), { headers: headers({ 'Content-Type': 'image/webp', 'Content-Disposition': 'inline' }) });
+  }
+  const payMatch = pathname.slice(basePath.length).match(/^\/items\/([^/]+)\/pay$/);
+  if (payMatch) {
+    const itemId = payMatch[1]!;
+    if (actor.role !== 'friend' || !z.uuid().safeParse(itemId).success) return notFound();
+    const view = await db.withActor(actor, tx => friendCircleView(tx, circle.id, actor.userId));
+    const item = view?.items.find(row => row.id === itemId);
+    const pool = item?.pool ?? null;
+    // Same gate as the details themselves: the buyer, or a pledger once the
+    // buyer switched sharing on. Anything else reads exactly like nothing.
+    if (!item || !pool || pool.payout === null) return notFound();
+    const shareText = payoutShareText(item.title, pool);
+    return screenResponse(`Pay for ${item.title}`, createElement(PayoutShareScreen, {
+      itemTitle: item.title,
+      pool,
+      backHref: `${basePath}/items/${itemId}`,
+      circle: circleContext,
+      shareText,
+      shareHref: `https://wa.me/?text=${encodeURIComponent(shareText)}`,
+    }));
   }
   const itemMatch = pathname.slice(basePath.length).match(/^\/items\/([^/]+)$/);
   if (itemMatch) {
@@ -495,7 +516,7 @@ async function circlePost(db: Db, request: Request, slug: string, deps: CircleRo
       const view = await db.withActor(actor, tx => friendCircleView(tx, circle.id, actor.userId));
       const item = view?.items.find(row => row.id === itemId);
       if (!item) return notFound();
-      const intent = z.enum(['claim', 'release', 'create_pool', 'contribute', 'mark_paid', 'purchase', 'reveal']).safeParse(fields.get('intent'));
+      const intent = z.enum(['claim', 'release', 'create_pool', 'contribute', 'mark_paid', 'purchase', 'reveal', 'save_payout']).safeParse(fields.get('intent'));
       if (!intent.success) return notFound();
       const moneyIntent = intent.data === 'create_pool' || intent.data === 'contribute';
       // Money is always in the item's currency; a pool inherits it.
@@ -504,16 +525,44 @@ async function circlePost(db: Db, request: Request, slug: string, deps: CircleRo
       if (moneyIntent && (!amount.success || fields.get('currency') !== moneyCurrency)) {
         return screenResponse(item.title, createElement(ItemDetailScreen, { item, basePath, notice: 'Enter an amount above zero, like 400 or 99.50.' }), 422);
       }
+      // Bank details are the buyer's own words about their own account, shaped
+      // like an invoice payee block. The ledger re-checks the digits; this
+      // answers 422 so a typo comes back with the form, not a blank 404.
+      const payout = intent.data === 'save_payout' ? z.object({
+        accountHolder: z.string().trim().min(1).max(80),
+        bankName: z.string().trim().min(1).max(80),
+        accountNumber: z.string().trim().min(6).max(24),
+        branchCode: z.string().trim().min(6).max(9),
+        accountType: z.enum(['cheque', 'savings', 'transmission']).optional(),
+        referencePrefix: z.string().trim().max(12).optional(),
+        shareConsent: z.literal('on').optional(),
+      }).safeParse({
+        accountHolder: String(fields.get('accountHolder') ?? ''),
+        bankName: String(fields.get('bankName') ?? ''),
+        accountNumber: String(fields.get('accountNumber') ?? ''),
+        branchCode: String(fields.get('branchCode') ?? ''),
+        accountType: String(fields.get('accountType') ?? '') || undefined,
+        referencePrefix: String(fields.get('referencePrefix') ?? '') || undefined,
+        shareConsent: fields.get('shareConsent') === 'on' ? 'on' : undefined,
+      }) : null;
+      if (intent.data === 'save_payout' && !payout!.success) {
+        return screenResponse(item.title, createElement(ItemDetailScreen, { item, basePath, notice: 'Check the bank details: account holder, bank, a 6–20 digit account number and a 6-digit branch code.' }), 422);
+      }
       // RN-E: an archived proxy circle stays readable but takes no new
-      // claims or pledges. Settling what already exists (release, mark
+      // claims, pledges or payout edits. Settling what exists (release, mark
       // paid, purchase) stays possible; the ledger is never destroyed.
-      const newMoneyIntent = ['claim', 'create_pool', 'contribute'].includes(intent.data);
+      const newMoneyIntent = ['claim', 'create_pool', 'contribute', 'save_payout'].includes(intent.data);
       if (newMoneyIntent && isArchived(circle)) {
         return screenResponse(item.title, createElement(ItemDetailScreen, { item, basePath, notice: 'This circle has archived, so it is not taking new claims or pledges.' }), 409);
       }
-      const poolIntent = ['contribute', 'mark_paid', 'purchase'].includes(intent.data);
+      const poolIntent = ['contribute', 'mark_paid', 'purchase', 'save_payout'].includes(intent.data);
       const poolId = String(fields.get('poolId') ?? '');
       if (poolIntent && !z.uuid().safeParse(poolId).success) return notFound();
+      // Marking someone else paid is the buyer's act only: anyone else naming
+      // a user reads exactly like nothing, and a self-name takes the ordinary
+      // self-mark path, so a forged field cannot escalate.
+      const markPaidUserId = intent.data === 'mark_paid' ? String(fields.get('userId') ?? '') : '';
+      if (markPaidUserId !== '' && markPaidUserId !== actor.userId && !z.uuid().safeParse(markPaidUserId).success) return notFound();
       try {
         await db.withActor(actor, async tx => {
           if (poolIntent && !await tx.pool.findFirst({ where: { id: poolId, itemId } })) throw new Error('ledger_not_found');
@@ -522,15 +571,30 @@ async function circlePost(db: Db, request: Request, slug: string, deps: CircleRo
             case 'release': await releaseClaim(tx, actor, itemId); break;
             case 'create_pool': await createPool(tx, actor, itemId, amount.data!); break;
             case 'contribute': await contribute(tx, actor, poolId, amount.data!); break;
-            case 'mark_paid': await markPaid(tx, actor, poolId); break;
+            case 'mark_paid':
+              if (markPaidUserId !== '' && markPaidUserId !== actor.userId) await markPaidFor(tx, actor, poolId, markPaidUserId);
+              else await markPaid(tx, actor, poolId);
+              break;
             case 'purchase': await purchasePool(tx, actor, poolId); break;
             case 'reveal': await revealItem(tx, actor, itemId); break;
+            case 'save_payout':
+              await savePayout(tx, actor, poolId, {
+                accountHolder: payout!.data!.accountHolder,
+                bankName: payout!.data!.bankName,
+                accountNumber: payout!.data!.accountNumber,
+                branchCode: payout!.data!.branchCode,
+                accountType: payout!.data!.accountType ?? null,
+                referencePrefix: payout!.data!.referencePrefix ?? null,
+                shareConsent: payout!.data!.shareConsent === 'on',
+              });
+              break;
           }
         });
       } catch (error) {
         if (error instanceof Error && ['ledger_not_found', 'ledger_role_denied', 'ledger_buyer_required'].includes(error.message)) return notFound();
-        if (error instanceof Error && ['ledger_item_unavailable', 'ledger_item_reserved', 'ledger_claim_unavailable', 'ledger_contribution_conflict', 'ledger_pool_unavailable', 'ledger_pool_not_paid', 'ledger_contribution_unavailable'].includes(error.message)) {
-          return screenResponse(item.title, createElement(ItemDetailScreen, { item, basePath, notice: 'This gift or contribution has changed. Return to the circle and review it before trying again.' }), 409);
+        if (error instanceof Error && ['ledger_item_unavailable', 'ledger_item_reserved', 'ledger_claim_unavailable', 'ledger_contribution_conflict', 'ledger_pool_unavailable', 'ledger_pool_not_paid', 'ledger_contribution_unavailable', 'ledger_invalid_payout'].includes(error.message)) {
+          const payoutError = intent.data === 'save_payout';
+          return screenResponse(item.title, createElement(ItemDetailScreen, { item, basePath, notice: payoutError ? 'Check the bank details: account holder, bank, a 6–20 digit account number and a 6-digit branch code.' : 'This gift or contribution has changed. Return to the circle and review it before trying again.' }), payoutError ? 422 : 409);
         }
         throw error;
       }

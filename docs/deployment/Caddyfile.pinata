@@ -24,7 +24,7 @@
 		redir https://{$CIRCLE_HOST}/c{path} 308
 	}
 
-	@app path /app /c/* /lookup /privacy /offline /health /api/* /_next/* /pinata.css /register-sw.js /sw.js /manifest.webmanifest /icon.png /apple-icon.png /fonts/* /screenshots/*
+	@app path /app /app/* /c/* /lookup /privacy /offline /health /api/* /_next/* /pinata.css /register-sw.js /sw.js /manifest.webmanifest /icon.png /apple-icon.png /fonts/* /screenshots/*
 	handle @app {
 		reverse_proxy app:3000 {
 			header_up X-Forwarded-For {remote_host}

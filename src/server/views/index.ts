@@ -1,5 +1,6 @@
 import type { Tx } from '@/server/db/client';
 import { formatMinor } from '@/lib/money';
+import { payoutReference } from '@/server/ledger';
 import { isStoredPhoto } from '@/server/photos';
 import { birthdayLabel, countdownLabel, daysUntil, humanDate, zoneDay } from '@/lib/dates';
 import { isRequestLive } from '@/server/lifecycle';
@@ -103,7 +104,71 @@ export interface FriendItemView {
     status: string;
     iAmBuyer: boolean;
     contributors: number;
+    /** Pledged (promised + marked paid + settled) across all contributions. Friends
+     * coordinate around this; the owner never receives this projection at all. */
+    pledged: string;
+    pledgedMinor: number;
+    /** The viewer's own pledge, or null. Rendered only to the pledger themselves:
+     * seeing your own amount confirm is what makes a chip tap feel answered. */
+    myContribution: {
+      amount: string;
+      amountMinor: number;
+      status: 'promised' | 'marked_paid' | 'settled';
+      reference: string;
+    } | null;
+    /** The buyer's bank details, only when the viewer pledged AND the buyer switched
+     * sharing on (or the viewer is the buyer). Never present for the owner: their
+     * projection has no pool object in the first place. */
+    payout: {
+      accountHolder: string;
+      bankName: string;
+      accountNumber: string;
+      branchCode: string;
+      accountType: string | null;
+      referencePrefix: string | null;
+      shareConsent: boolean;
+    } | null;
+    /** Buyer-only tally: one row per pledger with what they owe, what they paid,
+     * and the reference they must use. Friends who are not the buyer get []. */
+    tally: {
+      userId: string;
+      displayName: string;
+      amount: string;
+      amountMinor: number;
+      status: 'promised' | 'marked_paid' | 'settled';
+      reference: string;
+    }[];
   } | null;
+}
+
+/**
+ * The copy-paste settlement summary: bank details, then one line per pledger
+ * with what they owe and the reference to use. Built only from data the
+ * viewer was already allowed to see — the route gates the page itself.
+ */
+export function payoutShareText(itemTitle: string, pool: NonNullable<FriendItemView['pool']>): string {
+  const lines = [
+    `Piñata pool: ${itemTitle}`,
+    `Target: ${pool.target}`,
+    '',
+    'Pay to:',
+    `${pool.payout!.accountHolder}`,
+    `${pool.payout!.bankName}`,
+    `Account: ${pool.payout!.accountNumber}`,
+    `Branch: ${pool.payout!.branchCode}`,
+    ...(pool.payout!.accountType ? [`Account type: ${pool.payout!.accountType}`] : []),
+    '',
+    'Your share:',
+  ];
+  for (const row of pool.tally) {
+    lines.push(`- ${row.displayName}: ${row.amount} (ref ${row.reference})${row.status === 'promised' ? '' : ' — paid ✓'}`);
+  }
+  if (pool.tally.length === 0 && pool.myContribution) {
+    const mine = pool.myContribution;
+    lines.push(`- You: ${mine.amount} (ref ${mine.reference})${mine.status === 'promised' ? '' : ' — paid ✓'}`);
+  }
+  lines.push('', 'Send the money outside Piñata, then mark your pledge paid on the gift page.');
+  return lines.join('\n');
 }
 
 export interface FriendCircleView extends CircleDates {
@@ -170,7 +235,14 @@ export async function friendCircleView(tx: Tx, circleId: string, viewerUserId: s
         orderBy: { createdAt: 'asc' },
         include: {
           claims: true,
-          pools: { include: { contributions: true } },
+          pools: {
+            include: {
+              // `select`, not a bare include: users.phone_e164 / users.bsuid are
+              // revoked from the app roles (001_roles.sql); a bare include raises.
+              contributions: { include: { user: { select: { displayName: true } } } },
+              payout: true,
+            },
+          },
         },
       },
       owner: { select: { attributes: { orderBy: { kind: 'asc' } } } },
@@ -190,6 +262,17 @@ export async function friendCircleView(tx: Tx, circleId: string, viewerUserId: s
       const settledMinor = pool === null
         ? 0
         : pool.contributions.reduce((sum, c) => sum + (c.status === 'settled' ? c.amountMinor : 0), 0);
+      const pledgedMinor = pool === null
+        ? 0
+        : pool.contributions.reduce((sum, c) => sum + c.amountMinor, 0);
+      const iAmBuyer = pool !== null && pool.buyerUserId === viewerUserId;
+      // RLS already limited pool_payouts rows to what this role may read (buyer's
+      // own row, or a shared row for a pledger); the checks below narrow further
+      // so the render never depends on getting the policy exactly right.
+      const payoutRow = pool?.payout ?? null;
+      const myRow = pool?.contributions.find((c) => c.userId === viewerUserId) ?? null;
+      const payoutVisible = payoutRow !== null
+        && (iAmBuyer || (payoutRow.shareConsent && myRow !== null));
       return {
         id: item.id,
         title: item.title,
@@ -217,8 +300,33 @@ export async function friendCircleView(tx: Tx, circleId: string, viewerUserId: s
                 settledMinor,
                 currency: pool.currency,
                 status: pool.status,
-                iAmBuyer: pool.buyerUserId === viewerUserId,
+                iAmBuyer,
                 contributors: pool.contributions.length,
+                pledged: formatMinor(pledgedMinor, pool.currency),
+                pledgedMinor,
+                myContribution: myRow === null ? null : {
+                  amount: formatMinor(myRow.amountMinor, pool.currency),
+                  amountMinor: myRow.amountMinor,
+                  status: myRow.status,
+                  reference: payoutReference(myRow.id, payoutRow?.referencePrefix ?? null),
+                },
+                payout: !payoutVisible || payoutRow === null ? null : {
+                  accountHolder: payoutRow.accountHolder,
+                  bankName: payoutRow.bankName,
+                  accountNumber: payoutRow.accountNumber,
+                  branchCode: payoutRow.branchCode,
+                  accountType: payoutRow.accountType,
+                  referencePrefix: payoutRow.referencePrefix,
+                  shareConsent: payoutRow.shareConsent,
+                },
+                tally: !iAmBuyer ? [] : pool.contributions.map((c) => ({
+                  userId: c.userId,
+                  displayName: c.user.displayName,
+                  amount: formatMinor(c.amountMinor, pool.currency),
+                  amountMinor: c.amountMinor,
+                  status: c.status,
+                  reference: payoutReference(c.id, payoutRow?.referencePrefix ?? null),
+                })),
               },
       };
     }),

@@ -1,4 +1,4 @@
-import { AmountField, Badge, Button, Cta, ItemPhoto, Meter, Money, Notice, PhotoUploadForm, Panel, Screen } from '@/components/ui';
+import { AmountField, Badge, Button, Cta, Field, ItemPhoto, Meter, Money, Notice, PhotoUploadForm, Panel, Screen } from '@/components/ui';
 import type { CircleContext, NavItem } from '@/components/ui';
 import { itemStatus, poolPercent, remainingMinor } from '@/components/status';
 import { formatMinor, minorToInput } from '@/lib/money';
@@ -159,8 +159,19 @@ export function ItemDetailScreen({
                 <Meter settled={pool.settled} target={pool.target} percent={poolPercent(pool)} />
                 <div className="pn-summary">
                   <p className="pn-summary-figure">{formatMinor(left, pool.currency)}</p>
-                  <p>to go · <Money>{pool.settled}</Money> settled of <Money>{pool.target}</Money> · {pool.contributors} {pool.contributors === 1 ? 'contribution' : 'contributions'} recorded</p>
+                  <p>to go · <Money>{pool.pledged}</Money> pledged of <Money>{pool.target}</Money> · <Money>{pool.settled}</Money> settled · {pool.contributors} {pool.contributors === 1 ? 'contribution' : 'contributions'} recorded</p>
                 </div>
+
+                {pool.myContribution !== null && (
+                  <section className="pn-item pn-stack pn-stack-sm" aria-labelledby="item-own-pledge-heading">
+                    <h3 id="item-own-pledge-heading">Your pledge</h3>
+                    <p><Money>{pool.myContribution.amount}</Money> · {pool.myContribution.status === 'promised' ? 'pledged, not yet paid' : 'marked paid'}</p>
+                    <p className="pn-small pn-muted">Use this reference when you pay: {pool.myContribution.reference}</p>
+                    {pool.payout !== null && (pool.iAmBuyer || pool.payout.shareConsent) && (
+                      <Cta href={`${itemPath}/pay`}>Payment details and share</Cta>
+                    )}
+                  </section>
+                )}
 
                 {isActive && pool.status === 'open' && (
                   <div className="pn-stack">
@@ -203,7 +214,7 @@ export function ItemDetailScreen({
 
                 <section className="pn-item pn-stack" aria-labelledby="item-payment-heading">
                   <h3 id="item-payment-heading">Your payment</h3>
-                  <p className="pn-small pn-muted">Your own pledge and payment status are not shown here. Settled is not the same as marked paid.</p>
+                  <p className="pn-small pn-muted">Settled is not the same as marked paid: settled counts money the buyer confirmed after purchase.</p>
                   <p className="pn-small">{canMarkPaid
                     ? 'Mark paid only once you pledged and sent that money outside Piñata. Piñata never takes or moves money.'
                     : 'Payment updates are paused for this pool. Existing records are unchanged.'}</p>
@@ -232,6 +243,59 @@ export function ItemDetailScreen({
                     </form>
                   )}
                 </section>
+
+                {pool.iAmBuyer && isActive && (pool.status === 'open' || pool.status === 'funded') && (
+                  <section className="pn-item pn-stack" aria-labelledby="item-payout-heading">
+                    <h3 id="item-payout-heading">Where pledgers pay you</h3>
+                    <p className="pn-small pn-muted">Your bank details, so friends can settle by hand. They stay hidden until someone pledges and you switch sharing on.</p>
+                    <form action={itemPath} method="post" className="pn-stack">
+                      <input type="hidden" name="intent" value="save_payout" />
+                      <input type="hidden" name="poolId" value={pool.id} />
+                      <Field label="Account holder" name="accountHolder" id="payout-holder" type="text" autoComplete="off" required maxLength={80} defaultValue={pool.payout?.accountHolder} />
+                      <Field label="Bank" name="bankName" id="payout-bank" type="text" autoComplete="off" required maxLength={80} defaultValue={pool.payout?.bankName} />
+                      <Field label="Account number" name="accountNumber" id="payout-account" type="text" inputMode="numeric" autoComplete="off" required maxLength={24} defaultValue={pool.payout?.accountNumber} hint="Digits only, 6–20 of them." />
+                      <Field label="Branch code" name="branchCode" id="payout-branch" type="text" inputMode="numeric" autoComplete="off" required maxLength={9} defaultValue={pool.payout?.branchCode} hint="Six digits." />
+                      <Field label="Account type (optional)" name="accountType" id="payout-type" type="text" autoComplete="off" maxLength={20} placeholder="cheque, savings or transmission" defaultValue={pool.payout?.accountType ?? undefined} />
+                      <Field label="Reference prefix (optional)" name="referencePrefix" id="payout-prefix" type="text" autoComplete="off" maxLength={12} defaultValue={pool.payout?.referencePrefix ?? undefined} hint="Letters and digits, printed before each payer reference." />
+                      <div className="pn-field">
+                        <label htmlFor="payout-share">
+                          <input className="pn-input" id="payout-share" name="shareConsent" type="checkbox" value="on" defaultChecked={pool.payout?.shareConsent ?? false} />
+                          {' '}Share these details with anyone who pledged
+                        </label>
+                      </div>
+                      <div className="pn-actions">
+                        <Button type="submit" variant="secondary">Save payment details</Button>
+                      </div>
+                    </form>
+                    {pool.payout !== null && (
+                      <Cta href={`${itemPath}/pay`}>Payment details and share</Cta>
+                    )}
+                    {pool.payout !== null && !pool.payout.shareConsent && (
+                      <p className="pn-small pn-muted">Payment details stay hidden until you switch sharing on.</p>
+                    )}
+                    {pool.tally.length > 0 && (
+                      <section className="pn-stack pn-stack-sm" aria-labelledby="item-tally-heading">
+                        <h3 id="item-tally-heading">Who pledged what</h3>
+                        <ul className="pn-list">
+                          {pool.tally.map((row) => (
+                            <li key={row.userId} className="pn-item pn-stack pn-stack-sm">
+                              <p><strong>{row.displayName}</strong> · <Money>{row.amount}</Money> · ref {row.reference}</p>
+                              <p className="pn-small pn-muted">{row.status === 'promised' ? 'Not yet paid' : 'Marked paid'}</p>
+                              {row.status === 'promised' && (
+                                <form action={itemPath} method="post" className="pn-actions">
+                                  <input type="hidden" name="intent" value="mark_paid" />
+                                  <input type="hidden" name="poolId" value={pool.id} />
+                                  <input type="hidden" name="userId" value={row.userId} />
+                                  <Button type="submit" variant="secondary">Mark {row.displayName} paid</Button>
+                                </form>
+                              )}
+                            </li>
+                          ))}
+                        </ul>
+                      </section>
+                    )}
+                  </section>
+                )}
               </section>
             </Panel>
           )}
