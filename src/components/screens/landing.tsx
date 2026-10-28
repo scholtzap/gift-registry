@@ -1,7 +1,7 @@
 import { Badge, Cta, Panel, Screen } from '@/components/ui';
 
 // Public projection: authored copy only; no circle, actor, or card data.
-export function LandingScreen() {
+export function LandingScreen({ hubHref = '/app' }: { hubHref?: string } = {}) {
   return (
     <Screen>
       <div className="pn-hero pn-grid">
@@ -19,7 +19,8 @@ export function LandingScreen() {
             you find out when they hand it over.
           </p>
           <div className="pn-actions">
-            <a className="pn-button pn-button-primary" href="/app">Open Piñata</a>
+            <a className="pn-button pn-button-primary" href={hubHref}>Start your circle</a>
+            <Cta href={`${hubHref}#open-my-circle`}>Open my circle</Cta>
             <Cta href="#how-it-works">How it works</Cta>
           </div>
         </div>

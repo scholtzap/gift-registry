@@ -40,9 +40,9 @@ describe('the public Piñata landing', () => {
     const anchors = [...html.matchAll(/<a\b[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/g)];
     const appLinks = anchors.filter((anchor) => anchor[1] === '/app');
     expect(appLinks).toHaveLength(1);
-    expect(textOf(appLinks[0]![2]!)).toBe('Open Piñata');
+    expect(textOf(appLinks[0]![2]!)).toBe('Start your circle');
     expect(appLinks[0]![0]).toContain('pn-button-primary');
-    expect(anchors.map((anchor) => anchor[1])).toEqual(['#pn-content', '/', '/app', '#how-it-works', '/privacy']);
+    expect(anchors.map((anchor) => anchor[1])).toEqual(['#pn-content', '/', '/app', '/app#open-my-circle', '#how-it-works', '/privacy']);
     expect(html).not.toMatch(/(?:href|src)="(?:https?:|\/c\/|\/cards?\/|\/api\/)/);
   });
 
@@ -93,7 +93,8 @@ describe('the public Piñata landing', () => {
     const page = sourceAt('../../src/app/page.tsx');
     expect(importsOf(screen)).toEqual(['@/components/ui']);
     expect(importsOf(page)).toEqual(['@/components/screens/landing']);
-    for (const source of [screen, page]) {
+    expect(page).toContain('PINATA_BASE_PATH');
+    for (const source of [screen]) {
       expect(source).not.toMatch(/\b(?:cookies|headers|fetch|withActor|readSession|prisma|process)\b|import\s*\(|require\s*\(/);
       expect(source).not.toMatch(/['"]use client['"]|\basync\b/);
     }

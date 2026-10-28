@@ -1,7 +1,7 @@
 ---
 title: "UX CR-01: one entry door and a self-serve create-circle (registration) flow"
 type: plan
-status: ready
+status: done
 priority: P0
 rank: 3
 updated: 2026-10-28

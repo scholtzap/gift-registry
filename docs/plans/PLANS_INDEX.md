@@ -8,13 +8,13 @@
 python scripts/ops/refresh_plans_index.py --write
 ```
 
-Generated: 2026-10-28 14:07 · repo: `qoder-gifts-registry-finish`
+Generated: 2026-10-28 14:16 · repo: `qoder-gifts-registry-finish`
 
 ## P0
 
 | Rank | Title | Status | Path | Next |
 |------|-------|--------|------|------|
-| 3 | UX CR-01: one entry door and a self-serve create-circle (registration) flow | ready | `ux-entry-and-registration.md` |  |
+| 3 | UX CR-01: one entry door and a self-serve create-circle (registration) flow | done | `ux-entry-and-registration.md` |  |
 | 3 | UX CR-02: put the lookup/proxy creation flow inside the app shell | done | `ux-lookup-shell.md` |  |
 
 ## P1
