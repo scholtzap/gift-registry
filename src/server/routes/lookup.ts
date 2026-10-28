@@ -5,6 +5,11 @@ import { hashPhone, normalizeE164 } from "@/server/auth/phone-hash";
 import { generateShareSlug } from "@/server/auth/slug";
 import { checkGateThrottle } from "@/server/auth/throttle";
 import { issueSession, sessionCookie } from "@/server/auth/session";
+import { createElement } from "react";
+import { createRequire } from "node:module";
+import { LookupSearchScreen, ProxyOfferScreen } from "@/components/screens/lookup";
+import { page, escapeHtml } from "@/server/routes/shell";
+const { renderToStaticMarkup } = createRequire(import.meta.url)("react-dom/server") as typeof import("react-dom/server");
 
 /**
  * RN-B (create-only, per the owner's Wave 0 answer to RN-D G1) + the RN-C
@@ -36,40 +41,9 @@ function headers(extra: Record<string, string> = {}): Record<string, string> {
   };
 }
 
-const HTML_ESCAPES: Record<string, string> = {
-  "&": "&amp;",
-  "<": "&lt;",
-  ">": "&gt;",
-  '"': "&quot;",
-  "'": "&#39;",
-};
-
-function escapeHtml(value: string): string {
-  return value.replace(/[&<>"']/g, (c) => HTML_ESCAPES[c] ?? c);
-}
-
 /** The single lookup answer. Static by design: identical bytes for every input. */
 function offerBody(): string {
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="robots" content="noindex, nofollow"><title>Start a gift circle</title></head>
-<body><main>
-<h1>Start a gift circle for someone</h1>
-<p>Gift circles here begin with a link shared in your group chat. If the person
-you are buying for does not have a circle yet, you can start a once-off one for
-them: they are never notified, and no account is created for them.</p>
-<form method="post" action="/lookup">
-<input type="hidden" name="intent" value="create">
-<label>Your name <input name="creatorName" maxlength="80" required></label>
-<label>Your number (international form) <input name="creatorPhone" required></label>
-<label>Their number (international form) <input name="recipientPhone" required></label>
-<label>Their name, as the group knows them <input name="recipientLabel" maxlength="80" required></label>
-<label>Occasion <input name="occasion" maxlength="80" required></label>
-<label>The day <input type="date" name="eventDate" required></label>
-<label>The gift <input name="itemTitle" maxlength="120" required></label>
-<button type="submit">Create the circle</button>
-</form>
-</main></body></html>`;
+  return page("Start a gift circle", renderToStaticMarkup(createElement(ProxyOfferScreen)));
 }
 
 function offer(extra: Record<string, string> = {}): Response {
@@ -90,17 +64,7 @@ async function readForm(request: Request): Promise<FormData> {
  * the POST body that follows, never in a URL.
  */
 export function handleLookupGet(): Response {
-  const body = `<!doctype html><html lang="en"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="robots" content="noindex, nofollow"><title>Find a gift circle</title></head>
-<body><main>
-<h1>Buying a gift for someone?</h1>
-<p>Type their number and we will help you start. Nothing about anyone is shown here.</p>
-<form method="post" action="/lookup">
-<label>Their WhatsApp number (international form) <input name="phone" type="tel" autocomplete="tel" required></label>
-<button type="submit">Continue</button>
-</form>
-</main></body></html>`;
+  const body = page("Find a gift circle", renderToStaticMarkup(createElement(LookupSearchScreen)));
   return new Response(body, {
     status: 200,
     headers: headers({ "Content-Type": "text/html; charset=utf-8" }),

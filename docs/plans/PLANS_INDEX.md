@@ -8,14 +8,14 @@
 python scripts/ops/refresh_plans_index.py --write
 ```
 
-Generated: 2026-10-28 13:51 · repo: `qoder-gifts-registry-finish`
+Generated: 2026-10-28 14:07 · repo: `qoder-gifts-registry-finish`
 
 ## P0
 
 | Rank | Title | Status | Path | Next |
 |------|-------|--------|------|------|
 | 3 | UX CR-01: one entry door and a self-serve create-circle (registration) flow | ready | `ux-entry-and-registration.md` |  |
-| 3 | UX CR-02: put the lookup/proxy creation flow inside the app shell | ready | `ux-lookup-shell.md` |  |
+| 3 | UX CR-02: put the lookup/proxy creation flow inside the app shell | done | `ux-lookup-shell.md` |  |
 
 ## P1
 
@@ -31,8 +31,8 @@ Generated: 2026-10-28 13:51 · repo: `qoder-gifts-registry-finish`
 | 5 | WhatsApp task-bot surface — six bounded tasks, fixed menu, no free chat | ready | `whatsapp-task-bot-surface.md` |  |
 | 6 | Day-3 nine follow-ups (throttle, creation, pun, reveal, dispatch, landing) | implementing | `day-3-nine-followups.md` |  |
 | 6 | UX CR-06: align site/guide/app copy with what is actually live | ready | `ux-copy-alignment.md` |  |
-| 6 | UX CR-04: join-gate error recovery | ready | `ux-join-recovery.md` |  |
-| 6 | UX CR-03: fix or remove the broken screenshot strip | ready | `ux-landing-strip-assets.md` |  |
+| 6 | UX CR-04: join-gate error recovery | done | `ux-join-recovery.md` |  |
+| 6 | UX CR-03: fix or remove the broken screenshot strip | done | `ux-landing-strip-assets.md` |  |
 | 12 | Registry-network tracks — order, dependencies and what can run in parallel | ready | `rn-tracks.md` |  |
 | 13 | RN-I — submission-window triage: what of the registry network fits before 2026-11-04 | ready | `rn-i-submission-window-triage.md` |  |
 | 14 | RN-A - proxy registry data model and authority rules | ready | `rn-a-proxy-registry-spec.md` | - **Pepper: distinct.** `recipient_phone_e164_hash` uses a separate `PHONE_HASH_PEPPER`, not |
