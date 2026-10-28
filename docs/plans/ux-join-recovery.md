@@ -1,7 +1,7 @@
 ---
 title: "UX CR-04: join-gate error recovery"
 type: plan
-status: ready
+status: done
 priority: P1
 rank: 6
 updated: 2026-10-28

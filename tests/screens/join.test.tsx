@@ -85,3 +85,31 @@ describe('JoinScreen public render boundary', () => {
     expect(body).not.toMatch(/<input\b[^>]*type="hidden"/i);
   });
 });
+
+describe('JoinScreen rejection recovery (CR-UX-04)', () => {
+  it('keeps typed name/number, shows what to check, and makes Ask to be added primary', () => {
+    const body = render({ notice: 'We could not let you in with that number.', initialName: 'Typed Friend', initialPhone: '+999000000001', rejected: true });
+    expect(body).toContain('What to check');
+    expect(body).toContain('the number the organiser invited');
+    expect(body).toContain('full international form');
+    expect(body).toContain('value="Typed Friend"');
+    expect(body).toContain('value="+999000000001"');
+    // Ask to be added is the primary action on rejection; Continue drops to secondary.
+    const ask = body.match(/<button\b[^>]*name="intent"[^>]*>[\s\S]*?<\/button>/i)?.[0] ?? '';
+    expect(ask).toContain('pn-button-primary');
+    expect(ask).toContain('Ask to be added');
+    const cont = body.match(/<button\b[^>]*>[^<]*Continue<\/button>/i)?.[0] ?? '';
+    expect(cont).toContain('pn-button-secondary');
+    expect(body.indexOf('name="intent"')).toBeLessThan(body.indexOf('>Continue<'));
+    // Generic privacy wording is unchanged.
+    expect(body).toContain('We check the invite list. This does not verify that you control the number.');
+    expect(body).toContain('We could not let you in with that number.');
+  });
+
+  it('without rejection, Continue stays primary and no recovery guidance shows', () => {
+    const body = render();
+    expect(body).not.toContain('What to check');
+    const cont = body.match(/<button\b[^>]*>[^<]*Continue<\/button>/i)?.[0] ?? '';
+    expect(cont).toContain('pn-button-primary');
+  });
+});

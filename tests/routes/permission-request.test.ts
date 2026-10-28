@@ -52,7 +52,8 @@ const REQUESTER = num(61);
 
 it('records a request, answers with the ordinary gate no, and does not let the requester in', async () => {
   const requesterPhone = REQUESTER;
-  const denied = await post('', { name: 'Stranger Friend', phone: num(62) });
+  // Same typed input for both, so byte-identity still proves no oracle (CR-UX-04 retains typed values).
+  const denied = await post('', { name: 'Stranger Friend', phone: requesterPhone });
   const asked = await post('', { intent: 'request_access', name: 'Stranger Friend', phone: requesterPhone });
   expect(asked.status).toBe(denied.status);
   expect(await asked.text()).toBe(await denied.text());

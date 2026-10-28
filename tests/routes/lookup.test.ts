@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, expect, it } from 'vitest';
 import { createDb, type Db } from '@/server/db/client';
-import { handleLookupPost } from '@/server/routes/lookup';
+import { handleLookupGet, handleLookupPost } from '@/server/routes/lookup';
 import { handleCircleGet } from '@/server/routes/circle';
 import { seedCircle, type CircleFixture } from '../leak/fixtures';
 
@@ -109,4 +109,24 @@ it('refuses an 11th proxy circle from one creator in 24h with the uniform offer 
   const eleventh = await post(createFields(90, creator));
   expect(eleventh.status).toBe(200);
   expect(eleventh.headers.get('Location')).toBeNull();
+});
+
+it('renders /lookup and the proxy offer inside the app shell with the explainer above the first field (CR-UX-02)', async () => {
+  const get = handleLookupGet();
+  expect(get.status).toBe(200);
+  const getBody = await get.text();
+  expect(getBody).toContain('/pinata.css');
+  expect(getBody).toContain('register-sw.js');
+  expect(getBody).toContain('Buying a gift for someone?');
+  expect(getBody).toContain('You are starting a circle for someone else.');
+
+  const offerRes = await post({ phone: num(46) });
+  expect(offerRes.status).toBe(200);
+  const body = await offerRes.text();
+  expect(body).toContain('/pinata.css');
+  expect(body).toContain('Start a gift circle for someone');
+  const explainer = 'You are starting a circle for someone else. They never need an account; you will get a link to share with the group, and the plan stays hidden from them.';
+  expect(body).toContain(explainer);
+  expect(body.indexOf(explainer)).toBeLessThan(body.indexOf('name="creatorName"'));
+  expect(body).not.toContain('/c/');
 });

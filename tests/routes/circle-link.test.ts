@@ -286,8 +286,12 @@ describe('the allowlist gate that mints a session', () => {
     const body = await res.text();
     expect(body).toContain('could not let you in');
     // One message for every kind of no, so this form cannot be used to walk a phone list.
-    expect(body).not.toContain('Not Invited');
-    expect(body).not.toContain(phone);
+    // CR-UX-04 contract change: the rejection re-renders only what this caller just
+    // typed (value attributes on their own form, private/no-store) so Ask to be
+    // added needs no retyping; the verdict wording stays generic.
+    expect(body).toContain('value="Not Invited"');
+    expect(body).toContain(`value="${phone}"`);
+    expect(body).toContain('What to check');
     expect(await db.prisma.user.count()).toBe(before);
   });
 

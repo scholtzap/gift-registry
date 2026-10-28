@@ -13,8 +13,9 @@ export const metadata: Metadata = {
 const CONTACT = 'https://gifts.scholtz.work/#contact';
 
 export default function PrivacyPage() {
+  const base = process.env.PINATA_BASE_PATH ?? '';
   return (
-    <Screen title="Privacy notice" eyebrow="Last updated 27 October 2026" backHref="/" backLabel="Piñata home">
+    <Screen title="Privacy notice" eyebrow="Last updated 27 October 2026" backHref={`${base}/app`} backLabel="Piñata home" homeHref={`${base}/app`} privacyHref={`${base}/privacy`}>
       <div className="pn-stack pn-measure">
         <Panel className="pn-stack">
           <p>
