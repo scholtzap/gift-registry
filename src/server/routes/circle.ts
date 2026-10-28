@@ -91,6 +91,7 @@ function notFound(): Response {
  * matches the Next `viewport` export so the safe-area padding in `/pinata.css` behaves the same
  * in the circle as it does on the landing page.
  */
+const ASSET_BASE = process.env.PINATA_BASE_PATH ?? '';
 function page(title: string, body: string): string {
   return `<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -101,11 +102,11 @@ function page(title: string, body: string): string {
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Piñata">
-<link rel="icon" href="/icon.png">
-<link rel="apple-touch-icon" href="/apple-icon.png">
-<link rel="manifest" href="/manifest.webmanifest">
-<link rel="stylesheet" href="/pinata.css">
-<script src="/register-sw.js" defer></script>
+<link rel="icon" href="${ASSET_BASE}/icon.png">
+<link rel="apple-touch-icon" href="${ASSET_BASE}/apple-icon.png">
+<link rel="manifest" href="${ASSET_BASE}/manifest.webmanifest">
+<link rel="stylesheet" href="${ASSET_BASE}/pinata.css">
+<script src="${ASSET_BASE}/register-sw.js" defer></script>
 <title>${escapeHtml(title)} · Piñata</title></head>
 <body>
 ${body}</body></html>`;

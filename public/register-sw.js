@@ -7,7 +7,8 @@
  */
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(() => {
+    const base = new URL(document.currentScript.src).pathname.replace(/register-sw\.js$/, '');
+    navigator.serviceWorker.register(`${base}sw.js`, { scope: base || '/' }).catch(() => {
       // Nothing to report. Registration is refused on an insecure origin and while the previous
       // document is still unloading; either way the app is fully usable over the network, and
       // every private surface is network-only whether or not this worker is installed.
