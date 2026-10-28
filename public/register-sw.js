@@ -6,8 +6,9 @@
  * Loaded with `defer` so it never competes with the paint of a page someone opened from WhatsApp.
  */
 if ('serviceWorker' in navigator) {
+  // Capture at evaluation time: document.currentScript is null inside callbacks.
+  const base = new URL(document.currentScript.src).pathname.replace(/register-sw\.js$/, '');
   window.addEventListener('load', () => {
-    const base = new URL(document.currentScript.src).pathname.replace(/register-sw\.js$/, '');
     navigator.serviceWorker.register(`${base}sw.js`, { scope: base || '/' }).catch(() => {
       // Nothing to report. Registration is refused on an insecure origin and while the previous
       // document is still unloading; either way the app is fully usable over the network, and

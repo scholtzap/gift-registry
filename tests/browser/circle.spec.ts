@@ -26,8 +26,8 @@ async function authenticate(context: BrowserContext, role: 'owner' | 'friend', u
 
 test('landing first click reaches a real invite entry page', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('link', { name: 'Open Piñata', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Open your circle', exact: true })).toBeVisible();
+  await page.getByRole('link', { name: 'Start your circle', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Create my circle', exact: true })).toBeVisible();
 });
 
 test('mounted webhook preserves the challenge and refuses forged raw bodies', async ({ request }) => {
