@@ -1,4 +1,5 @@
 import { createElement, type ReactNode } from "react";
+import { page } from "@/server/routes/shell";
 import { createRequire } from 'node:module';
 import { z } from 'zod';
 import type { Actor, Db } from "@/server/db/client";
@@ -57,18 +58,6 @@ function headers(extra: Record<string, string> = {}): Record<string, string> {
   return { 'Cache-Control': NO_STORE, 'Referrer-Policy': 'same-origin', 'X-Content-Type-Options': 'nosniff', 'X-Robots-Tag': 'noindex, nofollow', ...extra };
 }
 
-const HTML_ESCAPES: Record<string, string> = {
-  "&": "&amp;",
-  "<": "&lt;",
-  ">": "&gt;",
-  '"': "&quot;",
-  "'": "&#39;",
-};
-
-function escapeHtml(value: string): string {
-  return value.replace(/[&<>"']/g, (c) => HTML_ESCAPES[c] ?? c);
-}
-
 function notFound(): Response {
   // Same body, same status, same headers for every kind of no.
   return new Response(page("Not found", "<p>That circle link is not valid.</p>"), {
@@ -91,31 +80,15 @@ function notFound(): Response {
  * matches the Next `viewport` export so the safe-area padding in `/pinata.css` behaves the same
  * in the circle as it does on the landing page.
  */
-const ASSET_BASE = process.env.PINATA_BASE_PATH ?? '';
-function page(title: string, body: string): string {
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="robots" content="noindex, nofollow">
-<meta name="theme-color" content="#ffffff">
-<meta name="application-name" content="Piñata">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="Piñata">
-<link rel="icon" href="${ASSET_BASE}/icon.png">
-<link rel="apple-touch-icon" href="${ASSET_BASE}/apple-icon.png">
-<link rel="manifest" href="${ASSET_BASE}/manifest.webmanifest">
-<link rel="stylesheet" href="${ASSET_BASE}/pinata.css">
-<script src="${ASSET_BASE}/register-sw.js" defer></script>
-<title>${escapeHtml(title)} · Piñata</title></head>
-<body>
-${body}</body></html>`;
-}
-
-function gateForm(notice?: string): Response {
-  return new Response(page('Join this circle', renderToStaticMarkup(createElement(JoinScreen, { notice }))), {
+function gateForm(notice?: string, retry?: { initialName?: string; initialPhone?: string; rejected?: boolean }): Response {
+  return new Response(page('Join this circle', renderToStaticMarkup(createElement(JoinScreen, { basePath: process.env.PINATA_BASE_PATH ?? '', notice, ...retry }))), {
     status: 200, headers: headers({ 'Content-Type': 'text/html; charset=utf-8' }),
   });
+}
+
+const REJECTED_NOTICE = "We could not let you in with that number.";
+function rejectedForm(name: string, phone: string): Response {
+  return gateForm(REJECTED_NOTICE, { initialName: name, initialPhone: phone, rejected: true });
 }
 
 function renderOwner(view: NonNullable<Awaited<ReturnType<typeof ownerCircleView>>>, basePath: string, date?: { notice?: string; eventDateDraft?: string | null }): Response {
@@ -657,7 +630,7 @@ async function circlePost(db: Db, request: Request, slug: string, deps: CircleRo
         });
       }
     }
-    return gateForm("We could not let you in with that number.");
+    return rejectedForm(name, phone);
   }
 
   // Authorise before writing anything. `removed` is not an invite, and a
@@ -670,7 +643,7 @@ async function circlePost(db: Db, request: Request, slug: string, deps: CircleRo
   if (!invited || invited.status === "removed" || invited.requesterName !== null) {
     // One message for every kind of no, so this form cannot be used to walk a phone list.
     console.warn("gate_denied", { circleId: circle.id });
-    return gateForm("We could not let you in with that number.");
+    return rejectedForm(name, phone);
   }
 
   const session = await db.prisma.$transaction(async (tx) => {

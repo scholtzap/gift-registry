@@ -54,6 +54,15 @@ describe('Piñata shared public render', () => {
     expect(html).toContain('pn-button-quiet');
   });
 
+  it('points brand and privacy at the app surface under its base path (CR-UX-05)', () => {
+    const html = renderToStaticMarkup(
+      <Screen homeHref="/app/app" privacyHref="/app/privacy"><Panel>Hi</Panel></Screen>,
+    );
+    expect(html).toMatch(/<a[^>]*href="\/app\/app"[^>]*aria-label="Piñata home"/);
+    expect(html).toMatch(/<a[^>]*href="\/app\/privacy"[^>]*>Privacy notice<\/a>/);
+    expect(html).not.toMatch(/<a[^>]*href="\/"[^>]*aria-label="Piñata home"/);
+  });
+
   it('supports untitled screens and ReactNode labels without duplicate input IDs', () => {
     const html = renderToStaticMarkup(
       <Screen>

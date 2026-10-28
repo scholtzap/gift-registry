@@ -1,4 +1,5 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync, statSync } from 'node:fs';
+import { join } from 'node:path';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import ts from 'typescript';
@@ -38,24 +39,31 @@ describe('the public Piñata landing', () => {
     const html = renderLanding();
     const anchors = [...html.matchAll(/<a\b[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/g)];
     const appLinks = anchors.filter((anchor) => anchor[1] === '/app');
-    expect(appLinks).toHaveLength(1);
-    expect(textOf(appLinks[0]![2]!)).toBe('Open Piñata');
-    expect(appLinks[0]![0]).toContain('pn-button-primary');
-    expect(anchors.map((anchor) => anchor[1])).toEqual(['#pn-content', '/', '/app', '#how-it-works', '/privacy']);
+    // Brand/Home plus the primary CTA both point at the entry hub (CR-UX-05).
+    expect(appLinks).toHaveLength(2);
+    const primary = appLinks.find((anchor) => anchor[0].includes('pn-button-primary'));
+    expect(primary).toBeDefined();
+    expect(textOf(primary![2]!)).toBe('Start your circle');
+    expect(anchors.map((anchor) => anchor[1])).toEqual(['#pn-content', '/app', '/app', '/app#open-my-circle', '/privacy']);
     expect(html).not.toMatch(/(?:href|src)="(?:https?:|\/c\/|\/cards?\/|\/api\/)/);
   });
 
-  it('explains the voice, confirmation, friends, and human-share story in order', () => {
-    const text = textOf(renderLanding());
+  it('does not repeat the site how-it-works telling (CR-UX-06)', () => {
+    const html = renderLanding();
+    const text = textOf(html);
     expect(text).toContain('Group gifts. Surprise intact.');
-    const steps = ['Say it. Then confirm it.', 'Friends coordinate.', 'Share the card yourself.'];
-    const positions = steps.map((step) => text.indexOf(step));
-    expect(positions.every((position) => position >= 0)).toBe(true);
-    expect(positions).toEqual([...positions].sort((a, b) => a - b));
-    expect(text).toContain('voice note');
+    expect(html).not.toContain('id="how-it-works"');
+    for (const step of ['Say it. Then confirm it.', 'Friends coordinate.', 'Share the card yourself.']) {
+      expect(text).not.toContain(step);
+    }
     expect(text).toContain('WhatsApp group');
-    expect(text).toContain('never sends the card');
     expect(text).toContain('The gift recipient sees their wishlist, not who has claimed or pooled.');
+  });
+
+  it('carries a plain Demo marker only when demo mode is on (CR-UX-06)', () => {
+    expect(textOf(renderLanding())).not.toMatch(/^Demo\b|\bDemo\b/);
+    const demoHtml = renderToStaticMarkup(createElement(LandingScreen as import('react').ComponentType<{ demo?: boolean }>, { demo: true }));
+    expect(textOf(demoHtml)).toContain('Demo');
   });
 
   it('labels its small fictional preview instead of presenting live activity', () => {
@@ -82,7 +90,12 @@ describe('the public Piñata landing', () => {
   it('renders deterministically with no props or actor context', () => {
     expect(LandingScreen.length).toBe(0);
     expect(renderLanding()).toBe(renderLanding());
-    expect(renderToStaticMarkup(createElement(LandingPage))).toBe(renderLanding());
+    vi.stubEnv('DEMO_MODE', 'off');
+    try {
+      expect(renderToStaticMarkup(createElement(LandingPage))).toBe(renderLanding());
+    } finally {
+      vi.unstubAllEnvs();
+    }
     expect(dynamic).toBe('force-static');
     expect(revalidate).toBe(300);
   });
@@ -92,7 +105,8 @@ describe('the public Piñata landing', () => {
     const page = sourceAt('../../src/app/page.tsx');
     expect(importsOf(screen)).toEqual(['@/components/ui']);
     expect(importsOf(page)).toEqual(['@/components/screens/landing']);
-    for (const source of [screen, page]) {
+    expect(page).toContain('PINATA_BASE_PATH');
+    for (const source of [screen]) {
       expect(source).not.toMatch(/\b(?:cookies|headers|fetch|withActor|readSession|prisma|process)\b|import\s*\(|require\s*\(/);
       expect(source).not.toMatch(/['"]use client['"]|\basync\b/);
     }
@@ -102,9 +116,7 @@ describe('the public Piñata landing', () => {
     const html = renderLanding();
     expect(html.match(/<main\b/g)).toHaveLength(1);
     expect(html.match(/<h1\b/g)).toHaveLength(1);
-    expect(html).toContain('<ol');
-    expect(html).toContain('id="how-it-works"');
-    expect(html).toContain('aria-labelledby="landing-story-title"');
+    expect(html).not.toContain('id="how-it-works"');
     expect(html).toMatch(/<img\b[^>]*src="\/icon.png"[^>]*alt=""/);
     expect(html.match(/<img\b/g)).toHaveLength(4);
     for (const shot of ['owner-ledger', 'friend-ledger', 'gift-card']) {
@@ -117,5 +129,25 @@ describe('the public Piñata landing', () => {
     expect(html).toContain('pn-hero');
     expect(html).toContain('pn-card-preview');
     expect(html).not.toMatch(/role="button"|tabindex="[1-9]\d*"|<h[4-6]\b/);
+  });
+});
+
+describe('landing screenshot strip (CR-UX-03)', () => {
+  it('shows no development copy and every rendered image resolves to a real PNG', () => {
+    const html = renderLanding();
+    expect(html).not.toContain('tests/browser');
+    expect(html).not.toContain('screenshots.spec');
+    const srcs = [...html.matchAll(/<img\b[^>]*src="([^"]+)"/g)].map((m) => m[1]!);
+    expect(srcs.length).toBeGreaterThan(0);
+    for (const src of srcs) {
+      const pub = join(process.cwd(), 'public', src);
+      const app = join(process.cwd(), 'src/app', src.replace(/^\//, ''));
+      const file = existsSync(pub) ? pub : app;
+      expect(existsSync(file), `${src} should resolve`).toBe(true);
+      expect(statSync(file).size).toBeGreaterThan(0);
+      if (src.endsWith('.png')) {
+        expect([...readFileSync(file).subarray(0, 4)]).toEqual([0x89, 0x50, 0x4e, 0x47]);
+      }
+    }
   });
 });

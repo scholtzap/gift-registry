@@ -1,7 +1,7 @@
 ---
 title: "UX CR-03: fix or remove the broken screenshot strip"
 type: plan
-status: ready
+status: done
 priority: P1
 rank: 6
 updated: 2026-10-28

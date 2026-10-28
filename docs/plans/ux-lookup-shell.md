@@ -1,7 +1,7 @@
 ---
 title: "UX CR-02: put the lookup/proxy creation flow inside the app shell"
 type: plan
-status: ready
+status: done
 priority: P0
 rank: 3
 updated: 2026-10-28

@@ -98,6 +98,13 @@ it('PUBLIC: renders literal owner wishes and navigation without friend or intake
   expect(html).toMatch(/<button\b[^>]*type="submit"[^>]*>Save the date<\/button>/);
   expect(html).toMatch(/<input\b[^>]*name="eventDate"[^>]*\/>/);
   expect(html).toContain('id="event-date" type="date"');
+  // CR-UX-05: pre-filled with the current date, labelled Party date, and not
+  // required while a date is already set; the hint states the secrecy rule.
+  expect(html).toContain('Party date');
+  expect(html).toContain('value="2026-11-03"');
+  const dateInput = html.match(/<input[^>]*name="eventDate"[^>]*>/)?.[0] ?? '';
+  expect(dateInput).not.toContain('required');
+  expect(html).toContain('Whoever sets it last decides whether it stays secret.');
   expect(html).not.toMatch(/\bhref="#"|<script\b/);
   expect(html).toContain('href="#pn-content"');
   expect(html).toContain('id="pn-content"');
@@ -135,6 +142,8 @@ it('PUBLIC: renders no event date to the owner when a friend wrote it, and keeps
   // The owner can still write the date; the field just carries no value to leak.
   expect(markup).toMatch(/<form\b[^>]*action="\/owner\/moon-picnic\/date"[^>]*method="post"/);
   expect(markup).not.toMatch(/value="2\d{3}-\d{2}-\d{2}"/);
+  const blindInput = markup.match(/<input[^>]*name="eventDate"[^>]*>/)?.[0] ?? '';
+  expect(blindInput).toContain('required=""');
 });
 
 it('PUBLIC: re-renders the rejected draft instead of emptying the field', () => {

@@ -75,6 +75,14 @@ test('step 3: a friend asks, the owner finds it on their own link and lets them 
   await page.goto(seededPath);
   await page.getByLabel('Your name').fill('Demo Asker');
   await page.getByLabel('WhatsApp number').fill(num(31));
+  // Rejection first (CR-UX-04): guidance shows, typed values stay, Ask becomes primary.
+  await page.getByRole('button', { name: 'Continue' }).click();
+  await expect(page.getByText('We could not let you in with that number.')).toBeVisible();
+  await expect(page.getByText('What to check')).toBeVisible();
+  await expect(page.getByLabel('Your name')).toHaveValue('Demo Asker');
+  await expect(page.getByLabel('WhatsApp number')).toHaveValue(num(31));
+  await expect(page.getByRole('button', { name: 'Ask to be added' })).toHaveClass(/pn-button-primary/);
+  // One tap, no retyping, reaches the same generic confirmation.
   await page.getByRole('button', { name: 'Ask to be added' }).click();
   await expect(page.getByText('We could not let you in with that number.')).toBeVisible();
 
