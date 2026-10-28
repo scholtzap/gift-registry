@@ -10,7 +10,7 @@ it('checkpoints voice transcription before parsing and leaves one pending draft 
   for await (const step of intakeSteps({ kind: 'audio', bytes: Buffer.from('fictional-source-audio') }, models, { ffmpegPath: 'fixture-ffmpeg', convert: async () => Buffer.from(silence.wavBase64, 'base64') })) steps.push(step);
   expect(steps.map(step => step.status)).toEqual(['converted', 'transcribed', 'parsed']);
   expect(steps[1]).toMatchObject({ transcript: 'I would like a fictional bicycle lamp.' });
-  expect(steps[2]).toMatchObject({ candidates: [{ index: 0, state: 'pending', title: 'Fictional bicycle lamp', priceMinor: 12500, currency: 'ZAR', canonicalUrl: null }], evidence: [{ model: 'muse-voice-transcribe-1.0', mode: 'demo_fixture' }, { model: 'muse-spark-1.2', mode: 'demo_fixture' }] });
+  expect(steps[2]).toMatchObject({ candidates: [{ index: 0, state: 'pending', title: 'Fictional bicycle lamp', priceMinor: 12500, currency: 'USD', canonicalUrl: null }], evidence: [{ model: 'muse-voice-transcribe-1.0', mode: 'demo_fixture' }, { model: 'muse-spark-1.2', mode: 'demo_fixture' }] });
   expect(permissions).toEqual(['voice_transcribe', 'voice_transcribe']);
 });
 
@@ -61,4 +61,11 @@ it('keeps explicit demo link intake offline and labels the committed fixture rat
   for await (const step of intakeSteps({ kind: 'url', url: 'https://www.specialized.com/fictional-lamp' }, models, { ffmpegPath: 'unused', http, ...{ demoMode: 'on' as const } })) steps.push(step);
   expect(calls).toBe(0);
   expect(steps).toMatchObject([{ status: 'parsed', candidates: [{ state: 'pending', title: 'Fictional bicycle lamp', priceMinor: 12500 }], evidence: [{ mode: 'demo_fixture', model: 'muse-spark-1.2' }] }]);
+});
+
+it('threads the circle default currency into candidates when the caller supplies it', async () => {
+  const models = createModelClient({ demoMode: 'on', baseUrl: 'https://api.meta.ai/v1' }, async () => undefined);
+  const steps = [];
+  for await (const step of intakeSteps({ kind: 'image', bytes: new Uint8Array([255, 216, 255]), mimeType: 'image/jpeg' }, models, { ffmpegPath: 'unused', imagePath: '/trusted/media/fixture-image.bin', currency: 'ZAR' })) steps.push(step);
+  expect(steps[0]).toMatchObject({ candidates: [{ currency: 'ZAR' }] });
 });

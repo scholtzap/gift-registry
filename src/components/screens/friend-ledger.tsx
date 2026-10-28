@@ -1,4 +1,4 @@
-import { AttributeList, Badge, Cta, DateLine, EmptyState, EventDate, EventDateForm, ItemPhoto, Meter, Money, Notice, Panel, Screen, Stat, StatList } from '@/components/ui';
+import { AttributeList, Badge, Cta, EmptyState, EventDateForm, ItemPhoto, Meter, Money, Notice, Panel, Screen, Stat, StatList } from '@/components/ui';
 import type { NavItem } from '@/components/ui';
 import { itemStatus, poolPercent } from '@/components/status';
 import { formatMinor } from '@/lib/money';
@@ -77,7 +77,7 @@ export function FriendLedgerScreen({ view, basePath, notice, eventDateDraft }: {
       <div className="pn-cols">
         <section aria-label="Gift list" className="pn-stack">
           <Panel tone="human" className="pn-panel-tight">
-            <p className="pn-eyebrow">{view.occasion}{view.eventDate !== null && <> · <EventDate iso={view.eventDate} /></>}</p>
+            <p className="pn-eyebrow">{view.occasion}{view.countdown !== null && <> · {view.countdown}</>}</p>
             <p>Claims, pools and secret ideas live here. Keep this screen away from them.</p>
           </Panel>
 
@@ -107,7 +107,7 @@ export function FriendLedgerScreen({ view, basePath, notice, eventDateDraft }: {
           <Panel className="pn-stack">
             <p className="pn-muted">{view.occasion}</p>
             {view.birthday !== null && <p className="pn-small">Birthday: {view.birthday}</p>}
-            <DateLine date={view.eventDate} label={view.eventDateLabel} countdown={view.countdown} />
+            {view.eventDate !== null && view.eventDateLabel !== null && (<p className="pn-small"><time dateTime={view.eventDate}>{view.eventDateLabel}</time></p>)}
             <EventDateForm basePath={basePath} defaultValue={eventDateDraft ?? view.eventDate} notice={notice} />
             <Cta href={`${basePath}/draft`}>Suggest a secret gift</Cta>
             <Cta href={`${basePath}/settings`}>Your AI settings</Cta>

@@ -14,14 +14,15 @@ export type DraftScreenData = {
 
 // Adder-scoped draft only. The route supplies the authenticated role and private, no-store headers.
 // Both projections land here: `role` selects the copy and the hidden visibility value.
-export function DraftConfirmScreen({ draft, basePath, role, notice, circle }: {
+export function DraftConfirmScreen({ draft, basePath, role, notice, circle, defaultCurrency }: {
   draft: DraftScreenData | null;
   basePath: string;
   role: 'owner' | 'friend';
   notice?: string;
   circle?: CircleContext;
+  defaultCurrency?: string;
 }) {
-  const currency = draft?.currency ?? DEFAULT_CURRENCY;
+  const currency = draft?.currency ?? defaultCurrency ?? DEFAULT_CURRENCY;
   const supportsCurrency = isCurrency(currency);
   const isOwner = role === 'owner';
   const priceDefault = !supportsCurrency ? ''

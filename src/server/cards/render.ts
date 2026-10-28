@@ -117,7 +117,7 @@ function assertCardGlyphs(text: string, font: CardFont): void {
 function cardText(text: string, style: CSSProperties) {
   return h('div', { style: { ...style, display: 'flex', flexDirection: 'column', flexShrink: 0 } },
     ...text.split(/\r\n|\r|\n/u).map((line) => h('div', {
-      style: { whiteSpace: 'pre-wrap', wordBreak: 'break-all', flexShrink: 0, minHeight: Number(style.fontSize) * 1.2 },
+      style: { whiteSpace: 'pre-wrap', wordBreak: 'break-word', overflowWrap: 'break-word', flexShrink: 0, minHeight: Number(style.fontSize) * 1.2 },
     }, line)));
 }
 
@@ -152,7 +152,7 @@ export async function renderCardArtwork(data: CardArtworkData, variant: CardVari
     const tree = h('div', {
       style: {
         display: 'flex', flexDirection: 'column', boxSizing: 'border-box', width: 840, minHeight: logicalHeight,
-        backgroundColor: '#FBF5EC', color: '#2B2118', padding, ...BODY, wordBreak: 'break-all',
+        backgroundColor: '#FBF5EC', color: '#2B2118', padding, ...BODY, wordBreak: 'break-word', overflowWrap: 'break-word',
       },
     },
     h('div', { style: { ...DISPLAY, fontSize: compact ? 16 : 20, color: '#246B5B', marginBottom: compact ? 16 : 28 } }, 'Piñata'),

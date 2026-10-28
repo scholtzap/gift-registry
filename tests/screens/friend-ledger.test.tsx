@@ -121,7 +121,7 @@ describe('FriendLedgerScreen public static render', () => {
     expect(text(markup)).toContain('Friends only');
     expect(text(markup)).toContain('Keep this screen away from them.');
     expect(text(markup)).toContain('birthday');
-    expect(markup).toMatch(/<time dateTime="2026-12-05">Sat 5 Dec<\/time> · 12 days to go/i);
+    expect(markup).toMatch(/<time dateTime="2026-12-05">Sat 5 Dec<\/time>/i); expect(text(markup).match(/Sat 5 Dec/g)).toHaveLength(1); expect(text(markup).match(/12 days to go/g)).toHaveLength(1);
     expect(text(markup)).toContain('Birthday: 3 Apr');
     expect(text(itemMarkup(markup, 'Trail runners, burnt orange'))).toContain('R1 899.00');
     expect(text(grinder)).toContain('Coffee shop');

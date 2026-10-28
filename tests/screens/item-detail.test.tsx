@@ -203,10 +203,10 @@ describe('ItemDetailScreen public friend render', () => {
       expect(forms(html).length).toBeGreaterThan(0);
       for (const form of forms(html)) {
         expect(form).toContain('method="post"');
-        expect(form).toContain(`action="${basePath}/items/${item.id}"`);
-        expect(form).toMatch(/<(?:button|input)\b[^>]*name="intent"[^>]*value="(?:claim|release|create_pool|contribute|mark_paid|purchase)"/);
+        expect(form).toMatch(new RegExp(`action="${basePath}/items/${item.id}(?:/photo)?"`));
+        expect(form).toMatch(/<(?:button|input)\b[^>]*name="intent"[^>]*value="(?:claim|release|create_pool|contribute|mark_paid|purchase|set_photo)"/);
         expect(form).toContain('type="submit"');
-        if (item.pool) expect(form).toContain(`name="poolId" value="${item.pool.id}"`);
+        if (item.pool && !form.includes('/photo"')) expect(form).toContain(`name="poolId" value="${item.pool.id}"`);
         expect(form).not.toContain('name="userId"');
         expect(form).not.toContain('name="contributionId"');
         expect(form).not.toContain('name="status"');

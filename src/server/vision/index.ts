@@ -82,6 +82,18 @@ async function callExternal(service: VisionServices['detectPeople'], image: Visi
   catch { throw new VisionError(code); }
 }
 
+/**
+ * Person-box pre-check for carrying a WhatsApp intake photo onto an item. Fail closed:
+ * no detector configured, a detector failure, or any person box all reject the carry.
+ * The caller still needs its own can(actor, 'photo_extract') check before calling this.
+ */
+export async function guardNoPersonPixels(bytes: Buffer, services?: VisionServices): Promise<void> {
+  if (!services) throw new VisionError('person_detection_unavailable');
+  const image = await decodeImage(bytes);
+  const people = validatePeople(await callExternal(services.detectPeople, image, 'person_detection_failed'), image);
+  if (people.boxes.length > 0) throw new VisionError('person_detected');
+}
+
 export const VISION_LIMITS = Object.freeze({ imageBytes: 5_000_000, imagePixels: 16_000_000, dimension: 8192 });
 
 async function decodeImage(input: Buffer): Promise<VisionImage> {
