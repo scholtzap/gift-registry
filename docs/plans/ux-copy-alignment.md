@@ -1,7 +1,7 @@
 ---
 title: "UX CR-06: align site/guide/app copy with what is actually live"
 type: plan
-status: ready
+status: done
 priority: P1
 rank: 6
 updated: 2026-10-28

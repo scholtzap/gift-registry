@@ -13,8 +13,9 @@ export const metadata: Metadata = {
 };
 
 export default function OfflinePage() {
+  const base = process.env.PINATA_BASE_PATH ?? '';
   return (
-    <Screen
+    <Screen homeHref={`${base}/app`} privacyHref={`${base}/privacy`}
       title="You are offline"
       lede="Piñata can’t reach the server right now."
     >
@@ -30,7 +31,7 @@ export default function OfflinePage() {
         </p>
       </Panel>
 
-      <EmptyState title="Waiting for a connection" action={<Cta href="/app">Try again</Cta>}>
+      <EmptyState title="Waiting for a connection" action={<Cta href={`${base}/app`}>Try again</Cta>}>
         Your gift plans are safe on the server. Reconnect and try again.
       </EmptyState>
     </Screen>

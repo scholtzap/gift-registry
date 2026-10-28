@@ -81,7 +81,7 @@ function notFound(): Response {
  * in the circle as it does on the landing page.
  */
 function gateForm(notice?: string, retry?: { initialName?: string; initialPhone?: string; rejected?: boolean }): Response {
-  return new Response(page('Join this circle', renderToStaticMarkup(createElement(JoinScreen, { notice, ...retry }))), {
+  return new Response(page('Join this circle', renderToStaticMarkup(createElement(JoinScreen, { basePath: process.env.PINATA_BASE_PATH ?? '', notice, ...retry }))), {
     status: 200, headers: headers({ 'Content-Type': 'text/html; charset=utf-8' }),
   });
 }

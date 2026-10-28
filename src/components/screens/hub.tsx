@@ -14,6 +14,8 @@ export function HubScreen({ basePath = '', notice, initial }: {
 }) {
   return (
     <Screen
+      homeHref={`${basePath}/app`}
+      privacyHref={`${basePath}/privacy`}
       title="Start your circle"
       eyebrow="Piñata"
       lede="Create your own circle, start one for someone else, or open a circle you already have."

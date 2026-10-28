@@ -4,9 +4,9 @@ import { Button, Field, Panel, Screen } from '@/components/ui';
 export const PROXY_EXPLAINER =
   'You are starting a circle for someone else. They never need an account; you will get a link to share with the group, and the plan stays hidden from them.';
 
-export function LookupSearchScreen() {
+export function LookupSearchScreen({ basePath = '' }: { basePath?: string } = {}) {
   return (
-    <Screen
+    <Screen homeHref={`${basePath}/app`} privacyHref={`${basePath}/privacy`}
       title="Buying a gift for someone?"
       eyebrow="Start a circle"
       lede="Type their number and we will help you start. Nothing about anyone is shown here."
@@ -14,7 +14,7 @@ export function LookupSearchScreen() {
       <div className="pn-measure-sm pn-stack pn-stack-lg">
         <Panel className="pn-stack">
           <p>{PROXY_EXPLAINER}</p>
-          <form method="post" action="/lookup" className="pn-stack">
+          <form method="post" action={`${basePath}/lookup`} className="pn-stack">
             <Field
               label="Their WhatsApp number (international form)"
               name="phone"
@@ -34,9 +34,9 @@ export function LookupSearchScreen() {
   );
 }
 
-export function ProxyOfferScreen() {
+export function ProxyOfferScreen({ basePath = '' }: { basePath?: string } = {}) {
   return (
-    <Screen
+    <Screen homeHref={`${basePath}/app`} privacyHref={`${basePath}/privacy`}
       title="Start a gift circle for someone"
       eyebrow="For someone else"
       lede={PROXY_EXPLAINER}
@@ -48,7 +48,7 @@ export function ProxyOfferScreen() {
             Gift circles here begin with a link shared in your group chat. They are never
             notified, and no account is created for them.
           </p>
-          <form method="post" action="/lookup" className="pn-stack">
+          <form method="post" action={`${basePath}/lookup`} className="pn-stack">
             <input type="hidden" name="intent" value="create" />
             <Field label="Your name" name="creatorName" id="proxy-creator-name" type="text" autoComplete="name" required maxLength={80} />
             <Field label="Your number (international form)" name="creatorPhone" id="proxy-creator-phone" type="tel" autoComplete="tel" inputMode="tel" required />

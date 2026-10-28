@@ -5,7 +5,7 @@ import { hashPhone, normalizeE164 } from "@/server/auth/phone-hash";
 import { generateShareSlug } from "@/server/auth/slug";
 import { checkGateThrottle } from "@/server/auth/throttle";
 import { issueSession, sessionCookie } from "@/server/auth/session";
-import { createElement } from "react";
+import { createElement, type ComponentType } from "react";
 import { createRequire } from "node:module";
 import { LookupSearchScreen, ProxyOfferScreen } from "@/components/screens/lookup";
 import { page, escapeHtml } from "@/server/routes/shell";
@@ -29,6 +29,7 @@ const { renderToStaticMarkup } = createRequire(import.meta.url)("react-dom/serve
  */
 
 const NO_STORE = "private, no-store, max-age=0, must-revalidate";
+const BASE = process.env.PINATA_BASE_PATH ?? "";
 const MAX_PROXY_PER_CREATOR_PER_DAY = 10;
 
 function headers(extra: Record<string, string> = {}): Record<string, string> {
@@ -43,7 +44,7 @@ function headers(extra: Record<string, string> = {}): Record<string, string> {
 
 /** The single lookup answer. Static by design: identical bytes for every input. */
 function offerBody(): string {
-  return page("Start a gift circle", renderToStaticMarkup(createElement(ProxyOfferScreen)));
+  return page("Start a gift circle", renderToStaticMarkup(createElement(ProxyOfferScreen as ComponentType<{ basePath?: string }>, { basePath: BASE })));
 }
 
 function offer(extra: Record<string, string> = {}): Response {
@@ -64,7 +65,7 @@ async function readForm(request: Request): Promise<FormData> {
  * the POST body that follows, never in a URL.
  */
 export function handleLookupGet(): Response {
-  const body = page("Find a gift circle", renderToStaticMarkup(createElement(LookupSearchScreen)));
+  const body = page("Find a gift circle", renderToStaticMarkup(createElement(LookupSearchScreen as ComponentType<{ basePath?: string }>, { basePath: BASE })));
   return new Response(body, {
     status: 200,
     headers: headers({ "Content-Type": "text/html; charset=utf-8" }),

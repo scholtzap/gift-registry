@@ -5,6 +5,12 @@ import { HubScreen } from '@/components/screens/hub';
 
 const render = (props?: Parameters<typeof HubScreen>[0]) => renderToStaticMarkup(createElement(HubScreen, props));
 
+it('points brand and privacy at the app routes under the base path (CR-UX-05)', () => {
+  const html = render({ basePath: '/app' });
+  expect(html).toContain('href="/app/app"');
+  expect(html).toContain('href="/app/privacy"');
+});
+
 describe('entry hub (CR-UX-01)', () => {
   it('offers create, proxy and open on one screen with no self-link', () => {
     const html = render();
@@ -14,8 +20,8 @@ describe('entry hub (CR-UX-01)', () => {
     expect(html).toContain('action="/app/create"');
     expect(html).toContain('action="/app/open"');
     expect(html).toContain('href="/lookup"');
-    expect(html).not.toContain('href="/app"');
-    // The hub itself is /app, so no primary button may reload it.
+    // Brand/Home intentionally returns to this hub (CR-UX-05); no primary
+    // button may reload it.
     expect(html).not.toMatch(/pn-button-primary[^>]*href="\/app"/);
   });
 

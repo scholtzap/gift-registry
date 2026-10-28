@@ -190,7 +190,7 @@ test('a friend sets the party date with no JavaScript and the owner loses it', a
   await expect(page.getByText('Sat 5 Dec', { exact: true })).toBeVisible();
   await expect(page.getByText('Birthday: 3 Apr', { exact: true })).toBeVisible();
 
-  await page.getByLabel('When is the party?').fill('2026-12-19');
+  await page.getByLabel(/Party date/).fill('2026-12-19');
   const submitted = page.waitForResponse((r) => r.request().method() === 'POST');
   await page.getByRole('button', { name: 'Save the date', exact: true }).click();
   expect((await submitted).status()).toBe(303);
@@ -206,7 +206,7 @@ test('a friend sets the party date with no JavaScript and the owner loses it', a
   await expect(page.locator('body')).not.toContainText('set by');
   await expect(page.locator('body')).not.toContainText('who set');
 
-  await page.getByLabel('When is the party?').fill('2026-12-05');
+  await page.getByLabel(/Party date/).fill('2026-12-05');
   await page.getByRole('button', { name: 'Save the date', exact: true }).click();
   await expect(page.getByText('Sat 5 Dec', { exact: true })).toBeVisible();
   const circle = await fixture.db.prisma.circle.findUniqueOrThrow({ where: { id: fixture.circleId } });
