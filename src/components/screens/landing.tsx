@@ -1,7 +1,7 @@
 import { Badge, Cta, Panel, Screen } from '@/components/ui';
 
 // Public projection: authored copy only; no circle, actor, or card data.
-export function LandingScreen({ hubHref = '/app', demo = false }: { hubHref?: string; demo?: boolean } = {}) {
+export function LandingScreen({ hubHref = '/app', demo = false, assetBase = '' }: { hubHref?: string; demo?: boolean; assetBase?: string } = {}) {
   const appBase = hubHref.replace(/\/app$/, '');
   return (
     <Screen homeHref={hubHref} privacyHref={`${appBase}/privacy`}>
@@ -53,9 +53,9 @@ export function LandingScreen({ hubHref = '/app', demo = false }: { hubHref?: st
           <p className="pn-small pn-muted">Captured from the seeded demo. No live circle is shown.</p>
         </div>
         <div className="pn-grid pn-grid-3">
-          <img src="/screenshots/owner-ledger.png" alt="The recipient's wishlist view, with no sign of claims or pools" loading="lazy" />
-          <img src="/screenshots/friend-ledger.png" alt="The friends' planning view of the same circle" loading="lazy" />
-          <img src="/screenshots/gift-card.png" alt="The group gift card friends hand over themselves" loading="lazy" />
+          <img src={`${assetBase}/screenshots/owner-ledger.png`} alt="The recipient's wishlist view, with no sign of claims or pools" loading="lazy" />
+          <img src={`${assetBase}/screenshots/friend-ledger.png`} alt="The friends' planning view of the same circle" loading="lazy" />
+          <img src={`${assetBase}/screenshots/gift-card.png`} alt="The group gift card friends hand over themselves" loading="lazy" />
         </div>
       </section>
 
