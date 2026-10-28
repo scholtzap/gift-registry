@@ -94,7 +94,9 @@ services:
     command: [sh, -c, 'node node_modules/prisma/build/index.js migrate deploy --config prisma7.config.ts && node --import tsx scripts/apply_policies.ts']
     cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
-    networks: [database]
+    # Edge too: prisma migrate downloads its schema engine on first run and the
+    # database network is internal-only. One-shot ops profile, never resident.
+    networks: [database, edge]
     logging: *bounded_logs
 
   caddy:
