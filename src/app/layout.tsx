@@ -26,8 +26,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <head>
-        <link rel="stylesheet" href="/pinata.css" />
-        <script src="/register-sw.js" defer />
+        <link rel="stylesheet" href={`${process.env.PINATA_BASE_PATH ?? ''}/pinata.css`} />
+        <script src={`${process.env.PINATA_BASE_PATH ?? ''}/register-sw.js`} defer />
       </head>
       <body>{children}</body>
     </html>
