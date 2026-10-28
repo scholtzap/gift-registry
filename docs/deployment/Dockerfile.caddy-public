@@ -1,0 +1,5 @@
+# Caddy for the single-domain deployment: stock Caddy (public ACME, no DNS
+# plugin), running as UID 10001 like the rest of the stack.
+FROM caddy:2
+RUN mkdir -p /data /config /srv/pinata-site && chown -R 10001:10001 /data /config /srv
+USER 10001:10001
