@@ -9,6 +9,8 @@ COPY prisma7.config.ts next.config.mjs postcss.config.mjs tsconfig.json ./
 ARG PINATA_BASE_PATH=
 ENV PINATA_BASE_PATH=$PINATA_BASE_PATH
 COPY src ./src
+# src/server/wa/media.ts imports the fictional demo fixtures at build time.
+COPY tests ./tests
 COPY scripts ./scripts
 COPY public ./public
 RUN pnpm exec prisma generate --config prisma7.config.ts
