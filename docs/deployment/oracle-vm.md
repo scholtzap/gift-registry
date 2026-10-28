@@ -1,6 +1,14 @@
 # Oracle VM deployment and recovery candidate
 
-**Status: local artifacts only; deployment is UNTESTED.** No VM was provisioned, no image built or deployed, no host port opened, and no cloud purchase made. **External Meta authentication-template approval is unverified and still required before enabling OTP.** These artifacts do not claim that approval, DNS, WABA, or live Meta inference works.
+**Status: DEPLOYED 2026-10-28 (DEMO_MODE) on the existing shared Oracle ARM VM
+(<oracle-vm-ip>, ~/pinata + ~/pinata-private). Single domain: landing page at
+https://pinata.scholtz.work/ and the app at https://pinata.scholtz.work/app
+(Next PINATA_BASE_PATH=/app), seeded fictional cast (`nadia-30th`). Live
+Meta/WhatsApp is NOT enabled: no WABA credentials on the VM and OTP template
+approval is still externally gated, so DEMO_MODE=on. Image pinata-app:1.0.0-4b536f6
+verified running (app+worker healthy, /app/health 200). Fixes found on the way:
+PR #21 (build fixtures), #22 (build env), #23 (migrate egress), #24 (caddy
+filecap), #25 (subpath assets), #26 (bare /app).
 
 ## Artifact contract
 
