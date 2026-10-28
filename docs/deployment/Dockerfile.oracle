@@ -15,8 +15,10 @@ COPY scripts ./scripts
 COPY public ./public
 RUN pnpm exec prisma generate --config prisma7.config.ts
 # Disposable build-only configuration, supplied out of tree; never production credentials.
+# Source the secret in sh: `node --env-file` leaks the flag into Next build
+# workers via NODE_OPTIONS and they exit (code 9).
 RUN --mount=type=secret,id=build_env,required=true \
-    node --env-file=/run/secrets/build_env node_modules/next/dist/bin/next build
+    sh -c 'set -a; . /run/secrets/build_env; set +a; node node_modules/next/dist/bin/next build'
 
 FROM node:24-bookworm-slim AS runtime
 ENV NODE_ENV=production PORT=3000 MEDIA_DIR=/data/media FFMPEG_PATH=ffmpeg
