@@ -80,7 +80,7 @@ export function LandingScreen() {
         <div className="pn-stack">
           <p className="pn-eyebrow">The product, as seeded</p>
           <h2 id="landing-strip-title">Screenshots from the fictional demo cast</h2>
-          <p className="pn-small pn-muted">Captured from the seeded demo (tests/browser/screenshots.spec.ts). No live circle is shown.</p>
+          <p className="pn-small pn-muted">Captured from the seeded demo. No live circle is shown.</p>
         </div>
         <div className="pn-grid pn-grid-3">
           <img src="/screenshots/owner-ledger.png" alt="The recipient's wishlist view, with no sign of claims or pools" loading="lazy" />

@@ -1,4 +1,5 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync, statSync } from 'node:fs';
+import { join } from 'node:path';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import ts from 'typescript';
@@ -117,5 +118,25 @@ describe('the public Piñata landing', () => {
     expect(html).toContain('pn-hero');
     expect(html).toContain('pn-card-preview');
     expect(html).not.toMatch(/role="button"|tabindex="[1-9]\d*"|<h[4-6]\b/);
+  });
+});
+
+describe('landing screenshot strip (CR-UX-03)', () => {
+  it('shows no development copy and every rendered image resolves to a real PNG', () => {
+    const html = renderLanding();
+    expect(html).not.toContain('tests/browser');
+    expect(html).not.toContain('screenshots.spec');
+    const srcs = [...html.matchAll(/<img\b[^>]*src="([^"]+)"/g)].map((m) => m[1]!);
+    expect(srcs.length).toBeGreaterThan(0);
+    for (const src of srcs) {
+      const pub = join(process.cwd(), 'public', src);
+      const app = join(process.cwd(), 'src/app', src.replace(/^\//, ''));
+      const file = existsSync(pub) ? pub : app;
+      expect(existsSync(file), `${src} should resolve`).toBe(true);
+      expect(statSync(file).size).toBeGreaterThan(0);
+      if (src.endsWith('.png')) {
+        expect([...readFileSync(file).subarray(0, 4)]).toEqual([0x89, 0x50, 0x4e, 0x47]);
+      }
+    }
   });
 });
