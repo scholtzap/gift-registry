@@ -91,6 +91,7 @@ ALTER TABLE ingest_events     ENABLE ROW LEVEL SECURITY;
 ALTER TABLE ledger_events     ENABLE ROW LEVEL SECURITY;
 ALTER TABLE card_entries      ENABLE ROW LEVEL SECURITY;
 ALTER TABLE gift_cards        ENABLE ROW LEVEL SECURITY;
+ALTER TABLE pool_payouts      ENABLE ROW LEVEL SECURITY;
 
 -- ---------------------------------------------------------------------------
 -- users — either side may read the roster of the circle it is already scoped to.
@@ -394,6 +395,33 @@ DROP POLICY IF EXISTS contributions_friend_update ON contributions;
 CREATE POLICY contributions_friend_update ON contributions FOR UPDATE TO app_friend
   USING (user_id = app_user_id() OR app_buyer_of_pool(pool_id) = app_user_id())
   WITH CHECK (user_id = app_user_id() OR app_buyer_of_pool(pool_id) = app_user_id());
+
+-- ---------------------------------------------------------------------------
+-- pool_payouts — the buyer's bank details for manual settlement. Owner-blind
+-- by absence: no app_owned policy exists, so an owner reads zero rows. The
+-- buyer manages their own row; pledgers may read it only once they pledged on
+-- that pool and the buyer switched sharing on. RLS filters rows, never columns,
+-- so the view layer additionally narrows to the fields each side may render.
+-- ---------------------------------------------------------------------------
+
+DROP POLICY IF EXISTS payouts_buyer_write ON pool_payouts;
+CREATE POLICY payouts_buyer_write ON pool_payouts FOR ALL TO app_friend
+  USING (buyer_user_id = app_user_id())
+  WITH CHECK (
+    buyer_user_id = app_user_id()
+    AND app_actor_joined_circle(app_circle_of_pool(pool_id))
+  );
+
+DROP POLICY IF EXISTS payouts_pledger_read ON pool_payouts;
+CREATE POLICY payouts_pledger_read ON pool_payouts FOR SELECT TO app_friend
+  USING (
+    share_consent
+    AND app_actor_joined_circle(app_circle_of_pool(pool_id))
+    AND EXISTS (
+      SELECT 1 FROM contributions c
+      WHERE c.pool_id = pool_payouts.pool_id AND c.user_id = app_user_id()
+    )
+  );
 
 -- ---------------------------------------------------------------------------
 -- ingest_events — each side sees its own intake, nothing about anyone else's.

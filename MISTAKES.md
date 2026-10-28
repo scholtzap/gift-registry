@@ -2,6 +2,12 @@
 
 Agent error log. Newest entry first. No secrets, tokens, env dumps, or credentialed URLs.
 
+## 2026-10-28 — Chased a chip-in bug through the route layer before checking generated-client freshness
+**What happened:** `src/generated/prisma` is gitignored and months stale (ZAR defaults, missing `requesterName`/`defaultCurrency`), so local runs showed phantom 422s and type errors that looked like repo breakage in `circle.ts` and the currency migration. Two debug rounds went to the handler before querying `information_schema` and the inline schema, which showed the DB was right and the local client was old.
+**Impact:** wasted probes (a chip-submit scratch test "failed" only because the stale client forced ZAR items under a USD assumption); the committed tree was fine throughout.
+**Fix:** `pnpm prisma:generate` (gitignored output, prod Dockerfile regenerates anyway) turned the whole suite green: 553/553 vitest, 175/175 leak, typecheck 0.
+**Do not repeat:** when route tests fail on amounts/currency or the client type disagrees with `schema.prisma`, run `pnpm prisma:generate` first and re-run before theorizing.
+
 ## 2026-10-27 — Pushed the rebrand before running the browser suite
 **What happened:** the Paper Fiesta commit was pushed after vitest, typecheck and build passed, but before `pnpm test:browser`; two Playwright flows then failed on renamed labels ("Claim this gift", "Pool target in cents").
 **Impact:** the pushed branch briefly carried a red browser suite; caught before the PR was opened and fixed in a second commit (11/11 green).

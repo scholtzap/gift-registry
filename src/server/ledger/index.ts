@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { Actor, Tx } from '@/server/db/client';
-import type { Circle, Claim, Contribution, Item, Pool, Prisma, TombstoneReason } from '@/generated/prisma/client';
+import type { Circle, Claim, Contribution, Item, Pool, PoolPayout, Prisma, TombstoneReason } from '@/generated/prisma/client';
 import { DEFAULT_CURRENCY, isCurrency } from '@/lib/money';
 import { daysUntil, isCalendarDate, zoneDay } from '@/lib/dates';
 
@@ -172,6 +172,92 @@ export async function markPaid(tx: Tx, actor: Actor, poolId: string): Promise<{ 
     await append(tx, actor, 'pool', poolId, 'pool.funded');
   }
   return { contribution, pool };
+}
+
+/**
+ * The pool buyer records where pledgers should send their share by hand — account
+ * holder, bank, account and branch code, with an explicit share switch. Bank
+ * details are ordinary payee details (the kind printed on an invoice), stored so
+ * the group can settle manually; Piñata never moves money and never sees it move.
+ * Only the buyer writes; the route re-checks the shape and answers 422, this
+ * throws `ledger_buyer_required` or `ledger_pool_unavailable` for anything else.
+ */
+export interface PayoutDetailsInput {
+  accountHolder: string;
+  bankName: string;
+  accountNumber: string;
+  branchCode: string;
+  accountType?: string | null;
+  referencePrefix?: string | null;
+  shareConsent: boolean;
+}
+
+export const PAYOUT_ACCOUNT_TYPES = ['cheque', 'savings', 'transmission'] as const;
+
+function cleanPayout(input: PayoutDetailsInput) {
+  const accountHolder = input.accountHolder.trim().slice(0, 80);
+  const bankName = input.bankName.trim().slice(0, 80);
+  const accountNumber = input.accountNumber.replace(/[\s-]/g, '');
+  const branchCode = input.branchCode.replace(/[\s-]/g, '');
+  const accountType = (input.accountType ?? '').trim().toLowerCase() || null;
+  const referencePrefix = (input.referencePrefix ?? '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 12) || null;
+  if (!accountHolder || !bankName) throw new Error('ledger_invalid_payout');
+  if (!/^\d{6,20}$/.test(accountNumber) || !/^\d{6}$/.test(branchCode)) throw new Error('ledger_invalid_payout');
+  if (accountType !== null && !(PAYOUT_ACCOUNT_TYPES as readonly string[]).includes(accountType)) {
+    throw new Error('ledger_invalid_payout');
+  }
+  return { accountHolder, bankName, accountNumber, branchCode, accountType, referencePrefix, shareConsent: input.shareConsent };
+}
+
+export async function savePayout(tx: Tx, actor: Actor, poolId: string, input: PayoutDetailsInput): Promise<PoolPayout> {
+  await scope(tx, actor, 'friend');
+  const pool = await lockPool(tx, actor, poolId);
+  if (pool.buyerUserId !== actor.userId) throw new Error('ledger_buyer_required');
+  if (pool.status !== 'open' && pool.status !== 'funded') throw new Error('ledger_pool_unavailable');
+  const details = cleanPayout(input);
+  const row = await tx.poolPayout.upsert({
+    where: { poolId },
+    create: { poolId, buyerUserId: actor.userId, ...details },
+    update: { ...details },
+  });
+  await append(tx, actor, 'payout', row.id, 'payout.saved', { poolId });
+  return row;
+}
+
+/**
+ * The buyer confirms a pledger's share landed. Same status machine as a
+ * self-mark; the buyer simply names whose contribution it settles.
+ */
+export async function markPaidFor(tx: Tx, actor: Actor, poolId: string, targetUserId: string): Promise<{ contribution: Contribution; pool: Pool }> {
+  await scope(tx, actor, 'friend');
+  let pool = await lockPool(tx, actor, poolId);
+  if (pool.buyerUserId !== actor.userId) throw new Error('ledger_buyer_required');
+  if (pool.status !== 'open' && pool.status !== 'funded') throw new Error('ledger_pool_unavailable');
+  const { rows, paidMinor } = await poolMoney(tx, pool);
+  let contribution = rows.find((row) => row.userId === targetUserId);
+  if (!contribution) throw new Error('ledger_not_found');
+  if (contribution.status === 'marked_paid') return { contribution, pool };
+  if (contribution.status !== 'promised') throw new Error('ledger_contribution_unavailable');
+  contribution = await tx.contribution.update({
+    where: { id: contribution.id, status: 'promised' }, data: { status: 'marked_paid', paidAt: new Date() },
+  });
+  await append(tx, actor, 'contribution', contribution.id, 'contribution.marked_paid', { poolId });
+  if (pool.status === 'open' && paidMinor + BigInt(contribution.amountMinor) >= BigInt(pool.targetMinor)) {
+    pool = await tx.pool.update({ where: { id: poolId, status: 'open' }, data: { status: 'funded' } });
+    await append(tx, actor, 'pool', poolId, 'pool.funded');
+  }
+  return { contribution, pool };
+}
+
+/**
+ * Stable, typable payment reference for a contribution: the buyer's optional
+ * prefix, else `PN-`, plus six hex chars of the contribution id. Deterministic,
+ * so the share text never needs a stored column to stay constant.
+ */
+export function payoutReference(contributionId: string, prefix?: string | null): string {
+  const code = contributionId.replace(/-/g, '').slice(0, 6).toUpperCase();
+  const clean = (prefix ?? '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 12);
+  return `${clean || 'PN'}-${code}`;
 }
 
 export async function purchasePool(tx: Tx, actor: Actor, poolId: string): Promise<Pool> {

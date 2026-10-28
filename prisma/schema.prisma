@@ -149,6 +149,7 @@ model User {
   addedItems      Item[]          @relation("added")
   claims          Claim[]
   poolsAsBuyer    Pool[]
+  payoutsAsBuyer  PoolPayout[]    @relation("payout_buyer")
   contributions   Contribution[]
   ingestEvents    IngestEvent[]
   ledgerEvents    LedgerEvent[]
@@ -339,9 +340,34 @@ model Pool {
   buyer         User           @relation(fields: [buyerUserId], references: [id], onDelete: Cascade)
   claims        Claim[]
   contributions Contribution[]
+  payout        PoolPayout?
 
   @@index([itemId, status])
   @@map("pools")
+}
+
+/// Where pledgers send their share by hand. Written by the pool's buyer only;
+/// pledgers read it only once they pledged and the buyer switched sharing on.
+/// The owner has no read policy on this table and stays blind to it.
+model PoolPayout {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  poolId          String   @unique @map("pool_id") @db.Uuid
+  buyerUserId     String   @map("buyer_user_id") @db.Uuid
+  accountHolder   String   @map("account_holder")
+  bankName        String   @map("bank_name")
+  accountNumber   String   @map("account_number")
+  branchCode      String   @map("branch_code")
+  accountType     String?  @map("account_type")
+  referencePrefix String?  @map("reference_prefix")
+  shareConsent    Boolean  @default(false) @map("share_consent")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  pool  Pool @relation(fields: [poolId], references: [id], onDelete: Cascade)
+  buyer User @relation("payout_buyer", fields: [buyerUserId], references: [id], onDelete: Cascade)
+
+  @@index([buyerUserId])
+  @@map("pool_payouts")
 }
 
 model Contribution {

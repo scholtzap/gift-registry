@@ -8,7 +8,7 @@
 python scripts/ops/refresh_plans_index.py --write
 ```
 
-Generated: 2026-10-28 14:19 · repo: `qoder-gifts-registry-finish`
+Generated: 2026-10-28 15:41 · repo: `gifts-registry`
 
 ## P0
 
@@ -26,10 +26,11 @@ Generated: 2026-10-28 14:19 · repo: `qoder-gifts-registry-finish`
 | 2 | Piñata parallel build and verification closeout | implementing | `parallel-build-closeout.md` |  |
 | 3 | Day-2 remaining-work inventory handover (voice-to-deploy queue) | implementing | `day-2-inventory-handover.md` | - First two-minute user item: §1.5 — send one message to the sandbox number and record whether |
 | 4 | Design system, brand round and the seven in-app screens | ready | `design-system-and-brand.md` |  |
-| 4 | Next high-value work after site sign-up CTA and app deployment | ready | `next-high-value-work.md` | 7. **Point the landing CTAs at the live app and retire the batch form.** |
+| 4 | Next high-value work after site sign-up CTA and app deployment | ready | `next-high-value-work.md` | 7. **Retire the batch form once live WhatsApp intake works.** Done for the |
 | 5 | Handover finish-line outcome (site DNS, app follow-ups, remaining gates) | done | `handover-finish-line-outcome.md` |  |
 | 5 | WhatsApp task-bot surface — six bounded tasks, fixed menu, no free chat | ready | `whatsapp-task-bot-surface.md` |  |
 | 6 | Day-3 nine follow-ups (throttle, creation, pun, reveal, dispatch, landing) | implementing | `day-3-nine-followups.md` |  |
+| 6 | Pool payout details, amounts-due share, and pledge visibility | done | `pool-payout-details.md` |  |
 | 6 | UX CR-06: align site/guide/app copy with what is actually live | done | `ux-copy-alignment.md` |  |
 | 6 | UX CR-04: join-gate error recovery | done | `ux-join-recovery.md` |  |
 | 6 | UX CR-03: fix or remove the broken screenshot strip | done | `ux-landing-strip-assets.md` |  |
