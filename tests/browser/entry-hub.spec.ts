@@ -1,0 +1,36 @@
+import { test, expect } from '@playwright/test';
+
+const suffix = String(Math.floor(10000 + Math.random() * 90000));
+const num = (n: number) => `+2783${suffix}${String(n).padStart(2, '0')}`;
+
+/** CR-UX-01: landing -> hub -> create -> owner ledger with share link; no primary button reloads its own page. */
+test('landing to hub to created owner ledger with share link', async ({ page }) => {
+  await page.goto('/');
+  const landingUrl = page.url();
+  await page.getByRole('link', { name: 'Start your circle' }).first().click();
+  await expect(page).not.toHaveURL(landingUrl);
+  await expect(page.getByRole('heading', { name: 'Create my circle' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Open my circle' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Start a circle for someone' })).toBeVisible();
+
+  await page.getByLabel(/Your name/).fill('Browser Owner');
+  await page.getByLabel('Occasion').fill('birthday');
+  await page.getByLabel(/Party date/).fill('2026-12-05');
+  await page.getByLabel(/Your WhatsApp number/).fill(num(91));
+  await page.getByLabel(/First wish/).fill('Browser first wish');
+  await page.getByRole('button', { name: 'Create my circle' }).click();
+
+  await expect(page).toHaveURL(/\/c\/[A-Za-z0-9_-]{16,}$/);
+  await expect(page.getByText('Browser first wish')).toBeVisible();
+  await expect(page.getByText('Your wishes')).toBeVisible();
+  const slug = new URL(page.url()).pathname.split('/c/')[1];
+  await expect(page.getByRole('link', { name: 'Open your circle link' })).toHaveAttribute('href', `/c/${slug}`);
+});
+
+test('hub open-my-circle accepts a pasted link', async ({ page }) => {
+  await page.goto('/app');
+  await expect(page.getByRole('heading', { name: 'Create my circle' })).toBeVisible();
+  await page.getByLabel(/Circle link or code/).fill('https://example.invalid/app/c/SomeSlug_123-abc');
+  await page.getByRole('button', { name: 'Open my circle' }).click();
+  await expect(page).toHaveURL(/\/c\/SomeSlug_123-abc$/);
+});
