@@ -1,10 +1,11 @@
-# Single-domain deployment: pinata.scholtz.work/ is the landing page (static
-# files from site/public), pinata.scholtz.work/app/* is the app (Next built with
-# PINATA_BASE_PATH=/app). gifts.scholtz.work keeps serving the same landing
-# page from Cloudflare Pages. Public ACME (TLS-ALPN/HTTP-01) - no DNS plugin.
+# Single domain, two surfaces:
+#   pinata.scholtz.work/         -> landing page (static files from site/public)
+#   pinata.scholtz.work/app      -> the app hub (Next route /app, no base path)
+#   pinata.scholtz.work/c/<slug> -> circles, /lookup, /api, app assets -> Next
+# gifts.scholtz.work keeps serving the same landing page from Cloudflare Pages.
+# Public ACME (TLS-ALPN) - no DNS plugin.
 {
 	admin off
-	https_port 8443
 	auto_https disable_redirects
 }
 
@@ -16,7 +17,13 @@
 		Referrer-Policy "same-origin"
 	}
 
-	@app path /app /app/*
+	# Legacy links from the short-lived /app subpath deployment (2026-10-28).
+	redir /app/app /app 308
+	handle_path /app/c/* {
+		redir https://{$CIRCLE_HOST}/c{path} 308
+	}
+
+	@app path /app /c/* /lookup /privacy /offline /health /api/* /_next/* /pinata.css /register-sw.js /sw.js /manifest.webmanifest /icon.png /apple-icon.png /fonts/* /screenshots/*
 	handle @app {
 		reverse_proxy app:3000 {
 			header_up X-Forwarded-For {remote_host}
