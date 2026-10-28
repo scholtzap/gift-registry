@@ -1,7 +1,7 @@
 ---
 title: Public landing page at / and the /app route move
 type: spec
-status: ready
+status: done
 priority: P3
 rank: 9
 updated: 2026-10-26

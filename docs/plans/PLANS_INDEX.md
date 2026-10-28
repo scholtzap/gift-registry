@@ -8,7 +8,7 @@
 python scripts/ops/refresh_plans_index.py --write
 ```
 
-Generated: 2026-10-28 09:31 · repo: `qoder-gifts-registry-finish`
+Generated: 2026-10-28 10:36 · repo: `qoder-gifts-registry-finish`
 
 ## P1
 
@@ -19,6 +19,7 @@ Generated: 2026-10-28 09:31 · repo: `qoder-gifts-registry-finish`
 | 2 | Piñata parallel build and verification closeout | implementing | `parallel-build-closeout.md` |  |
 | 3 | Day-2 remaining-work inventory handover (voice-to-deploy queue) | implementing | `day-2-inventory-handover.md` | - First two-minute user item: §1.5 — send one message to the sandbox number and record whether |
 | 4 | Design system, brand round and the seven in-app screens | ready | `design-system-and-brand.md` |  |
+| 4 | Next high-value work after site sign-up CTA and app deployment | ready | `next-high-value-work.md` | 7. **Point the landing CTAs at the live app and retire the batch form.** |
 | 5 | Handover finish-line outcome (site DNS, app follow-ups, remaining gates) | done | `handover-finish-line-outcome.md` |  |
 | 5 | WhatsApp task-bot surface — six bounded tasks, fixed menu, no free chat | ready | `whatsapp-task-bot-surface.md` |  |
 | 6 | Day-3 nine follow-ups (throttle, creation, pun, reveal, dispatch, landing) | implementing | `day-3-nine-followups.md` |  |
@@ -44,7 +45,7 @@ Generated: 2026-10-28 09:31 · repo: `qoder-gifts-registry-finish`
 
 | Rank | Title | Status | Path | Next |
 |------|-------|--------|------|------|
-| 9 | Public landing page at / and the /app route move | ready | `public-landing-page.md` | - Unlisted YouTube (needs network during Nov 5–8 judging) or self-hosted MP4 on the VM (bandwidth we do not have much |
+| 9 | Public landing page at / and the /app route move | done | `public-landing-page.md` | - Unlisted YouTube (needs network during Nov 5–8 judging) or self-hosted MP4 on the VM (bandwidth we do not have much |
 | 18 | RN-E — circle lifecycle: a once-off registry that archives itself after the day | ready | `rn-e-lifecycle-archive.md` |  |
 | 19 | RN-F — promoting a proxy circle when the recipient later joins | draft | `rn-f-claim-merge.md` |  |
 | 20 | RN-G — find-a-friend as a bounded WhatsApp bot task | draft | `rn-g-bot-find-task.md` |  |
