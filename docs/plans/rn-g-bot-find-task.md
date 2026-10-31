@@ -4,7 +4,7 @@ type: spec
 status: draft
 priority: P3
 rank: 20
-updated: 2026-10-27
+updated: 2026-10-31
 apps: []
 related: [docs/plans/rn-tracks.md, docs/plans/rn-b-lookup-route.md, docs/plans/rn-f-claim-merge.md, docs/plans/rn-d-abuse-model.md, docs/plans/whatsapp-task-bot-surface.md]
 evidence: src/server/agent/tasks.ts:5 (FIXED_MENU, six tasks), src/server/agent/tasks.ts:31-47 (routeWhatsAppTask; text is never model-interpreted), src/server/agent/dispatch.ts:11-40, src/server/wa/webhook.ts:23, src/server/wa/identity.ts:22-28
@@ -15,8 +15,9 @@ superseded_by: null
 
 # RN-G — the bot's `find_a_friend` task
 
-**Status:** Draft. Implementation track, second half of the critical path. Do not start until RN-B (the lookup route)
-and RN-C (proxy circles) exist, and until RN-F's multi-circle answer is settled.
+**Status:** Draft, and **not in the submission video**. RN-B and RN-C now exist, so the old gate on RN-F is gone
+(RN-F is out-of-window). What replaced it is worse and is stated below: under create-only there is no found branch
+for a bot search to answer with.
 
 ## Problem
 
@@ -39,6 +40,15 @@ six tasks and a seventh has to fit the existing constraints without turning the 
   RN-G must not invent a different one.
 
 ## What this track decides
+
+**Under create-only, a bot search has nothing to report.** The shipped lookup never renders an existing circle, so a
+`find_a_friend` task can only ever mean *create a proxy circle for this number*. That turns the bot into the cheapest
+squatting channel in the product: no browser, no session, one message per attempt, and rn-d SS2 says a proxy circle is
+attributable only through a gated creator - a bot creator would have to hold a session before it may create. Do not
+build the task on the free-text path either: `routeWhatsAppTask` (tasks.ts:31-47) deliberately never interprets text,
+so the number must arrive through an interactive control inside the 24-hour customer-service window. Build this only
+after rn-d's throttle and `trustedClientAddress` are mounted on a real route, and only if the video needs a second
+search surface than the web route already shows.
 
 **The bot reply is the enumeration oracle the web route works hard not to be.** RN-B's invariant is "always answer
 200". A bot reply cannot do that by status code. If the bot says *"Found Nadia — here is her registry"* versus
@@ -87,4 +97,5 @@ never delivers a message). Importing a Meta contact graph (impossible; `REQUEST_
 
 ## Blocks / gated by
 
-Gated by RN-B, RN-C, RN-D and RN-F. Blocks nothing — it is the last track on the critical path.
+Gated by RN-B, RN-C and RN-D (RN-F no longer gates it - it is out-of-window). Blocks nothing. Recommended: leave it
+unbuilt in this window; the web lookup is the search surface in the video.
