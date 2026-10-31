@@ -36,13 +36,13 @@ a tile whose centre-x matched a neighbour's, and a `text;html=1` block ran 4000p
 never wraps. A geometry checker now exists at `%TEMP%\qoder-scratch\drawio_check.py` and caught 34 and 23 defects in
 the two diagrams I believed were clean; it validates polylines, tile crossings, corridor separation, label placement
 and text fit, and it is **not** the same as having seen a rendered picture.
-**What would help:** (1) install draw.io Desktop so `drawio -x -f png -s 2 -t -o …` works, then a CI step that exports
-`docs/diagrams/*.drawio` to committed `.drawio.png` and fails when the two drift; (2) promote the scratch checker into
-the `draw-io` skill's `scripts/` so it survives `%TEMP%` cleanup and every future diagram is machine-checked, and add
-the two rules it encodes to the skill body: every edge carries explicit waypoints, and prose never goes in a `text;`
-cell.
-**Where it should live:** global toolchain + the `draw-io` skill; then `.githooks` or the docs CI job for the export.
-**Status:** open (checker written, not yet promoted)
+**What would help:** install draw.io Desktop so `drawio -x -f png -s 2 -t -o …` works, then a CI step that exports
+`docs/diagrams/*.drawio` to committed `.drawio.png` and fails when the two drift.
+**Where it should live:** global toolchain, then `.githooks` or the docs CI job for the export.
+**Status:** partially closed 2026-10-31 — (2) is done: the checker is promoted to
+`~/.agents/skills/draw-io/scripts/drawio_check.py` (scholtzap/skills#65, merged) and SKILL.md §4.3 now states the two
+rules it encodes plus that a clean geometry run is not a rendered-PNG check. (1) stays open: no draw.io CLI on this
+host, so `docs/diagrams/*.drawio` still has no committed PNG and nothing fails on drift.
 
 
 ## 2026-10-26 — PDFs are unreadable by the Read tool on this host

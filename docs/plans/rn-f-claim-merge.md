@@ -1,10 +1,10 @@
 ---
 title: "RN-F — promoting a proxy circle when the recipient later joins"
 type: spec
-status: draft
+status: out-of-window
 priority: P3
 rank: 19
-updated: 2026-10-27
+updated: 2026-10-31
 apps: []
 related: [docs/plans/rn-tracks.md, docs/plans/rn-a-proxy-registry-spec.md, docs/plans/rn-c-proxy-circle.md, docs/plans/rn-b-lookup-route.md]
 evidence: src/server/wa/identity.ts:4-11 (MembershipContext.ownerUserId typed non-null; selectActiveActor returns null unless exactly one active membership), src/server/auth/session.ts:95-108, src/server/routes/circle.ts:397-451, docs/plans/rn-a-proxy-registry-spec.md
@@ -15,8 +15,9 @@ superseded_by: null
 
 # RN-F — claim / promote a proxy circle
 
-**Status:** Draft. Implementation track. Externally gated: the promotion path needs an OTP *authentication* template,
-which Meta charges for and takes up to 24h to approve, so the approval must be requested before this starts, not after.
+**Status:** Out of window (owner, 2026-10-31: no OTP in the submission demo). Post-submission track. It stays
+**externally** gated as well: promotion needs an OTP *authentication* template, which Meta charges for per message
+and takes up to 24h to approve, so request the approval only when this track is scheduled, not before.
 
 ## Problem
 
