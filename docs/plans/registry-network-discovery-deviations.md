@@ -4,7 +4,7 @@ type: spec
 status: draft
 priority: P3
 rank: 900
-updated: 2026-10-27
+updated: 2026-10-31
 apps: []
 related: [SPEC.md, docs/plans/rn-tracks.md, docs/plans/user-management-and-billing-path.md, docs/plans/whatsapp-task-bot-surface.md, docs/plans/birthday-and-event-countdown.md]
 evidence: docs/diagrams/pinata-customer-journey.drawio, docs/plans/rn-a-proxy-registry-spec.md, docs/plans/rn-d-abuse-model.md
@@ -48,7 +48,10 @@ import existing Meta/Facebook/Instagram friends to allow-list them.
 4. **The always-200 invariant.** Every lookup answers 200 whether or not the number resolves. A caller who guesses a
    number never learns whether it is registered, so the route is not an enumeration oracle.
 5. **Public view still requires the door.** A public registry renders before login; anyone who wants to *act* on it
-   goes through the gate (OTP once the authentication template is approved, allowlist today).
+   goes through the gate — today the name-plus-allow-listed-number match.
+6. **No OTP in the submission window** (2026-10-31). The demo uses the gate that already ships. Because the lookup is
+   create-only it never renders a stranger's registry, so there is nothing new for a second factor to protect; RN-F
+   and the always-charged authentication-template approval move post-submission.
 
 ## Deviation ledger
 

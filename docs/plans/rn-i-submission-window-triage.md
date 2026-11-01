@@ -4,7 +4,7 @@ type: spec
 status: ready
 priority: P1
 rank: 13
-updated: 2026-10-27
+updated: 2026-10-31
 apps: []
 related: [docs/plans/rn-tracks.md, docs/plans/gift-circles-ten-day-build-plan.md, docs/plans/registry-network-discovery-deviations.md]
 evidence: AGENTS.md (deadline 2026-11-04 21:00 ET, public repo, rubric Impact 30 / Meta tooling 25 / Technical depth 20 / Demo 25)
@@ -58,16 +58,21 @@ Recorded 2026-10-27 by the owner (Wave 0, handover §3):
    that outs them.
 2. **The proxy (not-found) branch is the branch shown.** There is no found branch to show under
    create-only; the video shows search → no registry → create a proxy circle → share `/c/<slug>`.
-3. **OTP is attempted early.** Request the WhatsApp *authentication* template now (always charged,
-   up to 24h approval, AGENTS.md). RN-F stays gated: if the template is not approved, STOP and
-   report — do not build a fake OTP door.
+3. **No OTP in the submission window** (revised 2026-10-31; the original answer was "attempt it
+   early"). The demo uses the door that already ships — name plus an allow-listed number, matched
+   against the keyed hash. The phone search appears in the video without a second factor, because
+   under create-only (answer 1) the lookup never renders a stranger's registry, so there is nothing
+   new to protect with an OTP. Consequences: **RN-F moves out-of-window**, the always-charged
+   authentication template is no longer a deadline dependency (request it when the found branch is
+   scheduled, not before), and **RN-G inherits the decision** — see its note on what a bot search
+   means when there is no found branch to answer with.
 4. **RN-H is deferred past 2026-11-04** (`status: out-of-window`). `noindex` stays load-bearing.
 5. **`TRUSTED_PROXY` defaults OFF** (rn-d open item closed). The localhost demo is
    unthrottled-by-flag rather than broken; on the VM, Caddy's header is trusted only when the
    flag is explicitly enabled there.
 
-Consequences: rn-b narrows to create-only before it starts; rn-f is externally gated on template
-approval; rn-h is out-of-window; rn-a, rn-d and rn-e proceed to `ready` now.
+Consequences: rn-b narrows to create-only before it starts; **rn-f and rn-h are out-of-window**; the
+OTP template is no longer a deadline dependency; rn-a, rn-d and rn-e proceed to `ready`.
 
 ## Out of scope
 
