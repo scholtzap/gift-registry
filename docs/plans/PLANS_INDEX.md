@@ -8,7 +8,7 @@
 python scripts/ops/refresh_plans_index.py --write
 ```
 
-Generated: 2026-10-28 15:41 · repo: `gifts-registry`
+Generated: 2026-10-31 11:40 · repo: `gifts-registry`
 
 ## P0
 
@@ -59,7 +59,7 @@ Generated: 2026-10-28 15:41 · repo: `gifts-registry`
 |------|-------|--------|------|------|
 | 9 | Public landing page at / and the /app route move | done | `public-landing-page.md` | - Unlisted YouTube (needs network during Nov 5–8 judging) or self-hosted MP4 on the VM (bandwidth we do not have much |
 | 18 | RN-E — circle lifecycle: a once-off registry that archives itself after the day | ready | `rn-e-lifecycle-archive.md` |  |
-| 19 | RN-F — promoting a proxy circle when the recipient later joins | draft | `rn-f-claim-merge.md` |  |
+| 19 | RN-F — promoting a proxy circle when the recipient later joins | out-of-window | `rn-f-claim-merge.md` |  |
 | 20 | RN-G — find-a-friend as a bounded WhatsApp bot task | draft | `rn-g-bot-find-task.md` |  |
 | 21 | RN-H — on-platform search vs the noindex guarantee | out-of-window | `rn-h-crawlability.md` |  |
 | 40 | Deferred feature spikes (deal-finding, coordination agent, SAM duplicates) | backlog | `deferred-feature-spikes.md` |  |
