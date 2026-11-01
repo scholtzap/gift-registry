@@ -3,12 +3,14 @@ import { createRequire } from "node:module";
 import { env } from "@/lib/env";
 import type { Actor, Db } from "@/server/db/client";
 import { trustedClientAddress } from "@/server/auth/client-address";
+import { isSameOrigin } from "@/server/auth/same-origin";
 import { hashPhone, normalizeE164 } from "@/server/auth/phone-hash";
-import { checkGateThrottle } from "@/server/auth/throttle";
+import { gateThrottle } from "@/server/auth/throttle-store";
+import { checkTurnstile, turnstileField } from "@/server/auth/turnstile";
 import { issueSession, sessionCookie } from "@/server/auth/session";
 import { addItem, createCircle } from "@/server/ledger"; // shareSlug omitted: ledger derives it
 import { HubScreen } from "@/components/screens/hub";
-import { page } from "@/server/routes/shell";
+import { CONTENT_SECURITY_POLICY, page } from "@/server/routes/shell";
 const { renderToStaticMarkup } = createRequire(import.meta.url)("react-dom/server") as typeof import("react-dom/server");
 
 /**
@@ -29,6 +31,7 @@ function headers(extra: Record<string, string> = {}): Record<string, string> {
     "Referrer-Policy": "same-origin",
     "X-Content-Type-Options": "nosniff",
     "X-Robots-Tag": "noindex, nofollow",
+    "Content-Security-Policy": CONTENT_SECURITY_POLICY,
     ...extra,
   };
 }
@@ -52,15 +55,42 @@ export function parseCircleSlug(raw: string): string | null {
   return /^[A-Za-z0-9_-]{1,64}$/.test(decoded) ? decoded : null;
 }
 
-export async function handleHubOpenPost(request: Request): Promise<Response> {
+export async function handleHubOpenPost(db: Db, request: Request): Promise<Response> {
+  // No session is issued here, but the path fans out to link-expand + model
+  // spend, so it shares the gate throttle (address-only + payload-hash keys,
+  // shared across processes behind the proxy via `gateThrottle`).
+  const preAddress = trustedClientAddress(request);
+  const preGate = await gateThrottle(db, [{ key: `hub-open:${preAddress}`, max: 60 }]);
+  if (!preGate.allowed) {
+    return new Response(
+      page("Start your circle", renderToStaticMarkup(createElement(HubScreen, { basePath: BASE, notice: "Too many tries. Wait a minute and try again.", initial: {} }))),
+      { status: 429, headers: headers({ "Content-Type": "text/html; charset=utf-8", "Retry-After": String(preGate.retryAfter) }) },
+    );
+  }
   let form: FormData;
   try { form = await request.formData(); } catch { return hubForm("Paste your circle link, or type the code at the end of it.", {}); }
+  const payloadGate = await gateThrottle(db, [
+    { key: `hub-open:${preAddress}`, max: 60 },
+    `hub-open-link:${preAddress}:${Buffer.from(String(form.get("link") ?? "").trim().slice(0, 64)).toString("base64url")}`,
+  ]);
+  if (!payloadGate.allowed) {
+    return new Response(
+      page("Start your circle", renderToStaticMarkup(createElement(HubScreen, { basePath: BASE, notice: "Too many tries. Wait a minute and try again.", initial: {} }))),
+      { status: 429, headers: headers({ "Content-Type": "text/html; charset=utf-8", "Retry-After": String(payloadGate.retryAfter) }) },
+    );
+  }
   const slug = parseCircleSlug(String(form.get("link") ?? ""));
   if (!slug) return hubForm("That does not look like a circle link. Paste the full link from your WhatsApp group.", {});
   return new Response(null, { status: 303, headers: headers({ Location: `${BASE}/c/${encodeURIComponent(slug)}` }) });
 }
 
 export async function handleHubCreatePost(db: Db, request: Request): Promise<Response> {
+  // Session-issuing POST: same login-CSRF bar as the circle gate (F1). A
+  // cross-origin form POST must never mint a session, even though SameSite=Lax
+  // is set on the cookie.
+  if (!isSameOrigin(request)) {
+    return hubForm("That submission could not be verified as coming from this page. Open the link again and try.", {});
+  }
   let form: FormData;
   try { form = await request.formData(); } catch { return hubForm("Something was missing. Check the form and try again.", {}); }
 
@@ -77,9 +107,20 @@ export async function handleHubCreatePost(db: Db, request: Request): Promise<Res
   }
   if (eventDateRaw && !/^\d{4}-\d{2}-\d{2}$/.test(eventDateRaw)) return hubForm(invalid, initial);
 
+  // Human-proof gate (F12): same invalid-form answer as a bad field, so the
+  // check cannot be probed apart. Open seam until TURNSTILE_SECRET is set.
+  if (!(await checkTurnstile(request, turnstileField(form)))) {
+    return hubForm(invalid, initial);
+  }
+
   const pepper = env.PHONE_HASH_PEPPER;
   const phoneHash = hashPhone(phone, pepper);
-  const gate = checkGateThrottle(`${phoneHash}:${trustedClientAddress(request)}`);
+  const hubAddress = trustedClientAddress(request);
+  const gate = await gateThrottle(db, [
+    `hub-create:${phoneHash}:${hubAddress}`,
+    { key: `hub-create-addr:${hubAddress}`, max: 60 },
+    { key: `gate-number:${phoneHash}`, max: 20 },
+  ]);
   if (!gate.allowed) {
     return new Response(
       page("Start your circle", renderToStaticMarkup(createElement(HubScreen, { basePath: BASE, notice: "Too many tries. Wait a minute and try again.", initial }))),

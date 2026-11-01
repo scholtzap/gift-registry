@@ -1,8 +1,16 @@
 import { Cta, Panel, Screen } from '@/components/ui';
 import type { CircleContext } from '@/components/ui';
+import { contributionStatusLabel } from '@/components/status';
 import type { FriendItemView } from '@/server/views';
 
 type Pool = NonNullable<FriendItemView['pool']>;
+
+function shareRows(pool: Pool) {
+  if (pool.tally.length > 0) return pool.tally;
+  if (!pool.myContribution) return [];
+  const mine = pool.myContribution;
+  return [{ displayName: 'You', amount: mine.amount, status: mine.status, reference: mine.reference }];
+}
 
 /**
  * Friend projection only: bank details the buyer switched on, plus the
@@ -26,9 +34,7 @@ export function PayoutShareScreen({
   shareHref: string;
 }) {
   const payout = pool.payout!;
-  const lines = pool.tally.length > 0
-    ? pool.tally
-    : (pool.myContribution ? [{ displayName: 'You', amount: pool.myContribution.amount, status: pool.myContribution.status, reference: pool.myContribution.reference }] : []);
+  const lines = shareRows(pool);
   return (
     <Screen
       title={`Pay for ${itemTitle}`}
@@ -54,7 +60,7 @@ export function PayoutShareScreen({
               {lines.map((row) => (
                 <li key={row.reference} className="pn-item pn-stack pn-stack-sm">
                   <p><strong>{row.displayName}</strong> · {row.amount} · ref {row.reference}</p>
-                  <p className="pn-small pn-muted">{row.status === 'promised' ? 'Not yet paid' : 'Marked paid'}</p>
+                  <p className="pn-small pn-muted">{contributionStatusLabel(row.status)}</p>
                 </li>
               ))}
             </ul>

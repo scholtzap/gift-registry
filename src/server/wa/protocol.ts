@@ -33,12 +33,31 @@ const envelope = z.object({
   }) })).max(100) })).max(100),
 });
 
+/**
+ * Maximum clock skew tolerated on inbound message timestamps. Messages dated
+ * in the future are dropped: Meta signs the envelope, not the clock, and a
+ * future timestamp is either a replay prologue or a broken sender.
+ *
+ * Past timestamps are accepted deliberately (F7): redelivery is deduplicated
+ * by `waMessageId` with a no-op upsert, so a stale-but-valid payload has no
+ * effect to replay. Dropping old messages instead would lose genuine Meta
+ * retries that arrive late.
+ */
+export const WEBHOOK_FUTURE_SKEW_MS = 5 * 60 * 1000;
+
+function verifyTokenEqual(provided: string | null, expected: string): boolean {
+  if (provided === null) return false;
+  const a = Buffer.from(provided, 'utf8');
+  const b = Buffer.from(expected, 'utf8');
+  return a.length === b.length && timingSafeEqual(a, b);
+}
+
 /** Raw bytes are authenticated before JSON is interpreted. No DB or external calls. */
-export async function receiveWebhook(request: Request, config: WebhookConfig): Promise<Response | { messages: InboundMessage[] }> {
+export async function receiveWebhook(request: Request, config: WebhookConfig, now = Date.now()): Promise<Response | { messages: InboundMessage[] }> {
   const url = new URL(request.url);
   if (request.method === 'GET') {
     if (!config.verifyToken) return new Response('Unavailable', { status: 503 });
-    if (url.searchParams.get('hub.mode') !== 'subscribe' || url.searchParams.get('hub.verify_token') !== config.verifyToken) {
+    if (url.searchParams.get('hub.mode') !== 'subscribe' || !verifyTokenEqual(url.searchParams.get('hub.verify_token'), config.verifyToken)) {
       return new Response('Forbidden', { status: 403 });
     }
     const challenge = url.searchParams.get('hub.challenge');
@@ -61,12 +80,16 @@ export async function receiveWebhook(request: Request, config: WebhookConfig): P
     if (change.field !== 'messages') continue;
     if (config.phoneNumberId && change.value.metadata?.phone_number_id !== config.phoneNumberId) continue;
     for (const m of change.value.messages ?? []) {
+      const timestamp = Number(m.timestamp);
+      // Future-dated messages are dropped (F7). Past ones are kept: the
+      // webhook upserts on `waMessageId`, so replays are effect-free.
+      if (!Number.isSafeInteger(timestamp) || timestamp * 1000 > now + WEBHOOK_FUTURE_SKEW_MS) continue;
       const contact = change.value.contacts?.find(c => c.wa_id !== undefined && c.wa_id === m.from);
       const bsuid = m.from_user_id ?? contact?.user_id;
       const phoneE164 = m.from && /^[1-9]\d{6,14}$/.test(m.from) ? '+' + m.from : undefined;
       const identity: SenderIdentity = bsuid ? { bsuid } : phoneE164 ? { phoneE164 } : {};
       if (!bsuid && !phoneE164) continue;
-      const base = { waMessageId: m.id, identity, timestamp: Number(m.timestamp) };
+      const base = { waMessageId: m.id, identity, timestamp };
       if ((m.type === 'audio' || m.type === 'image') && m[m.type]) {
         const data = m[m.type]!;
         messages.push({ ...base, kind: m.type, mediaId: data.id, mimeType: data.mime_type });

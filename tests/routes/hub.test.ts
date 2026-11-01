@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, expect, it } from 'vitest';
+import { env } from '@/lib/env';
 import { createDb, type Db } from '@/server/db/client';
 import { handleHubCreatePost, handleHubOpenPost, parseCircleSlug } from '@/server/routes/hub';
 import { handleCircleGet } from '@/server/routes/circle';
@@ -17,10 +18,13 @@ beforeAll(async () => {
 });
 afterAll(async () => { await db?.disconnect(); });
 
-function post(path: string, fields: Record<string, string>): Promise<Response> {
+const appOrigin = new URL(env.CIRCLE_BASE_URL).origin;
+
+function post(path: string, fields: Record<string, string>, origin = appOrigin): Promise<Response> {
   return handleHubCreatePost(db, new Request(`http://localhost${path}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    // Every browser sends `Origin` on a same-origin form POST, so a real submit always carries it.
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded', origin },
     body: new URLSearchParams(fields),
   }));
 }
@@ -34,7 +38,7 @@ it('parseCircleSlug accepts a full link, a path and a bare slug, rejects junk', 
 });
 
 it('open-my-circle redirects a pasted link to /c/<slug> without an existence check', async () => {
-  const res = await handleHubOpenPost(new Request('http://localhost/app/open', {
+  const res = await handleHubOpenPost(db, new Request('http://localhost/app/open', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({ link: 'https://pinata.scholtz.work/app/c/SomeSlug_123-abc' }),
@@ -78,5 +82,18 @@ it('rejects an invalid number with a 422 hub re-render and no circle', async () 
   const res = await post('/app/create', { name: 'Bad Phone', occasion: 'birthday', phone: '0831234567' });
   expect(res.status).toBe(422);
   expect(await res.text()).toContain('Create my circle');
+  expect(await db.prisma.circle.count()).toBe(before);
+});
+
+it('refuses a cross-origin create without minting a session or a circle (F1 login-CSRF)', async () => {
+  const before = await db.prisma.circle.count();
+  const res = await post(
+    '/app/create',
+    { name: 'Cross Origin', occasion: 'birthday', eventDate: '2026-12-05', phone: num(83) },
+    'https://evil.example',
+  );
+  expect(res.status).toBe(422);
+  expect(await res.text()).toContain('could not be verified');
+  expect(res.headers.get('Set-Cookie')).toBeNull();
   expect(await db.prisma.circle.count()).toBe(before);
 });

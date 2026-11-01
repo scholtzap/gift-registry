@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type { Actor, Db } from '@/server/db/client';
 import { assertCan, type AiCapability } from '@/server/entitlements';
+import { checkModelSpend } from '@/server/auth/spend';
 import { requestBytes } from '@/server/wa/http';
 import { assertVoiceWav } from '@/server/intake/voice';
 import demoFixture from '../../../tests/fixtures/models/bicycle-lamp.json';
@@ -41,14 +42,19 @@ const completion = z.object({
   usage: z.object({ prompt_tokens: z.number().int().nonnegative(), completion_tokens: z.number().int().nonnegative() }).optional(),
 });
 
-/** `authorize` is awaited before each external call, never once for an entire multi-stage job. */
-export function createModelClient(config: ModelConfig, authorize: (capability: AiCapability) => Promise<void>, http: typeof fetch = fetch) {
+/**
+ * `authorize` is awaited before each external call, never once for an entire multi-stage job.
+ * `spend` runs once per real (non-demo) call, after consent passes and before the fetch, so
+ * the per-owner daily quota counts executed work rather than consent checks.
+ */
+export function createModelClient(config: ModelConfig, authorize: (capability: AiCapability) => Promise<void>, http: typeof fetch = fetch, spend: () => Promise<void> = async () => {}) {
   async function parseWish(text: string, capability: 'voice_transcribe' | 'photo_extract' | 'link_expand', image?: { bytes: Uint8Array; mimeType: string }): Promise<{ wish: WishDraft; evidence: ModelEvidence }> {
     if (image && (capability !== 'photo_extract' || !['image/jpeg', 'image/png'].includes(image.mimeType) || image.bytes.length === 0 || image.bytes.length > 5 * 1024 * 1024)) throw new Error('photo_input_rejected');
     await authorize(capability);
     if (config.demoMode === 'on') return { wish: wishSchema.parse(demoFixture.wish), evidence: { model: 'muse-spark-1.2', mode: 'demo_fixture', inputTokens: null, outputTokens: null, latencyMs: 0 } };
     if (!config.apiKey) throw new Error('model_not_configured');
     if (config.baseUrl.replace(/\/$/, '') !== 'https://api.meta.ai/v1') throw new Error('model_url_rejected');
+    await spend();
     const start = performance.now();
     const response = await requestBytes(http, 'https://api.meta.ai/v1/chat/completions', {
       method: 'POST', headers: { Authorization: `Bearer ${config.apiKey}`, 'Content-Type': 'application/json' },
@@ -69,6 +75,7 @@ export function createModelClient(config: ModelConfig, authorize: (capability: A
     if (config.demoMode === 'on') return { text: demoFixture.transcript, evidence: { model: 'muse-voice-transcribe-1.0', mode: 'demo_fixture', inputTokens: null, outputTokens: null, latencyMs: 0 } };
     if (!config.apiKey) throw new Error('model_not_configured');
     if (config.baseUrl.replace(/\/$/, '') !== 'https://api.meta.ai/v1') throw new Error('model_url_rejected');
+    await spend();
     const start = performance.now();
     const form = new FormData();
     form.set('model', 'muse-voice-transcribe-1.0');
@@ -88,6 +95,7 @@ export function createModelClient(config: ModelConfig, authorize: (capability: A
     if (config.demoMode === 'on') return { candidates: ['A little joy, just for you.', 'Wrapped with love, opened with joy.', 'A small thing, from all of us.'], evidence: { model: 'muse-spark-1.2', mode: 'demo_fixture', inputTokens: null, outputTokens: null, latencyMs: 0 } };
     if (!config.apiKey) throw new Error('model_not_configured');
     if (config.baseUrl.replace(/\/$/, '') !== 'https://api.meta.ai/v1') throw new Error('model_url_rejected');
+    await spend();
     const start = performance.now();
     const response = await requestBytes(http, 'https://api.meta.ai/v1/chat/completions', {
       method: 'POST', headers: { Authorization: `Bearer ${config.apiKey}`, 'Content-Type': 'application/json' },
@@ -105,7 +113,19 @@ export function createModelClient(config: ModelConfig, authorize: (capability: A
   return { parseWish, transcribe, generatePun, requireCapability: (capability: 'voice_transcribe' | 'photo_extract' | 'link_expand') => authorize(capability) };
 }
 
-/** Spending is outside the short RLS transaction used solely to check the actor's consent. */
+/**
+ * Spending is outside the short RLS transaction used solely to check the actor's consent.
+ * The daily quota is keyed on the circle OWNER (budget is the owner's): a friend's voice
+ * note spends the owner's budget, and a proxy circle (no owner) spends the actor's.
+ */
+export async function spendForActorOwner(db: Db, actor: Actor): Promise<void> {
+  if (!actor.circleId) throw new Error('ingest_actor_unavailable');
+  const circle = await db.prisma.circle.findFirst({ where: { id: actor.circleId, status: 'active' }, select: { ownerUserId: true } });
+  if (!circle) throw new Error('ingest_actor_unavailable');
+  const { env } = await import('@/lib/env');
+  await checkModelSpend(db, circle.ownerUserId ?? actor.userId, env.MODEL_DAILY_SPEND_LIMIT);
+}
+
 export function modelsForActor(db: Db, actor: Actor, config: ModelConfig, http: typeof fetch = fetch) {
   return createModelClient(config, capability => db.withActor(actor, async tx => {
     if (!actor.circleId) throw new Error('ingest_actor_unavailable');
@@ -115,5 +135,5 @@ export function modelsForActor(db: Db, actor: Actor, config: ModelConfig, http: 
     ]);
     if (!circle || !membership || (actor.role === 'owner') !== (circle.ownerUserId === actor.userId)) throw new Error('ingest_actor_unavailable');
     await assertCan(tx, actor, capability);
-  }), http);
+  }), http, () => spendForActorOwner(db, actor));
 }

@@ -60,7 +60,7 @@ it('an archived proxy circle is still readable by its members but refuses a new 
   const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
   const created = await handleLookupPost(db, new Request('http://localhost/lookup', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded', origin },
     body: new URLSearchParams({
       intent: 'create', creatorName: 'Creator Friend', creatorPhone: num(31),
       recipientPhone: num(32), recipientLabel: 'A Friend', occasion: 'birthday',

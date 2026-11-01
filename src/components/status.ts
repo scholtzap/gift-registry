@@ -23,6 +23,26 @@ const tombstoneLabels: Record<string, string> = {
   duplicate: 'Removed as a duplicate',
 };
 
+/** Friend wording for one contribution row. Single source for the ledger, item page and share page. */
+export function contributionStatusLabel(status: string): string {
+  if (status === 'promised') return 'Not yet paid';
+  return 'Marked paid';
+}
+
+/** Friend wording for the viewer's own pledge line. */
+export function ownPledgeStatusLabel(status: string): string {
+  if (status === 'promised') return 'pledged, not yet paid';
+  return 'marked paid';
+}
+
+/** Long-form tombstone copy for the item page notice. Short badge labels stay in `tombstoneLabels`. */
+export function tombstoneCopy(reason: string | null): string {
+  if (reason === 'bought_self') return 'They bought this themselves.';
+  if (reason === 'no_longer_wants') return 'They no longer want this gift.';
+  if (reason === 'duplicate') return 'This was a duplicate gift.';
+  return 'This gift was removed from their list.';
+}
+
 export function itemStatus(item: FriendItemView): { label: string; tone: BadgeTone } {
   if (item.status === 'tombstoned') return { label: tombstoneLabels[item.tombstoneReason ?? ''] ?? 'Off their list', tone: 'alert' };
   if (item.status === 'revealed') return { label: 'Revealed', tone: 'done' };
