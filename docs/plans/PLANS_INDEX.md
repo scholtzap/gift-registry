@@ -8,7 +8,7 @@
 python scripts/ops/refresh_plans_index.py --write
 ```
 
-Generated: 2026-11-01 17:42 · repo: `gifts-registry`
+Generated: 2026-11-01 18:18 · repo: `gifts-registry`
 
 ## P0
 
@@ -52,7 +52,7 @@ Generated: 2026-11-01 17:42 · repo: `gifts-registry`
 | 16 | RN-B — the resolution lookup route: one key in, always 200 out | backlog | `rn-b-lookup-route.md` | Does the found branch render inline or redirect to `/c/<slug>`? (A redirect re-introduces the slug oracle.) Is the |
 | 17 | RN-C — proxy circle creation, its share link, and the RLS that breaks without it | backlog | `rn-c-proxy-circle.md` | Does the creator gifter get any elevated right, or are they a plain member (RN-A says plain member — confirm it |
 | 22 | RN-J — ask for access: the permission request and the owner inbox that is never pushed | draft | `rn-j-permission-request.md` |  |
-| 30 | Shared registry and circles dashboard — canonical items, link rows, per-circle visibility | draft | `shared-registry-and-circles.md` | None. All Q1–Q11 answered 2026-11-01. |
+| 30 | Shared registry and circles dashboard — canonical items, link rows, per-circle visibility | final | `shared-registry-and-circles.md` | None. All Q1–Q11 answered 2026-11-01. |
 
 ## P3
 

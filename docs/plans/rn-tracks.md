@@ -41,7 +41,7 @@ derivation) and rn-j (permission requests) have landed on main** with tests in `
 | **rn-g** | **recommended not built** | under create-only a bot search can only mean *create by number*, which is the cheapest squatting channel and needs the throttle mounted first; the web lookup is the search surface in the video |
 | **rn-f** | out-of-window | owner descoped OTP from the demo (2026-10-31); promotion is post-submission, and so is the authentication-template approval |
 | **rn-h** | out-of-window | `noindex` stays load-bearing; on-platform search is a query, not an index |
-| ledger | open | rows 1 (per-person `/r/<handle>`), 2 (visibility field) and 11 (owner session) are still unbuilt |
+| ledger | open | rows 1 (per-person `/r/<handle>`), 2 (visibility field) and 11 (owner session) are still unbuilt; row 11 is the prerequisite for `shared-registry-and-circles.md` |
 
 **Open gates that block shipping the lookup to a judge:** the throttle is mounted on the route but the
 `TRUSTED_PROXY` contract defaults off, so the localhost demo is unthrottled-by-flag - fine for recording,
