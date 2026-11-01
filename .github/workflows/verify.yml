@@ -12,6 +12,11 @@ on:
   pull_request:
   workflow_dispatch:
 
+# gitleaks-action lists PR commits via the API on pull_request events.
+permissions:
+  contents: read
+  pull-requests: read
+
 jobs:
   typecheck:
     name: tsc --noEmit
@@ -24,6 +29,12 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      # The Prisma client is generated, never committed; without this tsc
+      # fails on '@/generated/prisma/*'. Generate does not connect, so no
+      # database service is needed here — the URL only satisfies the schema.
+      - run: pnpm prisma:generate
+        env:
+          DATABASE_URL: postgresql://gifts:gifts@localhost:5433/gifts
       - run: pnpm typecheck
 
   test:
@@ -45,6 +56,9 @@ jobs:
           --health-retries 10
     env:
       DATABASE_URL_TEST: postgresql://gifts:gifts@localhost:5433/gifts_test
+      # env.ts requires DATABASE_URL at import; the suite only ever connects
+      # to DATABASE_URL_TEST (global-setup refuses a shared database).
+      DATABASE_URL: postgresql://gifts:gifts@localhost:5433/gifts
       SESSION_SECRET: synthetic-ci-session-secret-0123456789abcdef
       PHONE_HASH_PEPPER: synthetic-ci-phone-pepper-0123456789abcdef
       CIRCLE_BASE_URL: https://circles.example.test
@@ -56,6 +70,7 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - run: pnpm prisma:generate
       - run: pnpm test
 
   secrets:

@@ -63,6 +63,8 @@ and green. Verify with `pnpm typecheck` + `pnpm test` (needs Postgres on 127.0.0
 - [x] **[important] Idempotency keys on money writes (F8).** `src/server/auth/idempotency.ts`
   (lazy table, 24h TTL, scoped to actor+circle); mount in `circlePost`; `<IdemKey />` in every
   item/draft/card money form; double-submit + scope tests in `circle-actions.test.ts`.
+  Claim is insert-first so two concurrent first POSTs cannot both win; concurrent-claim
+  regression test included.
 - [x] **[important] Webhook freshness window (F7).** Future-dated messages dropped
   (`WEBHOOK_FUTURE_SKEW_MS` 5 min); past timestamps accepted deliberately — redelivery dedupes by
   `waMessageId` with a no-op upsert, so stale-but-valid payloads have no effect. Tests added.
@@ -94,6 +96,10 @@ and green. Verify with `pnpm typecheck` + `pnpm test` (needs Postgres on 127.0.0
 2. Confirm replay-window policy stands (future-skew reject + idempotent dedupe — done, documented).
 3. Run `git grep -nE '+27[0-9]{8,9}'` + full gitleaks scan immediately pre-publication (clean 2026-10-29).
 4. Watch `MODEL_DAILY_SPEND_LIMIT` against the first real bill; tune per plan.
+5. `verify.yml` went green on PR #36 after three first-run fixes: `prisma generate`
+   before tsc/test (client is generated, never committed), `DATABASE_URL` in the
+   test job env (env.ts requires it at import; the suite still only touches
+   `_test`), and `pull-requests: read` permission for gitleaks on PR events.
 
 ## Residuals (named, not hidden)
 
