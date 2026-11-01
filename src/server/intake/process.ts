@@ -55,11 +55,12 @@ async function media(db: Db, actor: Actor, event: Event, state: RecordState, env
 async function failure(db: Db, actor: Actor, event: Event, state: RecordState, error: unknown): Promise<ProcessResult> {
   const off = error instanceof CapabilityOffError;
   const unavailable = error instanceof CapabilityUnavailableError;
-  const reply = off ? `${FIXED_MENU}\n${error.degraded}` : `${FIXED_MENU}\nIntake is unavailable. Add the gift manually in your circle.`;
+  const spent = error instanceof Error && (error.message === 'model_spend_exceeded' || error.message === 'model_spend_unavailable');
+  const reply = off ? `${FIXED_MENU}\n${error.degraded}` : spent ? `${FIXED_MENU}\nModel use is paused for today. Add the gift manually in your circle.` : `${FIXED_MENU}\nIntake is unavailable. Add the gift manually in your circle.`;
   state.reply = reply;
-  const reason = off ? `capability_off:${error.capability}` : unavailable ? 'capability_unavailable' : error instanceof Error && ['model_not_configured', 'whatsapp_not_configured', 'model_output_rejected', 'retailer_url_rejected', 'media_expired_or_missing'].includes(error.message) ? error.message : 'intake_failed';
+  const reason = off ? `capability_off:${error.capability}` : unavailable ? 'capability_unavailable' : error instanceof Error && ['model_not_configured', 'whatsapp_not_configured', 'model_output_rejected', 'retailer_url_rejected', 'media_expired_or_missing', 'model_spend_exceeded', 'model_spend_unavailable'].includes(error.message) ? error.message : 'intake_failed';
   await save(db, actor, event.id, state, { status: 'failed', error: reason });
-  if (off || unavailable || ['model_not_configured', 'whatsapp_not_configured', 'retailer_url_rejected', 'model_output_rejected', 'media_expired_or_missing'].includes(reason)) return { status: 'failed', reply };
+  if (off || unavailable || spent || ['model_not_configured', 'whatsapp_not_configured', 'retailer_url_rejected', 'model_output_rejected', 'media_expired_or_missing'].includes(reason)) return { status: 'failed', reply };
   throw new Error('ingest_retryable_failure');
 }
 

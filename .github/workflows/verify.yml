@@ -1,0 +1,79 @@
+name: verify
+
+# F4: every PR proves typecheck, the full vitest suite (against a real
+# Postgres 16, like production and like the leak suite demands), secret
+# hygiene and the no-real-phone-numbers rule before it can merge. The repo is
+# public and the submission deadline is 2026-11-04: these gates replace the
+# manual pre-publication checklist.
+
+on:
+  push:
+    branches: [master, main, dev]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  typecheck:
+    name: tsc --noEmit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+
+  test:
+    name: vitest (Postgres 16 service)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        ports:
+          - 5433:5432
+        env:
+          POSTGRES_USER: gifts
+          POSTGRES_PASSWORD: gifts
+          POSTGRES_DB: gifts
+        options: >-
+          --health-cmd "pg_isready -U gifts"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL_TEST: postgresql://gifts:gifts@localhost:5433/gifts_test
+      SESSION_SECRET: synthetic-ci-session-secret-0123456789abcdef
+      PHONE_HASH_PEPPER: synthetic-ci-phone-pepper-0123456789abcdef
+      CIRCLE_BASE_URL: https://circles.example.test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test
+
+  secrets:
+    name: gitleaks + no-real-numbers
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: gitleaks scan
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: no real phone numbers in the tree
+        # Demo data is the fictional seeded cast only; committed numbers —
+        # even fake-looking ones — are numbers someone may be assigned.
+        run: |
+          if git grep -nE '\+27[0-9]{8,9}' -- . ':!pnpm-lock.yaml'; then
+            echo 'real-looking phone numbers found; see AGENTS.md' >&2
+            exit 1
+          fi

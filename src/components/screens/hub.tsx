@@ -1,4 +1,4 @@
-import { Button, Cta, Field, Notice, Panel, Screen } from '@/components/ui';
+import { Button, Cta, Field, Notice, Panel, Screen, TurnstileWidget } from '@/components/ui';
 
 /**
  * CR-UX-01 entry hub: one door with three honest actions. This screen only
@@ -39,6 +39,7 @@ export function HubScreen({ basePath = '', notice, initial }: {
             </p>
             <Field label="Your WhatsApp number (international form)" name="phone" id="hub-phone" type="tel" autoComplete="tel" inputMode="tel" required />
             <Field label="First wish (optional)" name="wish" id="hub-wish" type="text" maxLength={120} defaultValue={initial?.wish} placeholder="Something you would love" />
+            <TurnstileWidget />
             <div className="pn-actions">
               <Button type="submit" variant="primary" block>Create my circle</Button>
             </div>

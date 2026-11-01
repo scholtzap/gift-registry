@@ -1,4 +1,4 @@
-import { Badge, Button, Field, Notice, Panel, Screen } from '@/components/ui';
+import { Badge, Button, Field, Notice, Panel, Screen, TurnstileWidget } from '@/components/ui';
 
 // Public gate only: notice is generic server copy, never a circle projection.
 // `initialName`/`initialPhone` are only what this visitor just typed (CR-UX-04:
@@ -68,6 +68,7 @@ export function JoinScreen({ basePath = '', notice, action = '', initialName, in
             <p className="pn-small pn-muted">
               We check the invite list. This does not verify that you control the number.
             </p>
+            <TurnstileWidget />
             <div className="pn-actions">
               {rejected ? (
                 <>

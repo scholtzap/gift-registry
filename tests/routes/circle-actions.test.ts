@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { handleCircleGet, handleCirclePost } from '@/server/routes/circle';
+import { claimIdempotencyKey } from '@/server/auth/idempotency';
 import { issueSession, SESSION_COOKIE } from '@/server/auth/session';
 import { env } from '@/lib/env';
 import { seedCircle, type CircleFixture } from '../leak/fixtures';
@@ -273,6 +274,49 @@ describe('private circle actions', () => {
       }
       expect((await row()).eventDate).toEqual(new Date('2026-12-05T00:00:00.000Z'));
       expect((await row()).eventDateSetByUserId).toBe(fx.ownerUserId);
+    });
+
+    it('dedupes a double-submitted confirm with the same idempotency key (F8)', async () => {
+      // Run-unique: the idempotency table lives in Postgres and outlives one run.
+      const key = `idem-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+      const fields = {
+        intent: 'confirm', title: 'A fictional double-clicked kettle', retailer: '',
+        priceMinor: '0', currency: 'ZAR', visibility: 'owner_visible',
+        idempotencyKey: key,
+      };
+      const first = await post('/draft', fields);
+      expect(first.status).toBe(303);
+      const second = await post('/draft', fields);
+      expect(second.status).toBe(303);
+      expect(second.headers.get('Location')).toBe(`/c/${slug}`);
+      expect(await fx.db.prisma.item.count({
+        where: { circleId: fx.circleId, title: 'A fictional double-clicked kettle' },
+      })).toBe(1);
+    });
+
+    it('treats the same key from another actor as a new write (F8 scope)', async () => {
+      const key = `idem-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+      const fields = {
+        intent: 'confirm', title: 'A fictional scoped kettle', retailer: '',
+        priceMinor: '0', currency: 'ZAR', visibility: 'owner_visible',
+        idempotencyKey: key,
+      };
+      expect((await post('/draft', fields, cookie('friend'))).status).toBe(303);
+      // friendB never confirmed anything: same key, different actor, proceeds.
+      const other = await post('/draft', fields, cookie('friend', fx.friendBUserId));
+      expect(other.status).toBe(303);
+      expect(await fx.db.prisma.item.count({
+        where: { circleId: fx.circleId, title: 'A fictional scoped kettle' },
+      })).toBe(2);
+    });
+
+    it('lets exactly one of two concurrent first claims win (F8 race)', async () => {
+      const key = `idem-race-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+      const [a, b] = await Promise.all([
+        claimIdempotencyKey(fx.db, key, fx.circleId, fx.ownerUserId),
+        claimIdempotencyKey(fx.db, key, fx.circleId, fx.ownerUserId),
+      ]);
+      expect([a, b].filter(Boolean)).toHaveLength(1);
     });
   });
 });

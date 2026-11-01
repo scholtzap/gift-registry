@@ -24,6 +24,14 @@ const schema = z.object({
   CIRCLE_BASE_URL: z.string().url(),
   PORT: z.coerce.number().int().positive().default(3000),
 
+  /**
+   * Production is behind Caddy, which overwrites X-Forwarded-For at the proxy.
+   * The header is honoured for throttle keys only when this is "on" (RN-D Gate 3);
+   * default "off" keeps the local demo honest instead of trusting client claims.
+   * The shared Postgres throttle budget activates on this same switch (F2).
+   */
+  TRUSTED_PROXY: z.enum(["on", "off"]).default("off"),
+
   WHATSAPP_APP_SECRET: z.string().min(32).optional(),
   WHATSAPP_VERIFY_TOKEN: z.string().min(8).optional(),
   WHATSAPP_ACCESS_TOKEN: z.string().optional(),
@@ -32,10 +40,21 @@ const schema = z.object({
   WHATSAPP_BUSINESS_ACCOUNT_ID: z.string().optional(),
   WHATSAPP_GRAPH_API_VERSION: z.string().default("v23.0"),
 
+  /**
+   * Cloudflare Turnstile bot gate (F12). Unset = open seam for dev/demo/test;
+   * set BOTH before external users arrive. The secret verifies tokens
+   * server-side, the site key renders the widget in the gate/hub/lookup
+   * forms. One without the other is a deploy misconfiguration, not a mode.
+   */
+  TURNSTILE_SECRET: z.string().min(20).optional(),
+  TURNSTILE_SITE_KEY: z.string().min(10).optional(),
+
   MODEL_API_KEY: z.string().startsWith("LLM_").optional(),
   MODEL_API_BASE_URL: z.string().url().default("https://api.meta.ai/v1"),
   // ARCHITECTURE §5: 1.2 takes anything with pixels or audio in it, 1.3 is text-only reasoning.
   // Spark 1.3's audio understanding is documented as degraded, and image intake shares the path.
+  MODEL_DAILY_SPEND_LIMIT: z.coerce.number().int().min(0).default(200),
+
   MODEL_INTAKE: z.string().default("muse-spark-1.2"),
   MODEL_VISION: z.string().default("muse-spark-1.2"),
   MODEL_TRANSCRIBE: z.string().default("muse-voice-transcribe-1.0"),

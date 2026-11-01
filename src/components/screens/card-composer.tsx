@@ -1,4 +1,4 @@
-import { Button, EmptyState, Field, Notice, Panel, Screen } from '@/components/ui';
+import { Button, EmptyState, Field, IdemKey, Notice, Panel, Screen } from '@/components/ui';
 import type { CircleContext, NavItem } from '@/components/ui';
 
 export type CardComposerData = {
@@ -66,6 +66,7 @@ export function CardComposerScreen({
               data-card-entry
             >
               <input type="hidden" name="intent" value="save_entry" />
+              <IdemKey />
               <h2>Your contribution to the card</h2>
               <p className="pn-muted">Edit only your own message. Everyone else’s words stay as they wrote them.</p>
 

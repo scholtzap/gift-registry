@@ -1,4 +1,4 @@
-import { Button, Field, Panel, Screen } from '@/components/ui';
+import { Button, Field, Panel, Screen, TurnstileWidget } from '@/components/ui';
 
 /** CR-UX-02: the creation entry, in the same shell/type as the circle screens. */
 export const PROXY_EXPLAINER =
@@ -57,6 +57,7 @@ export function ProxyOfferScreen({ basePath = '' }: { basePath?: string } = {}) 
             <Field label="Occasion" name="occasion" id="proxy-occasion" type="text" required maxLength={80} />
             <Field label="The day" name="eventDate" id="proxy-event-date" type="date" required />
             <Field label="The gift" name="itemTitle" id="proxy-item-title" type="text" required maxLength={120} />
+            <TurnstileWidget />
             <div className="pn-actions">
               <Button type="submit" variant="primary" block>Create the circle</Button>
             </div>

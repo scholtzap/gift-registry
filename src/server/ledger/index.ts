@@ -127,6 +127,18 @@ async function lockPool(tx: Tx, actor: Actor, poolId: string) {
   return pool;
 }
 
+function requireBuyer(pool: Pool, actor: Actor) {
+  if (pool.buyerUserId !== actor.userId) throw new Error('ledger_buyer_required');
+}
+
+function requireMutablePool(pool: Pool) {
+  if (pool.status !== 'open' && pool.status !== 'funded') throw new Error('ledger_pool_unavailable');
+}
+
+function requireOpenPool(pool: Pool) {
+  if (pool.status !== 'open') throw new Error('ledger_pool_unavailable');
+}
+
 async function poolMoney(tx: Tx, pool: Pool) {
   const rows = await tx.contribution.findMany({ where: { poolId: pool.id } });
   for (const row of rows) {
@@ -147,31 +159,36 @@ export async function contribute(tx: Tx, actor: Actor, poolId: string, amountMin
     if (existing.amountMinor !== amountMinor) throw new Error('ledger_contribution_conflict');
     return existing;
   }
-  if (pool.status !== 'open') throw new Error('ledger_pool_unavailable');
+  requireOpenPool(pool);
   await joinPool(tx, actor, pool);
   const contribution = await tx.contribution.create({ data: { poolId, userId: actor.userId, amountMinor, currency: pool.currency } });
   await append(tx, actor, 'contribution', contribution.id, 'contribution.promised', { poolId, amountMinor, currency: pool.currency });
   return contribution;
 }
 
+async function settleMarkPaid(tx: Tx, actor: Actor, pool: Pool, poolId: string, paidMinor: bigint, contribution: Contribution) {
+  const updated = await tx.contribution.update({
+    where: { id: contribution.id, status: 'promised' }, data: { status: 'marked_paid', paidAt: new Date() },
+  });
+  await append(tx, actor, 'contribution', updated.id, 'contribution.marked_paid', { poolId });
+  if (pool.status === 'open' && paidMinor + BigInt(updated.amountMinor) >= BigInt(pool.targetMinor)) {
+    const funded = await tx.pool.update({ where: { id: poolId, status: 'open' }, data: { status: 'funded' } });
+    await append(tx, actor, 'pool', poolId, 'pool.funded');
+    return { contribution: updated, pool: funded };
+  }
+  return { contribution: updated, pool };
+}
+
 export async function markPaid(tx: Tx, actor: Actor, poolId: string): Promise<{ contribution: Contribution; pool: Pool }> {
   await scope(tx, actor, 'friend');
-  let pool = await lockPool(tx, actor, poolId);
-  if (pool.status !== 'open' && pool.status !== 'funded') throw new Error('ledger_pool_unavailable');
+  const pool = await lockPool(tx, actor, poolId);
+  requireMutablePool(pool);
   const { rows, paidMinor } = await poolMoney(tx, pool);
-  let contribution = rows.find((row) => row.userId === actor.userId);
+  const contribution = rows.find((row) => row.userId === actor.userId);
   if (!contribution) throw new Error('ledger_not_found');
   if (contribution.status === 'marked_paid') return { contribution, pool };
   if (contribution.status !== 'promised') throw new Error('ledger_contribution_unavailable');
-  contribution = await tx.contribution.update({
-    where: { id: contribution.id, status: 'promised' }, data: { status: 'marked_paid', paidAt: new Date() },
-  });
-  await append(tx, actor, 'contribution', contribution.id, 'contribution.marked_paid', { poolId });
-  if (pool.status === 'open' && paidMinor + BigInt(contribution.amountMinor) >= BigInt(pool.targetMinor)) {
-    pool = await tx.pool.update({ where: { id: poolId, status: 'open' }, data: { status: 'funded' } });
-    await append(tx, actor, 'pool', poolId, 'pool.funded');
-  }
-  return { contribution, pool };
+  return settleMarkPaid(tx, actor, pool, poolId, paidMinor, contribution);
 }
 
 /**
@@ -194,13 +211,18 @@ export interface PayoutDetailsInput {
 
 export const PAYOUT_ACCOUNT_TYPES = ['cheque', 'savings', 'transmission'] as const;
 
+function cleanPrefix(prefix?: string | null): string | null {
+  const clean = (prefix ?? '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 12);
+  return clean || null;
+}
+
 function cleanPayout(input: PayoutDetailsInput) {
   const accountHolder = input.accountHolder.trim().slice(0, 80);
   const bankName = input.bankName.trim().slice(0, 80);
   const accountNumber = input.accountNumber.replace(/[\s-]/g, '');
   const branchCode = input.branchCode.replace(/[\s-]/g, '');
   const accountType = (input.accountType ?? '').trim().toLowerCase() || null;
-  const referencePrefix = (input.referencePrefix ?? '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 12) || null;
+  const referencePrefix = cleanPrefix(input.referencePrefix);
   if (!accountHolder || !bankName) throw new Error('ledger_invalid_payout');
   if (!/^\d{6,20}$/.test(accountNumber) || !/^\d{6}$/.test(branchCode)) throw new Error('ledger_invalid_payout');
   if (accountType !== null && !(PAYOUT_ACCOUNT_TYPES as readonly string[]).includes(accountType)) {
@@ -212,8 +234,8 @@ function cleanPayout(input: PayoutDetailsInput) {
 export async function savePayout(tx: Tx, actor: Actor, poolId: string, input: PayoutDetailsInput): Promise<PoolPayout> {
   await scope(tx, actor, 'friend');
   const pool = await lockPool(tx, actor, poolId);
-  if (pool.buyerUserId !== actor.userId) throw new Error('ledger_buyer_required');
-  if (pool.status !== 'open' && pool.status !== 'funded') throw new Error('ledger_pool_unavailable');
+  requireBuyer(pool, actor);
+  requireMutablePool(pool);
   const details = cleanPayout(input);
   const row = await tx.poolPayout.upsert({
     where: { poolId },
@@ -230,23 +252,15 @@ export async function savePayout(tx: Tx, actor: Actor, poolId: string, input: Pa
  */
 export async function markPaidFor(tx: Tx, actor: Actor, poolId: string, targetUserId: string): Promise<{ contribution: Contribution; pool: Pool }> {
   await scope(tx, actor, 'friend');
-  let pool = await lockPool(tx, actor, poolId);
-  if (pool.buyerUserId !== actor.userId) throw new Error('ledger_buyer_required');
-  if (pool.status !== 'open' && pool.status !== 'funded') throw new Error('ledger_pool_unavailable');
+  const pool = await lockPool(tx, actor, poolId);
+  requireBuyer(pool, actor);
+  requireMutablePool(pool);
   const { rows, paidMinor } = await poolMoney(tx, pool);
-  let contribution = rows.find((row) => row.userId === targetUserId);
+  const contribution = rows.find((row) => row.userId === targetUserId);
   if (!contribution) throw new Error('ledger_not_found');
   if (contribution.status === 'marked_paid') return { contribution, pool };
   if (contribution.status !== 'promised') throw new Error('ledger_contribution_unavailable');
-  contribution = await tx.contribution.update({
-    where: { id: contribution.id, status: 'promised' }, data: { status: 'marked_paid', paidAt: new Date() },
-  });
-  await append(tx, actor, 'contribution', contribution.id, 'contribution.marked_paid', { poolId });
-  if (pool.status === 'open' && paidMinor + BigInt(contribution.amountMinor) >= BigInt(pool.targetMinor)) {
-    pool = await tx.pool.update({ where: { id: poolId, status: 'open' }, data: { status: 'funded' } });
-    await append(tx, actor, 'pool', poolId, 'pool.funded');
-  }
-  return { contribution, pool };
+  return settleMarkPaid(tx, actor, pool, poolId, paidMinor, contribution);
 }
 
 /**
@@ -256,14 +270,13 @@ export async function markPaidFor(tx: Tx, actor: Actor, poolId: string, targetUs
  */
 export function payoutReference(contributionId: string, prefix?: string | null): string {
   const code = contributionId.replace(/-/g, '').slice(0, 6).toUpperCase();
-  const clean = (prefix ?? '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 12);
-  return `${clean || 'PN'}-${code}`;
+  return `${cleanPrefix(prefix) ?? 'PN'}-${code}`;
 }
 
 export async function purchasePool(tx: Tx, actor: Actor, poolId: string): Promise<Pool> {
   await scope(tx, actor, 'friend');
   const pool = await lockPool(tx, actor, poolId);
-  if (pool.buyerUserId !== actor.userId) throw new Error('ledger_buyer_required');
+  requireBuyer(pool, actor);
   if (pool.status === 'purchased') return pool;
   if (pool.status !== 'funded') throw new Error('ledger_pool_unavailable');
   const { paid, paidMinor } = await poolMoney(tx, pool);

@@ -18,6 +18,15 @@ export function escapeHtml(value: string): string {
   return value.replace(/[&<>"']/g, (c) => HTML_ESCAPES[c] ?? c);
 }
 
+/**
+ * Defense in depth behind React SSR escaping + `escapeHtml` + card validation:
+ * no inline scripts or styles are used (styling is `/pinata.css`, photos and
+ * card art are same-origin), so the policy can stay tight. `img-src data:`
+ * covers client-side previews before upload; nothing else needs it.
+ */
+export const CONTENT_SECURITY_POLICY =
+  "default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self' https://challenges.cloudflare.com; object-src 'none'; frame-src https://challenges.cloudflare.com; frame-ancestors 'none'; base-uri 'self'";
+
 const ASSET_BASE = process.env.PINATA_BASE_PATH ?? "";
 
 export function page(title: string, body: string): string {
