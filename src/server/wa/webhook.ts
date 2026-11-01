@@ -3,6 +3,7 @@ import type { Db } from '@/server/db/client';
 import type { Prisma } from '@/generated/prisma/client';
 import { receiveWebhook } from './protocol';
 import { resolveSender } from './identity';
+import { gateThrottle } from '@/server/auth/throttle-store';
 import { getIngestQueue, INGEST_QUEUE } from './queue';
 import { downloadIngestMedia } from '@/server/intake/process';
 import { FIXED_MENU } from '@/server/agent/tasks';
@@ -19,6 +20,15 @@ export function createWhatsAppWebhook(db: Db): (request: Request) => Promise<Res
     let reply: string | undefined;
     try {
       for (const message of received.messages) {
+        // Ingest abuse throttle (F2): per-sender and per-business buckets.
+        // A denial stays 200 with no work queued — Meta retries non-2xx, so a
+        // 429 here would turn a burst into a retry storm.
+        const senderKey = message.identity.bsuid ?? message.identity.phoneE164 ?? 'unknown';
+        const waGate = await gateThrottle(db, [
+          { key: `wa:${senderKey}`, max: 30 },
+          { key: `wa-biz:${env.WHATSAPP_PHONE_NUMBER_ID ?? 'default'}`, max: 300 },
+        ]);
+        if (!waGate.allowed) continue;
         const actor = await resolveSender(db, message.identity);
         if (!actor || !actor.circleId) { reply = FIXED_MENU; continue; }
         const boss = await getIngestQueue(db);
@@ -47,7 +57,9 @@ export function createWhatsAppWebhook(db: Db): (request: Request) => Promise<Res
         } else if (message.kind === 'text' && !message.interactiveId) reply = FIXED_MENU;
       }
       // A webhook response is not a WhatsApp send. Transport delivery is intentionally separate.
-      return Response.json({ ok: true, ...(reply ? { reply } : {}) }, { headers });
+      // The `reply` key is always present (null when every message routed to
+      // async work) so denied and accepted callers see the same body shape.
+      return Response.json({ ok: true, reply: reply ?? null }, { headers });
     } catch { return Response.json({ error: 'Webhook temporarily unavailable' }, { status: 503, headers }); }
   };
 }

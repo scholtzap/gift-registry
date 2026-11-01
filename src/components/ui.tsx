@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import type { CSSProperties, HTMLInputTypeAttribute, MouseEventHandler, ReactNode } from 'react';
 import { currencySymbol } from '@/lib/money';
 
@@ -471,6 +472,32 @@ export function Notice({ children, kind = 'info', title }: {
       {title != null && <h2 className="pn-item-title">{title}</h2>}
       {children}
     </section>
+  );
+}
+
+/**
+ * Fresh idempotency key per form render (F8). A double-clicked submit or a
+ * retried POST replays the same key and the route dedupes it instead of
+ * running the write twice. Rendered server-side per GET, so every fresh form
+ * carries a fresh key; nothing is stored client-side.
+ */
+export function IdemKey() {
+  return <input type="hidden" name="idempotencyKey" value={randomUUID()} />;
+}
+
+/**
+ * Cloudflare Turnstile widget (F12). Renders nothing until TURNSTILE_SITE_KEY
+ * is set, so dev/demo/test forms are byte-identical with or without the seam
+ * configured; the CSP already allows the Cloudflare script and frame.
+ */
+export function TurnstileWidget() {
+  const siteKey = process.env.TURNSTILE_SITE_KEY;
+  if (!siteKey) return null;
+  return (
+    <>
+      <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+      <div className="cf-turnstile" data-sitekey={siteKey} data-theme="light"></div>
+    </>
   );
 }
 

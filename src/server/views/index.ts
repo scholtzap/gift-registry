@@ -146,26 +146,32 @@ export interface FriendItemView {
  * with what they owe and the reference to use. Built only from data the
  * viewer was already allowed to see — the route gates the page itself.
  */
+function shareLine(displayName: string, amount: string, reference: string, status: string): string {
+  const suffix = status === 'promised' ? '' : ' — paid ✓';
+  return `- ${displayName}: ${amount} (ref ${reference})${suffix}`;
+}
+
 export function payoutShareText(itemTitle: string, pool: NonNullable<FriendItemView['pool']>): string {
+  const payout = pool.payout!;
   const lines = [
     `Piñata pool: ${itemTitle}`,
     `Target: ${pool.target}`,
     '',
     'Pay to:',
-    `${pool.payout!.accountHolder}`,
-    `${pool.payout!.bankName}`,
-    `Account: ${pool.payout!.accountNumber}`,
-    `Branch: ${pool.payout!.branchCode}`,
-    ...(pool.payout!.accountType ? [`Account type: ${pool.payout!.accountType}`] : []),
+    payout.accountHolder,
+    payout.bankName,
+    `Account: ${payout.accountNumber}`,
+    `Branch: ${payout.branchCode}`,
+    ...(payout.accountType ? [`Account type: ${payout.accountType}`] : []),
     '',
     'Your share:',
   ];
   for (const row of pool.tally) {
-    lines.push(`- ${row.displayName}: ${row.amount} (ref ${row.reference})${row.status === 'promised' ? '' : ' — paid ✓'}`);
+    lines.push(shareLine(row.displayName, row.amount, row.reference, row.status));
   }
   if (pool.tally.length === 0 && pool.myContribution) {
     const mine = pool.myContribution;
-    lines.push(`- You: ${mine.amount} (ref ${mine.reference})${mine.status === 'promised' ? '' : ' — paid ✓'}`);
+    lines.push(shareLine('You', mine.amount, mine.reference, mine.status));
   }
   lines.push('', 'Send the money outside Piñata, then mark your pledge paid on the gift page.');
   return lines.join('\n');
@@ -176,6 +182,28 @@ export interface FriendCircleView extends CircleDates {
   occasion: string;
   items: FriendItemView[];
   attributes: { kind: string; valueText: string; unit: string | null }[];
+}
+
+function formatPrice(priceMinor: number | null, currency: string): string | null {
+  if (priceMinor === null) return null;
+  return formatMinor(priceMinor, currency);
+}
+
+type ContributionStatus = 'promised' | 'marked_paid' | 'settled';
+
+function contributionView(
+  contributionId: string,
+  amountMinor: number,
+  currency: string,
+  status: ContributionStatus,
+  referencePrefix: string | null,
+) {
+  return {
+    amount: formatMinor(amountMinor, currency),
+    amountMinor,
+    status,
+    reference: payoutReference(contributionId, referencePrefix),
+  };
 }
 
 export async function ownerCircleView(tx: Tx, circleId: string, now: Date = new Date()): Promise<OwnerCircleView | null> {
@@ -204,7 +232,7 @@ export async function ownerCircleView(tx: Tx, circleId: string, now: Date = new 
       id: item.id,
       title: item.title,
       retailer: item.retailer,
-      price: item.priceMinor === null ? null : formatMinor(item.priceMinor, item.currency),
+      price: formatPrice(item.priceMinor, item.currency),
       confirmed: item.confirmed,
       hasPhoto: isStoredPhoto(item.imagePath),
     })),
@@ -259,12 +287,15 @@ export async function friendCircleView(tx: Tx, circleId: string, viewerUserId: s
     items: circle.items.map((item) => {
       const pool = item.pools.find((p) => p.status !== 'purchased') ?? null;
       const myClaim = item.claims.find((c) => c.userId === viewerUserId && c.status === 'claimed') ?? null;
-      const settledMinor = pool === null
-        ? 0
-        : pool.contributions.reduce((sum, c) => sum + (c.status === 'settled' ? c.amountMinor : 0), 0);
-      const pledgedMinor = pool === null
-        ? 0
-        : pool.contributions.reduce((sum, c) => sum + c.amountMinor, 0);
+      const totals = (pool?.contributions ?? []).reduce(
+        (sums, c) => ({
+          settled: sums.settled + (c.status === 'settled' ? c.amountMinor : 0),
+          pledged: sums.pledged + c.amountMinor,
+        }),
+        { settled: 0, pledged: 0 },
+      );
+      const settledMinor = totals.settled;
+      const pledgedMinor = totals.pledged;
       const iAmBuyer = pool !== null && pool.buyerUserId === viewerUserId;
       // RLS already limited pool_payouts rows to what this role may read (buyer's
       // own row, or a shared row for a pledger); the checks below narrow further
@@ -273,11 +304,12 @@ export async function friendCircleView(tx: Tx, circleId: string, viewerUserId: s
       const myRow = pool?.contributions.find((c) => c.userId === viewerUserId) ?? null;
       const payoutVisible = payoutRow !== null
         && (iAmBuyer || (payoutRow.shareConsent && myRow !== null));
+      const referencePrefix = payoutRow?.referencePrefix ?? null;
       return {
         id: item.id,
         title: item.title,
         retailer: item.retailer,
-        price: item.priceMinor === null ? null : formatMinor(item.priceMinor, item.currency),
+        price: formatPrice(item.priceMinor, item.currency),
         currency: item.currency,
         hasPhoto: isStoredPhoto(item.imagePath),
         status: item.status,
@@ -304,12 +336,9 @@ export async function friendCircleView(tx: Tx, circleId: string, viewerUserId: s
                 contributors: pool.contributions.length,
                 pledged: formatMinor(pledgedMinor, pool.currency),
                 pledgedMinor,
-                myContribution: myRow === null ? null : {
-                  amount: formatMinor(myRow.amountMinor, pool.currency),
-                  amountMinor: myRow.amountMinor,
-                  status: myRow.status,
-                  reference: payoutReference(myRow.id, payoutRow?.referencePrefix ?? null),
-                },
+                myContribution: myRow === null ? null : contributionView(
+                  myRow.id, myRow.amountMinor, pool.currency, myRow.status, referencePrefix,
+                ),
                 payout: !payoutVisible || payoutRow === null ? null : {
                   accountHolder: payoutRow.accountHolder,
                   bankName: payoutRow.bankName,
@@ -322,10 +351,7 @@ export async function friendCircleView(tx: Tx, circleId: string, viewerUserId: s
                 tally: !iAmBuyer ? [] : pool.contributions.map((c) => ({
                   userId: c.userId,
                   displayName: c.user.displayName,
-                  amount: formatMinor(c.amountMinor, pool.currency),
-                  amountMinor: c.amountMinor,
-                  status: c.status,
-                  reference: payoutReference(c.id, payoutRow?.referencePrefix ?? null),
+                  ...contributionView(c.id, c.amountMinor, pool.currency, c.status, referencePrefix),
                 })),
               },
       };

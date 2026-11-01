@@ -1,4 +1,4 @@
-import { AmountField, Badge, Button, Field, Notice, Panel, Screen, type CircleContext, type NavItem } from '@/components/ui';
+import { AmountField, Badge, Button, Field, IdemKey, Notice, Panel, Screen, type CircleContext, type NavItem } from '@/components/ui';
 import { CURRENCIES, DEFAULT_CURRENCY, currencyLabel, isCurrency, minorToInput } from '@/lib/money';
 
 export type DraftScreenData = {
@@ -72,6 +72,7 @@ export function DraftConfirmScreen({ draft, basePath, role, notice, circle, defa
 
         <form action={`${basePath}/draft`} method="post" encType="multipart/form-data" className="pn-stack">
           <input type="hidden" name="intent" value="confirm" />
+          <IdemKey />
           {!supportsCurrency && <input type="hidden" name="currency" value={currency} />}
           <input type="hidden" name="visibility" value={role === 'friend' ? 'friend_only' : 'owner_visible'} />
           {draft?.id && <input type="hidden" name="ingestEventId" value={draft.id} />}

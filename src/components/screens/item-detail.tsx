@@ -1,6 +1,6 @@
-import { AmountField, Badge, Button, Cta, Field, ItemPhoto, Meter, Money, Notice, PhotoUploadForm, Panel, Screen } from '@/components/ui';
+import { AmountField, Badge, Button, Cta, Field, IdemKey, ItemPhoto, Meter, Money, Notice, PhotoUploadForm, Panel, Screen } from '@/components/ui';
 import type { CircleContext, NavItem } from '@/components/ui';
-import { itemStatus, poolPercent, remainingMinor } from '@/components/status';
+import { contributionStatusLabel, itemStatus, ownPledgeStatusLabel, poolPercent, remainingMinor, tombstoneCopy } from '@/components/status';
 import { formatMinor, minorToInput } from '@/lib/money';
 import type { FriendItemView } from '@/server/views';
 
@@ -30,18 +30,14 @@ export function ItemDetailScreen({
   const status = itemStatus(item);
   const left = pool === null ? 0 : remainingMinor(pool);
   const picks = pool === null ? [] : PICKS_MINOR.filter((minor) => minor < left);
+  const canEditPayout = pool !== null && pool.iAmBuyer && canMarkPaid;
+  const canRecordPurchase = pool !== null && pool.iAmBuyer && isActive && pool.status === 'funded';
+  const payoutShared = pool !== null && pool.payout !== null && (pool.iAmBuyer || pool.payout.shareConsent);
   const nav: NavItem[] = [
     { href: basePath, label: 'Gifts', icon: 'ledger' },
     { href: `${basePath}/draft`, label: 'Suggest', icon: 'add' },
     { href: `${basePath}/settings`, label: 'Settings', icon: 'settings' },
   ];
-  const tombstoneCopy = item.tombstoneReason === 'bought_self'
-    ? 'They bought this themselves.'
-    : item.tombstoneReason === 'no_longer_wants'
-      ? 'They no longer want this gift.'
-      : item.tombstoneReason === 'duplicate'
-        ? 'This was a duplicate gift.'
-        : 'This gift was removed from their list.';
 
   return (
     <Screen
@@ -55,7 +51,7 @@ export function ItemDetailScreen({
 
       {item.status === 'tombstoned' && (
         <Notice kind="warning" title="No longer on their list">
-          <p>{tombstoneCopy}</p>
+          <p>{tombstoneCopy(item.tombstoneReason)}</p>
           <p className="pn-small">Pledges stay recorded. Removing a gift does not refund or move money.</p>
         </Notice>
       )}
@@ -80,6 +76,7 @@ export function ItemDetailScreen({
             <p className="pn-muted">You can show this suggestion to them now. Piñata will not notify anyone — revealing stays your act.</p>
             <form action={itemPath} method="post" className="pn-actions">
               <input type="hidden" name="intent" value="reveal" />
+              <IdemKey />
               <Button type="submit" variant="secondary">Reveal this suggestion</Button>
             </form>
           </section>
@@ -114,12 +111,14 @@ export function ItemDetailScreen({
                 <div className="pn-actions">
                   <form action={itemPath} method="post">
                     <input type="hidden" name="intent" value="claim" />
+                    <IdemKey />
                     <Button type="submit">I’ll buy it myself</Button>
                   </form>
                 </div>
                 <hr className="pn-divider" />
                 <form action={itemPath} method="post" className="pn-stack">
                   <input type="hidden" name="intent" value="create_pool" />
+                  <IdemKey />
                   <input type="hidden" name="currency" value={item.currency} />
                   <AmountField
                     label="Pool target"
@@ -146,6 +145,7 @@ export function ItemDetailScreen({
                 <p className="pn-muted">Changed your mind? Letting go does not undo pledges or refund money.</p>
                 <form action={itemPath} method="post" className="pn-actions">
                   <input type="hidden" name="intent" value="release" />
+                  <IdemKey />
                   <Button type="submit" variant="secondary">Let someone else take it</Button>
                 </form>
               </section>
@@ -165,9 +165,9 @@ export function ItemDetailScreen({
                 {pool.myContribution !== null && (
                   <section className="pn-item pn-stack pn-stack-sm" aria-labelledby="item-own-pledge-heading">
                     <h3 id="item-own-pledge-heading">Your pledge</h3>
-                    <p><Money>{pool.myContribution.amount}</Money> · {pool.myContribution.status === 'promised' ? 'pledged, not yet paid' : 'marked paid'}</p>
+                    <p><Money>{pool.myContribution.amount}</Money> · {ownPledgeStatusLabel(pool.myContribution.status)}</p>
                     <p className="pn-small pn-muted">Use this reference when you pay: {pool.myContribution.reference}</p>
-                    {pool.payout !== null && (pool.iAmBuyer || pool.payout.shareConsent) && (
+                    {payoutShared && (
                       <Cta href={`${itemPath}/pay`}>Payment details and share</Cta>
                     )}
                   </section>
@@ -179,6 +179,7 @@ export function ItemDetailScreen({
                     {(picks.length > 0 || left > 0) && (
                       <form action={itemPath} method="post" className="pn-picks" aria-label="Quick pledge">
                         <input type="hidden" name="intent" value="contribute" />
+                        <IdemKey />
                         <input type="hidden" name="poolId" value={pool.id} />
                         <input type="hidden" name="currency" value={pool.currency} />
                         {picks.map((minor) => (
@@ -195,6 +196,7 @@ export function ItemDetailScreen({
                     )}
                     <form action={itemPath} method="post" className="pn-stack">
                       <input type="hidden" name="intent" value="contribute" />
+                      <IdemKey />
                       <input type="hidden" name="poolId" value={pool.id} />
                       <input type="hidden" name="currency" value={pool.currency} />
                       <AmountField
@@ -221,6 +223,7 @@ export function ItemDetailScreen({
                   {canMarkPaid && (
                     <form action={itemPath} method="post" className="pn-actions">
                       <input type="hidden" name="intent" value="mark_paid" />
+                      <IdemKey />
                       <input type="hidden" name="poolId" value={pool.id} />
                       <Button type="submit" variant="secondary">I’ve paid my pledge</Button>
                     </form>
@@ -235,21 +238,23 @@ export function ItemDetailScreen({
                   {pool.iAmBuyer && isActive && pool.status === 'open' && (
                     <p className="pn-small pn-muted">You can record it once the pool is full.</p>
                   )}
-                  {pool.iAmBuyer && isActive && pool.status === 'funded' && (
+                  {canRecordPurchase && (
                     <form action={itemPath} method="post" className="pn-actions">
                       <input type="hidden" name="intent" value="purchase" />
+                      <IdemKey />
                       <input type="hidden" name="poolId" value={pool.id} />
                       <Button type="submit">I bought this gift</Button>
                     </form>
                   )}
                 </section>
 
-                {pool.iAmBuyer && isActive && (pool.status === 'open' || pool.status === 'funded') && (
+                {canEditPayout && (
                   <section className="pn-item pn-stack" aria-labelledby="item-payout-heading">
                     <h3 id="item-payout-heading">Where pledgers pay you</h3>
                     <p className="pn-small pn-muted">Your bank details, so friends can settle by hand. They stay hidden until someone pledges and you switch sharing on.</p>
                     <form action={itemPath} method="post" className="pn-stack">
                       <input type="hidden" name="intent" value="save_payout" />
+                      <IdemKey />
                       <input type="hidden" name="poolId" value={pool.id} />
                       <Field label="Account holder" name="accountHolder" id="payout-holder" type="text" autoComplete="off" required maxLength={80} defaultValue={pool.payout?.accountHolder} />
                       <Field label="Bank" name="bankName" id="payout-bank" type="text" autoComplete="off" required maxLength={80} defaultValue={pool.payout?.bankName} />
@@ -280,10 +285,11 @@ export function ItemDetailScreen({
                           {pool.tally.map((row) => (
                             <li key={row.userId} className="pn-item pn-stack pn-stack-sm">
                               <p><strong>{row.displayName}</strong> · <Money>{row.amount}</Money> · ref {row.reference}</p>
-                              <p className="pn-small pn-muted">{row.status === 'promised' ? 'Not yet paid' : 'Marked paid'}</p>
+                              <p className="pn-small pn-muted">{contributionStatusLabel(row.status)}</p>
                               {row.status === 'promised' && (
                                 <form action={itemPath} method="post" className="pn-actions">
                                   <input type="hidden" name="intent" value="mark_paid" />
+                                  <IdemKey />
                                   <input type="hidden" name="poolId" value={pool.id} />
                                   <input type="hidden" name="userId" value={row.userId} />
                                   <Button type="submit" variant="secondary">Mark {row.displayName} paid</Button>

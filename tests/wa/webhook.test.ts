@@ -34,4 +34,24 @@ describe('WhatsApp HTTP receive', () => {
     const result = await receiveWebhook(post(' '.repeat(1024 * 1024 + 1)), config);
     expect((result as Response).status).toBe(413);
   });
+
+  it('refuses the verify challenge for a wrong token, including a different-length one (timing-safe)', async () => {
+    for (const token of ['wrong-token', 'x'.repeat(200)]) {
+      const result = await receiveWebhook(new Request(`https://registry.example/api/wa/webhook?hub.mode=subscribe&hub.verify_token=${token}&hub.challenge=000123`), config);
+      expect((result as Response).status).toBe(403);
+    }
+  });
+
+  it('drops future-dated messages but keeps past ones for idempotent redelivery (F7)', async () => {
+    const message = (id: string, timestamp: string) => ({ id, from_user_id: 'fixture-owner-bsuid', timestamp, type: 'text', text: { body: 'Hello' } });
+    const body = JSON.stringify({ object: 'whatsapp_business_account', entry: [{ changes: [{ field: 'messages', value: {
+      messaging_product: 'whatsapp', metadata: { phone_number_id: 'business-fixture-id' },
+      messages: [
+        message('wamid.past', '1793059200'),
+        message('wamid.future', String(Math.floor(Date.now() / 1000) + 3600)),
+      ],
+    } }] }] });
+    const result = await receiveWebhook(post(body), config);
+    expect(result).toEqual({ messages: [{ waMessageId: 'wamid.past', identity: { bsuid: 'fixture-owner-bsuid' }, timestamp: 1793059200, kind: 'text', text: 'Hello' }] });
+  });
 });

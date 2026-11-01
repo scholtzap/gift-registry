@@ -1,5 +1,5 @@
 import { createElement, type ReactNode } from "react";
-import { page } from "@/server/routes/shell";
+import { CONTENT_SECURITY_POLICY, page } from "@/server/routes/shell";
 import { createRequire } from 'node:module';
 import { z } from 'zod';
 import type { Actor, Db } from "@/server/db/client";
@@ -16,7 +16,11 @@ import { modelsForActor } from '@/server/models/client';
 import { Screen } from '@/components/ui';
 import { friendCircleView, ownerCircleView, payoutShareText } from "@/server/views";
 import { hashPhone, normalizeE164 } from "@/server/auth/phone-hash";
-import { checkGateThrottle } from "@/server/auth/throttle";
+import { trustedClientAddress } from "@/server/auth/client-address";
+import { isSameOrigin } from "@/server/auth/same-origin";
+import { gateThrottle } from "@/server/auth/throttle-store";
+import { claimIdempotencyKey, parseIdempotencyKey } from "@/server/auth/idempotency";
+import { checkTurnstile, turnstileField } from "@/server/auth/turnstile";
 import { issueSession, sessionCookie, sessionFromRequest } from "@/server/auth/session";
 import { AI_CAPABILITIES, assertCan, CAPABILITY_COPY, CapabilityOffError, setCapability } from "@/server/entitlements";
 import { addItem, claimItem, contribute, createPool, markPaid, markPaidFor, purchasePool, releaseClaim, revealItem, savePayout, setEventDate, setItemPhoto } from '@/server/ledger';
@@ -56,7 +60,7 @@ const NO_STORE = "private, no-store, max-age=0, must-revalidate";
 
 function headers(extra: Record<string, string> = {}): Record<string, string> {
   // no-referrer makes Chromium's native form Origin opaque; same-origin still hides URLs from external sites.
-  return { 'Cache-Control': NO_STORE, 'Referrer-Policy': 'same-origin', 'X-Content-Type-Options': 'nosniff', 'X-Robots-Tag': 'noindex, nofollow', ...extra };
+  return { 'Cache-Control': NO_STORE, 'Referrer-Policy': 'same-origin', 'X-Content-Type-Options': 'nosniff', 'X-Robots-Tag': 'noindex, nofollow', 'Content-Security-Policy': CONTENT_SECURITY_POLICY, ...extra };
 }
 
 function notFound(): Response {
@@ -125,6 +129,23 @@ function screenResponse(title: string, content: ReactNode, status = 200): Respon
   return new Response(page(title, renderToStaticMarkup(content)), {
     status, headers: headers({ 'Content-Type': 'text/html; charset=utf-8' }),
   });
+}
+
+function validUuid(id: string): boolean {
+  return z.uuid().safeParse(id).success;
+}
+
+/** Match `/items/<uuid>` with an optional suffix; null when the shape or uuid is wrong. */
+function matchItemId(pathSuffix: string, pattern: RegExp): string | null {
+  const match = pathSuffix.match(pattern);
+  if (!match) return null;
+  const itemId = match[1]!;
+  if (!validUuid(itemId)) return null;
+  return itemId;
+}
+
+function itemError(item: { title: string } & Parameters<typeof ItemDetailScreen>[0]['item'], basePath: string, notice: string, status: number): Response {
+  return screenResponse(item.title, createElement(ItemDetailScreen, { item, basePath, notice }), status);
 }
 
 async function cardPng(db: Db, actor: Actor, itemId: string, variant: string | null = null): Promise<Response> {
@@ -216,19 +237,21 @@ async function circleGet(db: Db, request: Request, slug: string): Promise<Respon
     const draft = candidate ? { id: ingest!.id, title: candidate.title, retailer: candidate.brand, priceMinor: candidate.priceMinor, currency: candidate.currency } : null;
     return screenResponse('Review your draft', createElement(DraftConfirmScreen, { draft, basePath, role: actor.role, circle: circleContext, defaultCurrency: circle.defaultCurrency }));
   }
-  const cardMatch = pathname.slice(basePath.length).match(/^\/items\/([^/]+)\/card(\/png)?$/);
-  if (cardMatch) {
-    const itemId = cardMatch[1]!;
-    if (actor.role !== 'friend' || !z.uuid().safeParse(itemId).success) return notFound();
+  const cardSuffix = pathname.slice(basePath.length);
+  const cardPngSuffix = cardSuffix.match(/^\/items\/([^/]+)\/card(\/png)?$/);
+  if (cardPngSuffix) {
+    const itemId = matchItemId(cardSuffix, /^\/items\/([^/]+)\/card(\/png)?$/);
+    if (actor.role !== 'friend' || itemId === null) return notFound();
     const card = await db.withActor(actor, tx => getCard(tx, actor, itemId));
     if (!card) return notFound();
-    if (cardMatch[2]) return cardPng(db, actor, itemId, new URL(request.url).searchParams.get('variant'));
+    if (cardPngSuffix[2]) return cardPng(db, actor, itemId, new URL(request.url).searchParams.get('variant'));
     return screenResponse('Gift card', createElement(CardComposerScreen, { card, basePath, circle: circleContext }));
   }
-  const photoMatch = pathname.slice(basePath.length).match(/^\/items\/([^/]+)\/photo$/);
+  const photoSuffix = pathname.slice(basePath.length);
+  const photoMatch = photoSuffix.match(/^\/items\/([^/]+)\/photo$/);
   if (photoMatch) {
-    const itemId = photoMatch[1]!;
-    if (!z.uuid().safeParse(itemId).success) return notFound();
+    const itemId = matchItemId(photoSuffix, /^\/items\/([^/]+)\/photo$/);
+    if (itemId === null) return notFound();
     // The viewer's own projection decides, so an owner never gets a friend-only item's photo,
     // and a miss looks the same as an item that does not exist.
     const visible = actor.role === 'owner'
@@ -240,10 +263,11 @@ async function circleGet(db: Db, request: Request, slug: string): Promise<Respon
     if (!bytes) return notFound();
     return new Response(new Uint8Array(bytes), { headers: headers({ 'Content-Type': 'image/webp', 'Content-Disposition': 'inline' }) });
   }
-  const payMatch = pathname.slice(basePath.length).match(/^\/items\/([^/]+)\/pay$/);
+  const paySuffix = pathname.slice(basePath.length);
+  const payMatch = paySuffix.match(/^\/items\/([^/]+)\/pay$/);
   if (payMatch) {
-    const itemId = payMatch[1]!;
-    if (actor.role !== 'friend' || !z.uuid().safeParse(itemId).success) return notFound();
+    const itemId = matchItemId(paySuffix, /^\/items\/([^/]+)\/pay$/);
+    if (actor.role !== 'friend' || itemId === null) return notFound();
     const view = await db.withActor(actor, tx => friendCircleView(tx, circle.id, actor.userId));
     const item = view?.items.find(row => row.id === itemId);
     const pool = item?.pool ?? null;
@@ -260,10 +284,11 @@ async function circleGet(db: Db, request: Request, slug: string): Promise<Respon
       shareHref: `https://wa.me/?text=${encodeURIComponent(shareText)}`,
     }));
   }
-  const itemMatch = pathname.slice(basePath.length).match(/^\/items\/([^/]+)$/);
+  const itemSuffix = pathname.slice(basePath.length);
+  const itemMatch = itemSuffix.match(/^\/items\/([^/]+)$/);
   if (itemMatch) {
-    const itemId = itemMatch[1]!;
-    if (!z.uuid().safeParse(itemId).success) return notFound();
+    const itemId = matchItemId(itemSuffix, /^\/items\/([^/]+)$/);
+    if (itemId === null) return notFound();
     if (actor.role === 'owner') {
       const view = await db.withActor(actor, tx => ownerCircleView(tx, circle.id));
       const item = view?.items.find(row => row.id === itemId);
@@ -276,31 +301,6 @@ async function circleGet(db: Db, request: Request, slug: string): Promise<Respon
   }
   if (pathname !== basePath) return notFound();
   return renderLedger(db, actor, circle.id, basePath);
-}
-
-/**
- * Login-CSRF guard for the one endpoint that *issues* a session.
- *
- * `SameSite=Lax` is a product requirement here (the click comes out of WhatsApp's in-app browser as a
- * top-level GET), and Lax protects an existing cookie from riding on a cross-site POST — but this
- * handler does not read a cookie to authorise anything, it mints one. A plain HTML form POST is a
- * CORS "simple request" (no preflight) and browsers accept `Set-Cookie` from the response, so an
- * attacker who knows an allow-listed number can log their *victim* into the attacker's circle from the
- * victim's own browser. SameSite cannot see that, and neither can RLS: the session is genuinely the
- * victim's.
- *
- * Origin (or Referer, which some browsers strip the other way round) has to name this app's own
- * origin. Modern browsers send `Origin` on every same-origin POST, so a real form submit always
- * passes; a non-browser caller with no header at all is refused rather than trusted.
- */
-function isSameOrigin(request: Request): boolean {
-  const candidate = request.headers.get('origin') ?? request.headers.get('referer');
-  if (!candidate) return false;
-  try {
-    return new URL(candidate).origin === new URL(env.CIRCLE_BASE_URL).origin;
-  } catch {
-    return false;
-  }
 }
 
 async function readForm(request: Request, limit = 16_384): Promise<FormData> {
@@ -372,6 +372,20 @@ async function circlePost(db: Db, request: Request, slug: string, deps: CircleRo
   if (pathname !== basePath) {
     const actor = await privateActor(db, request, circle.id);
     if (!actor) return notFound();
+    // Authenticated write throttle (F2): per-session and per-address buckets
+    // so one compromised or scripted session cannot hammer money-affecting
+    // writes. Denials are 429 with Retry-After, never a 404 (the caller is
+    // already authenticated; there is no oracle to protect here).
+    const writeGate = await gateThrottle(db, [
+      { key: `write:${actor.userId}`, max: 60 },
+      { key: `write-addr:${trustedClientAddress(request)}`, max: 120 },
+    ]);
+    if (!writeGate.allowed) {
+      return new Response(page('Too many tries', '<p>Too many tries. Wait a minute, then try again.</p>'), {
+        status: 429,
+        headers: headers({ "Content-Type": "text/html; charset=utf-8", "Retry-After": String(writeGate.retryAfter) }),
+      });
+    }
     // Only the add-item form and the item-photo form may carry a photo.
     const isDraft = pathname === `${basePath}/draft`;
     const isPhotoPost = /^\/items\/[^/]+\/photo$/.test(pathname.slice(basePath.length));
@@ -379,6 +393,17 @@ async function circlePost(db: Db, request: Request, slug: string, deps: CircleRo
     if (multipart && !isDraft && !isPhotoPost) return notFound();
     let fields: FormData;
     try { fields = await readForm(request, (isDraft || isPhotoPost) && multipart ? PHOTO_MAX_BYTES + 65_536 : 16_384); } catch { return notFound(); }
+    // Idempotency keys for money-affecting writes (F8): the first POST with a
+    // key wins; a replay within 24h lands on the ledger that already shows the
+    // created entity instead of running the write again. Forms that render no
+    // key keep the previous behaviour (rely on 303 + PRG).
+    const idempotencyKey = parseIdempotencyKey(fields.get('idempotencyKey')) ?? parseIdempotencyKey(request.headers.get('Idempotency-Key'));
+    if (idempotencyKey !== null) {
+      const firstSeen = await claimIdempotencyKey(db, idempotencyKey, circle.id, actor.userId);
+      if (!firstSeen) {
+        return new Response(null, { status: 303, headers: headers({ Location: basePath }) });
+      }
+    }
     if (pathname === `${basePath}/date`) {
       if (fields.get('intent') !== 'set_event_date') return notFound();
       const draft = String(fields.get('eventDate') ?? '');
@@ -411,8 +436,11 @@ async function circlePost(db: Db, request: Request, slug: string, deps: CircleRo
         } catch (error) {
           if (error instanceof CardNotFoundError) return notFound();
           if (error instanceof CapabilityOffError) return screenResponse('Gift card', createElement(CardComposerScreen, { card, basePath, notice: error.degraded }), 422);
-          if (error instanceof Error && ['model_not_configured', 'model_output_rejected', 'model_url_rejected'].includes(error.message)) {
+          if (error instanceof Error && ['model_not_configured', 'model_output_rejected', 'model_url_rejected', 'model_spend_unavailable'].includes(error.message)) {
             return screenResponse('Gift card', createElement(CardComposerScreen, { card, basePath, notice: 'Pun suggestions are unavailable right now. The plain card wording still works.' }), 422);
+          }
+          if (error instanceof Error && error.message === 'model_spend_exceeded') {
+            return screenResponse('Gift card', createElement(CardComposerScreen, { card, basePath, notice: 'Pun suggestions are paused for today. The plain card wording still works.' }), 422);
           }
           throw error;
         }
@@ -523,7 +551,7 @@ async function circlePost(db: Db, request: Request, slug: string, deps: CircleRo
       const moneyCurrency = intent.data === 'create_pool' ? item.currency : item.pool?.currency ?? item.currency;
       const amount = positiveCentsSchema.safeParse(intent.data === 'create_pool' ? minorField(fields, 'targetAmount', 'targetMinor', moneyCurrency) : minorField(fields, 'pledgeAmount', 'amountMinor', moneyCurrency));
       if (moneyIntent && (!amount.success || fields.get('currency') !== moneyCurrency)) {
-        return screenResponse(item.title, createElement(ItemDetailScreen, { item, basePath, notice: 'Enter an amount above zero, like 400 or 99.50.' }), 422);
+        return itemError(item, basePath, 'Enter an amount above zero, like 400 or 99.50.', 422);
       }
       // Bank details are the buyer's own words about their own account, shaped
       // like an invoice payee block. The ledger re-checks the digits; this
@@ -546,23 +574,24 @@ async function circlePost(db: Db, request: Request, slug: string, deps: CircleRo
         shareConsent: fields.get('shareConsent') === 'on' ? 'on' : undefined,
       }) : null;
       if (intent.data === 'save_payout' && !payout!.success) {
-        return screenResponse(item.title, createElement(ItemDetailScreen, { item, basePath, notice: 'Check the bank details: account holder, bank, a 6–20 digit account number and a 6-digit branch code.' }), 422);
+        return itemError(item, basePath, 'Check the bank details: account holder, bank, a 6–20 digit account number and a 6-digit branch code.', 422);
       }
       // RN-E: an archived proxy circle stays readable but takes no new
       // claims, pledges or payout edits. Settling what exists (release, mark
       // paid, purchase) stays possible; the ledger is never destroyed.
       const newMoneyIntent = ['claim', 'create_pool', 'contribute', 'save_payout'].includes(intent.data);
       if (newMoneyIntent && isArchived(circle)) {
-        return screenResponse(item.title, createElement(ItemDetailScreen, { item, basePath, notice: 'This circle has archived, so it is not taking new claims or pledges.' }), 409);
+        return itemError(item, basePath, 'This circle has archived, so it is not taking new claims or pledges.', 409);
       }
       const poolIntent = ['contribute', 'mark_paid', 'purchase', 'save_payout'].includes(intent.data);
       const poolId = String(fields.get('poolId') ?? '');
-      if (poolIntent && !z.uuid().safeParse(poolId).success) return notFound();
+      if (poolIntent && !validUuid(poolId)) return notFound();
       // Marking someone else paid is the buyer's act only: anyone else naming
       // a user reads exactly like nothing, and a self-name takes the ordinary
       // self-mark path, so a forged field cannot escalate.
       const markPaidUserId = intent.data === 'mark_paid' ? String(fields.get('userId') ?? '') : '';
-      if (markPaidUserId !== '' && markPaidUserId !== actor.userId && !z.uuid().safeParse(markPaidUserId).success) return notFound();
+      const isBuyerMarkingOther = markPaidUserId !== '' && markPaidUserId !== actor.userId;
+      if (isBuyerMarkingOther && !validUuid(markPaidUserId)) return notFound();
       try {
         await db.withActor(actor, async tx => {
           if (poolIntent && !await tx.pool.findFirst({ where: { id: poolId, itemId } })) throw new Error('ledger_not_found');
@@ -572,29 +601,31 @@ async function circlePost(db: Db, request: Request, slug: string, deps: CircleRo
             case 'create_pool': await createPool(tx, actor, itemId, amount.data!); break;
             case 'contribute': await contribute(tx, actor, poolId, amount.data!); break;
             case 'mark_paid':
-              if (markPaidUserId !== '' && markPaidUserId !== actor.userId) await markPaidFor(tx, actor, poolId, markPaidUserId);
+              if (isBuyerMarkingOther) await markPaidFor(tx, actor, poolId, markPaidUserId);
               else await markPaid(tx, actor, poolId);
               break;
             case 'purchase': await purchasePool(tx, actor, poolId); break;
             case 'reveal': await revealItem(tx, actor, itemId); break;
-            case 'save_payout':
+            case 'save_payout': {
+              const details = payout!.data!;
               await savePayout(tx, actor, poolId, {
-                accountHolder: payout!.data!.accountHolder,
-                bankName: payout!.data!.bankName,
-                accountNumber: payout!.data!.accountNumber,
-                branchCode: payout!.data!.branchCode,
-                accountType: payout!.data!.accountType ?? null,
-                referencePrefix: payout!.data!.referencePrefix ?? null,
-                shareConsent: payout!.data!.shareConsent === 'on',
+                accountHolder: details.accountHolder,
+                bankName: details.bankName,
+                accountNumber: details.accountNumber,
+                branchCode: details.branchCode,
+                accountType: details.accountType ?? null,
+                referencePrefix: details.referencePrefix ?? null,
+                shareConsent: details.shareConsent === 'on',
               });
               break;
+            }
           }
         });
       } catch (error) {
         if (error instanceof Error && ['ledger_not_found', 'ledger_role_denied', 'ledger_buyer_required'].includes(error.message)) return notFound();
         if (error instanceof Error && ['ledger_item_unavailable', 'ledger_item_reserved', 'ledger_claim_unavailable', 'ledger_contribution_conflict', 'ledger_pool_unavailable', 'ledger_pool_not_paid', 'ledger_contribution_unavailable', 'ledger_invalid_payout'].includes(error.message)) {
           const payoutError = intent.data === 'save_payout';
-          return screenResponse(item.title, createElement(ItemDetailScreen, { item, basePath, notice: payoutError ? 'Check the bank details: account holder, bank, a 6–20 digit account number and a 6-digit branch code.' : 'This gift or contribution has changed. Return to the circle and review it before trying again.' }), payoutError ? 422 : 409);
+          return itemError(item, basePath, payoutError ? 'Check the bank details: account holder, bank, a 6–20 digit account number and a 6-digit branch code.' : 'This gift or contribution has changed. Return to the circle and review it before trying again.', payoutError ? 422 : 409);
         }
         throw error;
       }
@@ -638,11 +669,13 @@ async function circlePost(db: Db, request: Request, slug: string, deps: CircleRo
   let name = "";
   let phone = "";
   let intent = "";
+  let turnstileToken: string | null = null;
   try {
     const form = await readForm(request);
     name = String(form.get("name") ?? "").trim();
     phone = String(form.get("phone") ?? "").trim();
     intent = String(form.get("intent") ?? "");
+    turnstileToken = turnstileField(form);
   } catch {
     return gateForm("That submission did not come through. Try again.");
   }
@@ -652,15 +685,31 @@ async function circlePost(db: Db, request: Request, slug: string, deps: CircleRo
     return gateForm("Add the name you want on the card, and the number in full international form.");
   }
 
+  // Human-proof gate (F12): same indistinguishable "no" as an uninvited
+  // number, so the check cannot walk the phone list. Open seam until
+  // TURNSTILE_SECRET is set; enforced from the first external user on.
+  if (!(await checkTurnstile(request, turnstileToken))) {
+    return rejectedForm(name, phone);
+  }
+
   const pepper = env.PHONE_HASH_PEPPER;
   const phoneHash = hashPhone(normalized, pepper);
 
   // M-02: count every attempt before the lookup, successes and failures alike. The key is
-  // circle + phone hash + forwarded address — never a raw number — and the denial is the
+  // circle + phone hash + trusted address — never a raw number — and the denial is the
   // same for invited and uninvited numbers, so throttling cannot walk the phone list.
+  // The address comes from `trustedClientAddress` (RN-D Gate 3): an untrusted X-Forwarded-For
+  // is a claim, not evidence, and keying on it lets one caller mint unlimited keys.
+  // Rotation-resistant: the pair key, an address-only key and a global per-number key
+  // must ALL allow, so rotating numbers (or headers) cannot bypass the gate.
+  // Shared across processes behind the proxy via `gateThrottle` (F2).
   // This single mount also covers the RN-J request branch below.
-  const address = (request.headers.get("x-forwarded-for") ?? "").split(",")[0]?.trim() || "unknown";
-  const throttle = checkGateThrottle(`${circle.id}:${phoneHash}:${address}`);
+  const gateAddress = trustedClientAddress(request);
+  const throttle = await gateThrottle(db, [
+    `gate:${circle.id}:${phoneHash}:${gateAddress}`,
+    { key: `gate-addr:${gateAddress}`, max: 60 },
+    { key: `gate-number:${phoneHash}`, max: 20 },
+  ]);
   if (!throttle.allowed) {
     console.warn("gate_throttled", { circleId: circle.id, retryAfter: throttle.retryAfter });
     const form = gateForm("Too many tries. Wait a minute, then try again.");

@@ -52,9 +52,12 @@ describe('DraftConfirmScreen public server render', () => {
   it('posts the reviewed values to the supplied base path with explicit confirm intent', () => {
     const html = render();
     expect(html).toMatch(/<form\b[^>]*action="\/app\/circles\/demo-circle\/draft"[^>]*method="post"/);
-    expect(fields(html).sort()).toEqual(['ingestEventId', 'intent', 'photo', 'priceAmount', 'retailer', 'title', 'visibility'].sort());
+    expect(fields(html).sort()).toEqual(['idempotencyKey', 'ingestEventId', 'intent', 'photo', 'priceAmount', 'retailer', 'title', 'visibility'].sort());
     expect(attribute(input(html, 'intent'), 'type')).toBe('hidden');
     expect(attribute(input(html, 'intent'), 'value')).toBe('confirm');
+    // Fresh idempotency key per render (F8): hidden, uuid-shaped, never empty.
+    expect(attribute(input(html, 'idempotencyKey'), 'type')).toBe('hidden');
+    expect(attribute(input(html, 'idempotencyKey'), 'value')).toMatch(/^[A-Za-z0-9_-]{1,128}$/);
     expect(attribute(input(html, 'ingestEventId'), 'type')).toBe('hidden');
     expect(attribute(input(html, 'ingestEventId'), 'value')).toBe('ingest-demo-1');
     expect(selectedCurrency(html)).toBe('ZAR');

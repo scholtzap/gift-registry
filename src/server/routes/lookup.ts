@@ -1,14 +1,16 @@
 import { env } from "@/lib/env";
 import type { Db } from "@/server/db/client";
 import { trustedClientAddress } from "@/server/auth/client-address";
+import { isSameOrigin } from "@/server/auth/same-origin";
 import { hashPhone, normalizeE164 } from "@/server/auth/phone-hash";
 import { generateShareSlug } from "@/server/auth/slug";
-import { checkGateThrottle } from "@/server/auth/throttle";
+import { gateThrottle } from "@/server/auth/throttle-store";
+import { checkTurnstile, turnstileField } from "@/server/auth/turnstile";
 import { issueSession, sessionCookie } from "@/server/auth/session";
 import { createElement, type ComponentType } from "react";
 import { createRequire } from "node:module";
 import { LookupSearchScreen, ProxyOfferScreen } from "@/components/screens/lookup";
-import { page, escapeHtml } from "@/server/routes/shell";
+import { CONTENT_SECURITY_POLICY, page, escapeHtml } from "@/server/routes/shell";
 const { renderToStaticMarkup } = createRequire(import.meta.url)("react-dom/server") as typeof import("react-dom/server");
 
 /**
@@ -38,6 +40,7 @@ function headers(extra: Record<string, string> = {}): Record<string, string> {
     "Referrer-Policy": "same-origin",
     "X-Content-Type-Options": "nosniff",
     "X-Robots-Tag": "noindex, nofollow",
+    "Content-Security-Policy": CONTENT_SECURITY_POLICY,
     ...extra,
   };
 }
@@ -81,15 +84,29 @@ export async function handleLookupPost(db: Db, request: Request): Promise<Respon
   }
 
   const intent = String(form.get("intent") ?? "lookup");
+  // Session-issuing branch only: the plain lookup answers the same 200 body
+  // either way and mints nothing, so CSRF is a non-issue there. The create
+  // branch mints a 14-day session and gets the same bar as the circle gate
+  // (F1); denial folds into the uniform offer body so the oracle stays shut.
+  if (intent === "create" && !isSameOrigin(request)) return offer();
+  // Human-proof gate (F12): folds into the uniform offer body, so the check
+  // cannot be probed apart from any other refusal. Open seam until set.
+  if (intent === "create" && !(await checkTurnstile(request, turnstileField(form)))) return offer();
   const keyPhoneRaw = String(form.get(intent === "create" ? "recipientPhone" : "phone") ?? "");
   const normalizedKey = normalizeE164(keyPhoneRaw);
   const pepper = env.PHONE_HASH_PEPPER;
   const hashPart = normalizedKey ? hashPhone(normalizedKey, pepper) : "invalid";
-  const throttleKey = `${hashPart}:${trustedClientAddress(request)}`;
 
   // The throttle runs before any database read, for successes and failures
   // alike; a denial is the same body plus Retry-After (RN-D SS5).
-  const gate = checkGateThrottle(throttleKey);
+  // Rotation-resistant: the pair key, an address-only key and a global
+  // per-number key must ALL allow (F2).
+  const lookupAddress = trustedClientAddress(request);
+  const gate = await gateThrottle(db, [
+    `lookup:${hashPart}:${lookupAddress}`,
+    { key: `lookup-addr:${lookupAddress}`, max: 60 },
+    { key: `gate-number:${hashPart}`, max: 20 },
+  ]);
   if (!gate.allowed) return offer({ "Retry-After": String(gate.retryAfter) });
 
   if (intent !== "create") return offer();

@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, expect, it } from 'vitest';
+import { env } from '@/lib/env';
 import { createDb, type Db } from '@/server/db/client';
 import { handleLookupGet, handleLookupPost } from '@/server/routes/lookup';
 import { handleCircleGet } from '@/server/routes/circle';
@@ -29,13 +30,16 @@ afterAll(async () => {
   await db?.disconnect();
 });
 
-function post(fields: Record<string, string>): Promise<Response> {
+const appOrigin = new URL(env.CIRCLE_BASE_URL).origin;
+
+function post(fields: Record<string, string>, origin = appOrigin): Promise<Response> {
   const body = new URLSearchParams(fields);
   return handleLookupPost(
     db,
     new Request('http://localhost/lookup', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      // Browsers send `Origin` on a same-origin form POST; the create branch requires it (F1).
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded', origin },
       body,
     }),
   );
@@ -109,6 +113,15 @@ it('refuses an 11th proxy circle from one creator in 24h with the uniform offer 
   const eleventh = await post(createFields(90, creator));
   expect(eleventh.status).toBe(200);
   expect(eleventh.headers.get('Location')).toBeNull();
+});
+
+it('folds a cross-origin create into the uniform offer body without a redirect or session (F1 login-CSRF)', async () => {
+  const forged = await post(createFields(61, num(51)), 'https://evil.example');
+  expect(forged.status).toBe(200);
+  expect(forged.headers.get('Location')).toBeNull();
+  expect(forged.headers.get('Set-Cookie')).toBeNull();
+  const plain = await post({ phone: num(47) });
+  expect(await forged.text()).toBe(await plain.text());
 });
 
 it('renders /lookup and the proxy offer inside the app shell with the explainer above the first field (CR-UX-02)', async () => {

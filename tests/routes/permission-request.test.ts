@@ -115,7 +115,7 @@ it('approval turns the request into an invitation the gate honours; approval is 
 it('on a proxy circle there is nobody to ask: same answer, no request row', async () => {
   const created = await handleLookupPost(db, new Request('http://localhost/lookup', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded', origin },
     body: new URLSearchParams({
       intent: 'create', creatorName: 'Creator Friend', creatorPhone: num(64),
       recipientPhone: num(65), recipientLabel: 'A Friend', occasion: 'birthday',
