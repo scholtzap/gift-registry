@@ -27,6 +27,14 @@ Newest first. No secrets (no tokens, passwords, or private URLs with credentials
 
 ---
 
+## 2026-11-04 — Notion doc sync secret is empty
+**Kind:** access
+**Requested by:** agent (sync-notion-docs on the return-home deploy fix)
+**Pain:** The workflow exits in about ten seconds because `NOTION_ROOT_PAGE_ID` is empty. Docs stay in git only.
+**What would help:** Set the GitHub Actions secret `NOTION_ROOT_PAGE_ID` for this repo. The workflow already checks the root title "Gift Registry".
+**Where it should live:** GitHub Actions secret `NOTION_ROOT_PAGE_ID`
+**Status:** open
+
 ## 2026-11-04 — Sharewear's closet drawer is Flutter under lib/, not src/
 **Kind:** quickref
 **Requested by:** agent (copying the Sharewear sidebar so circles sit where closets do)
