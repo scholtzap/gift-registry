@@ -15,47 +15,52 @@ const CONTACT = 'https://gifts.scholtz.work/#contact';
 export default function PrivacyPage() {
   const base = process.env.PINATA_BASE_PATH ?? '';
   return (
-    <Screen title="Privacy notice" eyebrow="Last updated 27 October 2026" backHref={`${base}/app`} backLabel="Piñata home" homeHref={`${base}/app`} privacyHref={`${base}/privacy`}>
+    <Screen title="Privacy notice" eyebrow="Last updated 4 November 2026" backHref={`${base}/app`} backLabel="Piñata home" homeHref={`${base}/app`} privacyHref={`${base}/privacy`}>
       <div className="pn-stack pn-measure">
         <Panel className="pn-stack">
           <p>
             This notice covers the Piñata app and the site at <a href="https://gifts.scholtz.work/">gifts.scholtz.work</a>.
-            Piñata is a group gift list: one person keeps a wish list, and their friends plan who buys
-            what without the list owner seeing it.
+            Piñata is a group gift list you use in the browser: one person keeps a wish list, shares one
+            circle link with their group, and friends plan who buys what without the list owner seeing it.
           </p>
         </Panel>
 
         <Panel className="pn-stack">
           <h2>What we collect</h2>
-          <p><strong>About you:</strong> the name you want on gift cards, and the WhatsApp number you
-            join with. Numbers on a circle&apos;s invite list are stored only as a keyed hash.</p>
-          <p><strong>Gift lists:</strong> wishes, prices, shop names, and the sizes and favourites the
-            list owner chooses to share with friends.</p>
-          <p><strong>Friends&apos; plans:</strong> claims, pools, pledges, &quot;paid&quot; marks, secret
-            gift ideas and card messages.</p>
-          <p><strong>Product photos:</strong> a photo you attach to a gift. We save a resized copy and
-            remove its location, camera and other metadata first.</p>
-          <p><strong>Messages to the Piñata WhatsApp number:</strong> voice notes, screenshots and
-            links you send, so we can turn them into a draft you check before anything is added.</p>
-          <p><strong>Contact form:</strong> your email, message and the time you sent it.</p>
+          <p><strong>About you:</strong> the name you want on gift cards, the email or phone you use to
+            log in to your circles dashboard, and the WhatsApp number friends join against. Numbers on a
+            circle&apos;s invite list are stored only as a keyed hash.</p>
+          <p><strong>Gift lists:</strong> wishes, prices, shop names, product photos, and the sizes and
+            favourites the list owner chooses to share with friends.</p>
+          <p><strong>Friends&apos; plans:</strong> who claimed or is buying each gift, pools, pledges,
+            &quot;paid&quot; marks, bank details a buyer chooses to share with pledgers, secret gift ideas
+            and card messages.</p>
+          <p><strong>Product photos:</strong> a photo you attach to a gift in the browser. We save a
+            resized copy and remove its location, camera and other metadata first.</p>
+          <p><strong>Optional WhatsApp intake:</strong> if you message the Piñata WhatsApp number, we
+            store the voice notes, screenshots or links you send so they can become a draft you check
+            before anything is added. You can switch each of those features off in Settings.</p>
+          <p><strong>Contact form:</strong> your email, your message, your name if you add it, and the
+            time you sent it.</p>
         </Panel>
 
         <Panel className="pn-stack">
           <h2>Who can see it</h2>
           <p>The list owner sees their own wishes, sizes and photos. They do not see claims, pools,
-            pledges, secret ideas, card messages or photos friends add to those ideas.</p>
-          <p>Friends in a circle see the wishes, the shared sizes, each other&apos;s plans and the
-            photos on gifts they can see. People outside the circle see nothing.</p>
+            pledges, who is buying what, secret ideas, card messages or photos friends add to those ideas.</p>
+          <p>Friends in a circle see the wishes, the shared sizes, who is buying each gift, pool progress,
+            each other&apos;s plans and the photos on gifts they can see. People outside the circle see nothing.</p>
           <p>We do not sell this data and we do not show ads.</p>
         </Panel>
 
         <Panel className="pn-stack">
           <h2>Who processes it for us</h2>
-          <p>WhatsApp messages travel through Meta&apos;s WhatsApp Business Platform. When you leave an
-            AI setting on, Meta&apos;s models read the voice note, image or link to draft a gift; you can
-            switch each one off under Settings, and then nothing is sent to them.</p>
-          <p>The website is hosted on Cloudflare. Circle data and photos are kept in our own database
-            and file storage.</p>
+          <p>The app runs on our own host. Circle data and photos are kept in our own database and file storage.</p>
+          <p>Sign-in uses a short email code. The session cookie is HttpOnly and SameSite=Lax.</p>
+          <p>If you use optional WhatsApp intake, those messages travel through Meta&apos;s WhatsApp
+            Business Platform. When you leave an AI setting on, Meta&apos;s models may read the voice note,
+            image or link to draft a gift. Switch a setting off in the app and that path stops for you.</p>
+          <p>The website is hosted on Cloudflare. Contact form messages are emailed through Resend.</p>
         </Panel>
 
         <Panel className="pn-stack">
