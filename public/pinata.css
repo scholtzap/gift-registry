@@ -227,8 +227,12 @@
   .pn-sticker-owner { background: var(--pn-wash-open); }
   .pn-nav { display: none; }
   .pn-nav-list { display: flex; align-items: center; gap: 0.25rem; margin: 0; padding: 0; list-style: none; }
+  /* Base `li + li { margin-block-start }` is for stacked lists; kill it here so every pill
+     shares one vertical center line (Wishes / Add / Settings). */
+  .pn-nav-list > li { display: flex; align-items: center; margin: 0; }
   .pn-nav-item {
-    display: inline-flex; align-items: center; min-height: var(--pn-bar-h); padding: 0 0.875rem;
+    display: inline-flex; align-items: center; justify-content: center;
+    height: var(--pn-bar-h); padding: 0 0.875rem; line-height: 1;
     border: 1.5px solid transparent; border-radius: var(--pn-radius-pill); color: var(--pn-ink-2);
     font-family: var(--pn-font-label); font-size: 0.875rem; font-weight: 700; text-decoration: none;
   }
