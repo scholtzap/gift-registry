@@ -135,6 +135,14 @@ When context is needed for a specific topic, run `/doc-kb-load <topic>` **before
 ### repo-memory (free-game)
 Save to `.memory/main.sqlite` (project-memory MCP) at any time without asking. Read at session start.
 
+### Sensitive / operator-private docs
+Host addresses, SSH inventory, and other deploy recon **must not** enter the public git tree.
+They live in gitignored `docs/private/` (tracked convention: `docs/private/README.md` only).
+
+- Keep editing `docs/private/oracle-host.md` locally when the VM moves; re-run `/doc-kb-save` to refresh Notion.
+- Never put the real host IP (or equivalent inventory) into `ARCHITECTURE.md`, `docs/deployment/`, `MISTAKES.md`, or any other tracked file — point at `docs/private/oracle-host.md` instead.
+- CI doc sync cannot see ignored files; Notion updates for this folder are manual `/doc-kb-save` only.
+
 ## Agent knowledge (mistakes / wishlist / architecture)
 
 - **Mistakes:** git-root `MISTAKES.md` — append when a mistake is known, newest first.

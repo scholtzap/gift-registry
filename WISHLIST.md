@@ -27,10 +27,26 @@ Newest first. No secrets (no tokens, passwords, or private URLs with credentials
 
 ---
 
+## 2026-11-04 — Sharewear's closet drawer is Flutter under lib/, not src/
+**Kind:** quickref
+**Requested by:** agent (copying the Sharewear sidebar so circles sit where closets do)
+**Pain:** `sharewear/src` does not exist, and a search for `*sidebar*` returned nothing. The menu is `lib/widgets/app_drawer.dart` plus `lib/widgets/drawer_wardrobes_section.dart`.
+**What would help:** one pointer so the next copy does not search the wrong tree. Added this turn.
+**Where it should live:** `ARCHITECTURE.md` §3.1
+**Status:** fulfilled
+
+## 2026-11-04 — New public scripts are invisible to live Caddy until named on @app
+**Kind:** quickref
+**Requested by:** agent (`public/share-link.js` for the circle share sheet)
+**Pain:** The live matcher is an explicit file list. `/pinata.css` and `/register-sw.js` are on it; a new script is not, until someone reads `docs/deployment/Caddyfile.pinata` and adds the filename.
+**What would help:** one sentence next to the existing recreate rule. Added this turn.
+**Where it should live:** `ARCHITECTURE.md` §6
+**Status:** fulfilled
+
 ## 2026-11-04 — Vitest 5 exits before collecting files on this Windows checkout
 **Kind:** tooling
 **Requested by:** agent (screen tests after the circle share/edit UI change)
-**Pain:** `pnpm exec vitest run` printed "No test files found" and then crashed in Vite's source-map helper (`code.charCodeAt is not a function`). Screen markup was checked with `tsx` instead. `tsc --noEmit` still ran.
+**Pain:** `pnpm exec vitest run` printed "No test files found" and then crashed in Vite's source-map helper (`code.charCodeAt is not a function`). Screen markup was checked with `tsx` instead. `tsc --noEmit` still ran. Same crash again later on 2026-11-04 for `tests/screens/owner-ledger.test.tsx` and `tests/screens/friend-ledger.test.tsx`.
 **What would help:** a Vitest version or config that collects `tests/**/*.test.ts` under PowerShell without that runner crash, so `pnpm test` is usable again.
 **Where it should live:** `vitest.config.ts` / `package.json` once reproduced on a clean tree.
 **Status:** open
