@@ -82,6 +82,10 @@ venv/
 /.recordings/
 # Local demo capture (stills / narration / mp4). Not part of the public tree.
 /demo-recording/
+
+# Operator-private docs (host inventory, etc.). README stays tracked for the convention.
+/docs/private/**
+!/docs/private/README.md
 /artifacts/
 /local-data/
 /backups/

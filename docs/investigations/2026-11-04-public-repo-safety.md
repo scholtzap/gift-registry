@@ -31,7 +31,7 @@
 ## Intentional public identifiers (not secrets)
 
 - Contact email `scholtzap@gmail.com` on `gifts.scholtz.work` contact paths
-- SSH user `ubuntu` on the shared Oracle VM (host IP redacted from git 2026-11-04; operator inventory only)
+- SSH user `ubuntu` on the shared Oracle VM (host IP lives in gitignored `docs/private/oracle-host.md` + Notion; scrubbed from git history 2026-11-04)
 - WABA asset id in `docs/plans/rn-f-claim-merge.md` (identifier, not a token)
 - CI synthetic `SESSION_SECRET` / `PHONE_HASH_PEPPER` placeholders in `verify.yml`
 

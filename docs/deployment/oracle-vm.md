@@ -1,7 +1,7 @@
 # Oracle VM deployment and recovery candidate
 
 **Status: DEPLOYED 2026-10-28 (DEMO_MODE) on the existing shared Oracle ARM VM
-(SSH host address is operator-private — not in git; paths ~/pinata + ~/pinata-private). Single domain: landing page at
+(SSH host address: local `docs/private/oracle-host.md` only — gitignored; paths ~/pinata + ~/pinata-private). Single domain: landing page at
 https://pinata.scholtz.work/ and the app at https://pinata.scholtz.work/app
 (Next PINATA_BASE_PATH=/app), seeded fictional cast (`nadia-30th`). Live
 Meta/WhatsApp is NOT enabled: no WABA credentials on the VM and OTP template
