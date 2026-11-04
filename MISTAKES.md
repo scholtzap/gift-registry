@@ -2,6 +2,18 @@
 
 Agent error log. Newest entry first. No secrets, tokens, env dumps, or credentialed URLs.
 
+## 2026-11-04 — Email OTP commit was created on main
+**What happened:** A feature branch was created, then the shared checkout was switched back to `main` before `git commit`. The email sign-in commit was recorded on `main`.
+**Impact:** Local `main` was one commit ahead of `origin/main`. The commit was not pushed.
+**Fix:** `feat/email-otp-sign-in` now points at that commit, and local `main` matches `origin/main`.
+**Do not repeat:** Read `git status -sb` in the same command as the commit, and do not commit when the branch is `main`.
+
+## 2026-11-04 - Orphan OTP/hub tests on main broke Oracle image builds
+**What happened:** tests/routes/otp-return.test.ts and hub discoverable/email assertions landed on public main without matching Prisma schema or route modules. next build on the VM typechecks tests/** and failed, so a clean bundle redeploy could not replace the GEO overlay image.
+**Impact:** GEO survival deploy had to delete/restore those tests on the VM to ship pinata-app:1.0.0-5d1b0d20-geo.
+**Fix:** Remove the orphan OTP test and restore hub tests to the schema that exists on main until the OTP feature lands as a complete unit.
+**Do not repeat:** Never merge tests that import modules or fields absent from the same commit src/ and prisma/schema.prisma. Prove pnpm build (or the Oracle Dockerfile build) before treating main as deployable.
+
 ## 2026-11-04 ? Mislabeled main commit claimed Caddyfile survival but only touched MISTAKES.md
 **What happened:** Under concurrent agents, a commit whose message said it aligned `Caddyfile.pinata` (card-preview, icons, `/app/app/*`) and documented VM bundle survival landed on `main` while the diff was only `MISTAKES.md` churn. GEO source was already on `main`; the matcher paths and survival section were not.
 **Impact:** GitHub looked updated; the next `vm_deploy` from a refreshed bundle would still omit live Caddy asset matchers if someone trusted the message. Local `git push` races also tried to update `main` while tracking `origin/main`.
