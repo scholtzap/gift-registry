@@ -110,7 +110,7 @@ One system of record, accessed through Prisma 7's PostgreSQL adapter and `pg`. T
 
 Amounts are integer minor units with explicit ZAR currency. Unknown item prices are null; contributions and pool targets must be positive. Settlement is manual and no money is held. Billing decisions are recorded in [user-management-and-billing-path](docs/plans/user-management-and-billing-path.md); no payment integration is required before submission.
 
-`users.phone_e164` and `users.email` are plaintext on purpose: the login role needs the value to match a webhook or to send a sign-in code. Lookup hashes are separate (`email_hash` is HMAC-SHA256 of `email:` + the normalised address, pepper `PHONE_HASH_PEPPER`). Allowlist phones and proxy recipient phones stay keyed hashes only. App roles are not granted `phone_e164`, `bsuid`, `email`, or `email_hash` (`src/server/db/policies/001_roles.sql`). `circles.discoverable` (default false) is the only public-find flag; there is no second visibility column. Sign-in codes live in `otp_codes`, keyed by `identifier_hash`.
+`users.phone_e164` and `users.email` are plaintext on purpose: the login role needs the value to match a webhook or to send a sign-in code. Lookup hashes are separate (`email_hash` is HMAC-SHA256 of `email:` + the normalised address, pepper `PHONE_HASH_PEPPER`). Allowlist phones and proxy recipient phones stay keyed hashes only. App roles are not granted `phone_e164`, `bsuid`, `email`, or `email_hash` (`src/server/db/policies/001_roles.sql`). `circles.discoverable` (default false) is stored and is not on the create form. Owner sign-in does not read it: "Open my circle" sends a code for any active circle with an email, and other people open `/c/<slug>`. Sign-in codes live in `otp_codes`, keyed by `identifier_hash`.
 
 Policy SQL is applied separately after migrations. RLS scopes rows; safe-column grants on `users` protect phone, email, and BSUID columns. `app.user_id` and `app.circle_id` are transaction-local settings; there is no `app.role` authorization setting. Friend-circle predicates exclude the actual owner, require active membership/circle and bind to the actor's selected circle. Owner ledger-event reads are limited to the owner's own events. Card entries are writable only by their contributor.
 
@@ -142,13 +142,13 @@ Authentication OTP is email, not a WhatsApp template. See [otp-return-path](docs
 
 **Local:** Windows x64, Node 24 and pnpm 10.33.0; root Compose starts PostgreSQL only on `127.0.0.1:5433`. The app and worker run separately. Browser tests own a loopback server on port 3001 and an isolated test database.
 
-**Live host (checked 2026-11-04):** shared Oracle VM, SSH `ubuntu@<oracle-vm-ip>`, checkout `~/pinata/checkout`, private env `~/pinata-private/app.env` (never print it). Running app image is the tag on `checkout-app-1` (`pinata-app:1.0.0-<gitsha>`); on that date it was still `2d68d40` (2026-10-28), behind local `main`. Caddyfile is bind-mounted from `docs/deployment/Caddyfile.pinata`. Caddy `admin off`, so a matcher edit needs the caddy service recreated, not `caddy reload`. The `@app` matcher must include `/app/*` or `POST /app/create` 404s on the static site while `/app` still returns 200. Steps: [oracle-vm.md](docs/deployment/oracle-vm.md). Backup/restore is still an undrilled candidate. Public flip is not done.
+**Live host (checked 2026-11-04):** shared Oracle VM, SSH `ubuntu@<oracle-vm-ip>`, checkout `~/pinata/checkout`, private env `~/pinata-private/app.env` (never print it). Running app image is the tag on `checkout-app-1` (`pinata-app:1.0.0-<gitsha>`); on that date it was still `2d68d40` (2026-10-28), behind local `main`. Caddyfile is bind-mounted from `docs/deployment/Caddyfile.pinata`. Caddy `admin off`, so a matcher edit needs the caddy service recreated, not `caddy reload`. The `@app` matcher must include `/app/*` or `POST /app/create` 404s on the static site while `/app` still returns 200. Steps: [oracle-vm.md](docs/deployment/oracle-vm.md). Backup/restore is still an undrilled candidate. GitHub visibility is **public** (`scholtzap/gift-registry`); re-check with gitleaks + the `+27` gate before any push that adds env, media, or demos — evidence: [public-repo-safety](docs/investigations/2026-11-04-public-repo-safety.md).
 
 The exact local production build passed Chromium routes with installed dependencies. Its circle traces contain Geist, sharp and resvg; the dynamic React renderer require is not listed in those traces. The Oracle candidate copies full dependencies. Minimal standalone deployment, ARM64 native bindings, container worker lifecycle and FFmpeg binary behavior still need verification. Materialize Google Drive reparse-sensitive files before Docker builds.
 
 Migrations must remain expand-only. Recovery requires a previous image tag and a verified database restore; never automatically roll back a production migration. Existing CI/doc-sync sources are not evidence of a successful CI run. CI owns KB publication; this work did not publish documents manually.
 
-**CI quickref:** while this repo is private, a GitHub Actions job that fails in ~4 s with zero steps and no log means Actions minutes/billing, not YAML — the reason lives in the check-run annotation, not `--log-failed`. Do not debug the workflow file for it. Public repos get free Linux minutes, and the hackathon requires a public repo anyway.
+**CI quickref:** this repo is public (free Linux minutes). Historically, while it was still private, a GitHub Actions job that failed in ~4 s with zero steps and no log meant Actions minutes/billing, not YAML — the reason lived in the check-run annotation, not `--log-failed`. Do not debug the workflow file for that pattern.
 
 ## 7. Security Considerations
 
@@ -187,7 +187,7 @@ Deferred research is in [deferred-spikes](docs/strategy/investigations/deferred-
 
 Project Name: Piñata (`pinata` package), Gift Circles.
 
-Repository: `scholtzap/gift-registry`; visibility changes require explicit approval, and this map does not certify public-release readiness.
+Repository: `scholtzap/gift-registry` (**public** as of the 2026-11-04 safety check). Visibility changes still need explicit operator approval. Public-tree hygiene evidence: [public-repo-safety](docs/investigations/2026-11-04-public-repo-safety.md) — gitleaks clean, no `+27` phones, `.env` never tracked; does not certify the live VM or unpushed local work.
 
 Primary Contact: Arno Scholtz. Meta Global AI Developer Hackathon, Indie Developer track; submission deadline **2026-11-04 21:00 ET**.
 

@@ -96,7 +96,7 @@ in `--log-failed`, which returned "log not found". Cost a full debugging detour 
 public repo anyway). Independently: a note in `ARCHITECTURE.md` §6 that a 4s failure with no log means billing, not
 YAML, so the next agent does not go hunting for a syntax error.
 **Where it should live:** ARCHITECTURE.md §6 + `docs/operations/meta-integration-setup-checklist.md` §D
-**Status:** open — resolved by flipping visibility
+**Status:** fulfilled — repo is public (`gh` 2026-11-04); ARCHITECTURE §6 CI quickref updated same day
 
 ## 2026-10-26 — Cursor is not a documented Meta Model API provider
 **Kind:** quickref
