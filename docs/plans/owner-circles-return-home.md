@@ -190,11 +190,15 @@ False success (does **not** count as done):
 
 ## Evidence
 
-2026-11-04: vitest 617 passed. Playwright `return-home` and `entry-hub` passed
-(landing → find → verify → both sections → open → back, and hub create still
-reaches the owner ledger). Caddy `@app` in `docs/deployment/Caddyfile.pinata`
-includes `/app/*`. Live pinata smoke is the deploy step after this merges.
-Resend delivery is blocked on a rejected API key; see `otp-return-path.md`.
+2026-11-04: vitest 617 passed on main (verify run 41819450736). Playwright
+`return-home` and `entry-hub` passed locally (landing → find → verify → both
+sections → open → back, and hub create still reaches the owner ledger).
+Live image `pinata-app:1.0.0-75df3cdb`. Smoke: `/` 200 with My circles →
+`/app/find`, `/app/find` 200 “Open my circles”, signed-out `/app` 200 with
+create and open, `/health` 200, `POST /app/find` 422 with the uniform sentence.
+Caddy `@app` includes `/app/*`. A live verify through to the dashboard needs a
+code, and Resend rejects the stored key (HTTP 401), so that last hop was not
+exercised on the host. See `otp-return-path.md`.
 
 ## Open questions
 

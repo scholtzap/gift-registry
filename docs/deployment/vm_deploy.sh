@@ -9,8 +9,11 @@ if [ ! -d checkout/.git ]; then
   git clone pinata.bundle checkout
 fi
 cd checkout
-git fetch origin main || true
+git fetch origin main
 git checkout main
+# A fetch alone leaves the old checkout in place, so the image tag stays on the
+# previous SHA and compose does not recreate the app. The bundle is the source.
+git reset --hard origin/main
 git log --oneline -1
 SHA=$(git rev-parse --short HEAD)
 echo "deploying $SHA"

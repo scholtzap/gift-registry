@@ -2,6 +2,12 @@
 
 Agent error log. Newest entry first. No secrets, tokens, env dumps, or credentialed URLs.
 
+## 2026-11-04 — Deploy fetched the new bundle and still built the old checkout
+**What happened:** `vm_deploy.sh` ran `git fetch origin main` and `git checkout main`, then tagged the image from `HEAD`. Fetch does not move a local `main` that is already checked out, so the VM stayed on `ce77015c` and compose left the running containers in place.
+**Impact:** A new bundle looked deployed (`STAGE1_DONE`) while the live app was the previous image.
+**Fix:** The script now `git reset --hard origin/main` after the fetch, which is the same step the VM runbook already required.
+**Do not repeat:** Do not take the image SHA from a checkout that was only fetched. Fast-forward or reset onto `origin/main` before building.
+
 ## 2026-11-04 — Root layout no-referrer made hub create refuse every browser
 **What happened:** `src/app/layout.tsx` set `referrer: 'no-referrer'`. Chromium then sent `Origin: null` on the hub create form POST. `isSameOrigin` rejected it, so the circle was never created. Circle HTML already used `Referrer-Policy: same-origin` for this reason.
 **Impact:** Playwright "landing to hub" stayed on `/app/create` with the origin warning. A signed-out person could not create a circle from the Next page.
