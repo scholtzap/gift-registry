@@ -309,9 +309,11 @@ describe('the allowlist gate that mints a session', () => {
   });
 
   it('refuses a malformed number and a missing name', async () => {
-    expect((await post(slug, { name: 'Someone', phone: '0820000000' })).status).toBe(200);
+    // +999 alone is too short for normalizeE164; reserved CC, never an assignable line.
+    const notE164 = '+999';
+    expect((await post(slug, { name: 'Someone', phone: notE164 })).status).toBe(200);
     expect((await post(slug, { name: '', phone: syntheticPhone() })).status).toBe(200);
-    const res = await post(slug, { name: 'Someone', phone: '0820000000' });
+    const res = await post(slug, { name: 'Someone', phone: notE164 });
     expect(await res.text()).toContain('full international form');
   });
 

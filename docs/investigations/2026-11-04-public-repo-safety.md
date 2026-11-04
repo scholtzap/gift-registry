@@ -31,14 +31,14 @@
 ## Intentional public identifiers (not secrets)
 
 - Contact email `scholtzap@gmail.com` on `gifts.scholtz.work` contact paths
-- Oracle host `<oracle-vm-ip>` and SSH user `ubuntu` in `ARCHITECTURE.md` / `oracle-vm.md`
+- SSH user `ubuntu` on the shared Oracle VM (host IP redacted from git 2026-11-04; operator inventory only)
 - WABA asset id in `docs/plans/rn-f-claim-merge.md` (identifier, not a token)
 - CI synthetic `SESSION_SECRET` / `PHONE_HASH_PEPPER` placeholders in `verify.yml`
 
 ## Residual (non-blocking)
 
-- Tests use national-format fixtures `0831234567` and `0820000000`. CI only fails on `+27…`; AGENTS.md still prefers fictional cast with no assignable numbers — optional cleanup.
-- Local branch is ahead of `origin/main` with a large dirty tree; do not add `.env` or real media. Untracked `demo-recording/` looks safe if committed later.
+- Local branch may be ahead of `origin/main` with a dirty tree; do not add `.env`. `demo-recording/` is gitignored.
+- Follow-up same day: SA-shaped test helpers and `083…`/`082…` fixtures moved to reserved `+999…` / short `+999` invalid cases; Oracle IP removed from public docs.
 
 ## Conclusion
 

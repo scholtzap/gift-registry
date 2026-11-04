@@ -1,7 +1,7 @@
 # Oracle VM deployment and recovery candidate
 
 **Status: DEPLOYED 2026-10-28 (DEMO_MODE) on the existing shared Oracle ARM VM
-(<oracle-vm-ip>, ~/pinata + ~/pinata-private). Single domain: landing page at
+(SSH host address is operator-private — not in git; paths ~/pinata + ~/pinata-private). Single domain: landing page at
 https://pinata.scholtz.work/ and the app at https://pinata.scholtz.work/app
 (Next PINATA_BASE_PATH=/app), seeded fictional cast (`nadia-30th`). Live
 Meta/WhatsApp is NOT enabled: no WABA credentials on the VM and OTP template
@@ -13,6 +13,8 @@ filecap), #25 (subpath assets), #26 (bare /app).
 ## Artifact contract
 
 Use `docs/deployment/docker-compose.oracle.yml` as a **standalone** Compose file, project `gifts-oracle`, with `--project-directory` set to the repository root. Do not merge it into the root development Compose file: that file publishes a loopback development database port. The architecture's earlier “same Compose file” description needs parent reconciliation; the existing file was not edited here.
+
+**2026-11-01 incident, then the real fix: `POST /app/create` 404 on a live host while `/app` rendered.** First read was a build/runtime mismatch (image built with `PINATA_BASE_PATH=/app`, container running it empty). The real `Caddyfile.pinata` showed the intended contract is single-prefix with **no Next basePath at all** — `/app/*`, `/c/*`, `/lookup`, `/privacy` and assets proxy straight through, unstripped — so basePath support was removed from `next.config.mjs` instead of worked around. Raw `<a>`/`<form>` URLs never get a basePath prefix automatically (only `next/link` does), which is why the doubling only ever broke hand-built URLs. The same pass added the missing `/icons/*` and `/card-preview.js` proxy paths (PWA icons and the gift-card preview script 404d via the site fallback) and a legacy `/app/app/* → /app/*` redirect for doubled links from the 2026-10-28 era. Operator rule going forward: build the image with `PINATA_BASE_PATH` unset or empty (the Dockerfile default is already empty; keep it out of `build_env`), run the container with it empty (the Compose default is empty; `environment:` shadows the env file so a stale shell export still wins), and verify after every redeploy by submitting the hub form once and opening one `/app/open` flow end to end.
 
 - `Dockerfile.oracle`: Node 24, locked pnpm install, generated Prisma client, Next production build, ffmpeg, non-root UID/GID 10001. Explicit copies exclude `.env`, scratch, and local media. Migration tools remain in the v1 image; image-size optimization is not a release prerequisite.
 - `Dockerfile.caddy`: Cloudflare DNS module build; a reviewed plugin version/commit is required. Operator must select matching reviewed Caddy builder/runtime versions and immutable release image digests. Default major tags are examples, not reproducible release pins.

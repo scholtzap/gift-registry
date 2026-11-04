@@ -10,7 +10,7 @@ import { seedCircle, type CircleFixture } from '../leak/fixtures';
  */
 
 const suffix = String(Math.floor(10000 + Math.random() * 90000));
-const num = (n: number) => `+2783${suffix}${String(n).padStart(2, '0')}`;
+const num = (n: number) => `+999${suffix}${String(n).padStart(4, '0')}`;
 
 test('step 1-2: search a number, get the always-200 offer, create a proxy circle', async ({ page }) => {
   await page.goto('/lookup');

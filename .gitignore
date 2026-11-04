@@ -80,6 +80,8 @@ venv/
 /uploads/
 /recordings/
 /.recordings/
+# Local demo capture (stills / narration / mp4). Not part of the public tree.
+/demo-recording/
 /artifacts/
 /local-data/
 /backups/
