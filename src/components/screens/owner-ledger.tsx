@@ -1,12 +1,14 @@
+import type { ReactNode } from 'react';
 import { AttributeList, Badge, Cta, DateLine, EmptyState, EventDate, EventDateForm, ItemPhoto, PhotoUploadForm, Panel, Screen, type CircleContext, type NavItem } from '@/components/ui';
 import type { OwnerCircleView, OwnerItemView } from '@/server/views';
 
 // Owner projection only; this screen never fetches data or reads coordination state.
-export function OwnerLedgerScreen({ view, basePath, notice, eventDateDraft }: {
+export function OwnerLedgerScreen({ view, basePath, notice, eventDateDraft, menu }: {
   view: OwnerCircleView;
   basePath: string;
   notice?: string;
   eventDateDraft?: string | null;
+  menu?: ReactNode;
 }) {
   const draftHref = `${basePath}/draft`;
   const settingsHref = `${basePath}/settings`;
@@ -23,6 +25,7 @@ export function OwnerLedgerScreen({ view, basePath, notice, eventDateDraft }: {
       title="Your wishes"
       circle={{ name: view.name, role: 'owner' }}
       nav={nav}
+      menu={menu}
     >
       {/* The rail is the last child: from 64rem CSS lifts it beside the ledger as a sticky summary,
           while mobile keeps the ledger first and the circle link last. */}

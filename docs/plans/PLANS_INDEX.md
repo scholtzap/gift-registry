@@ -8,7 +8,7 @@
 python scripts/ops/refresh_plans_index.py --write
 ```
 
-Generated: 2026-11-04 12:18 · repo: `gifts-registry`
+Generated: 2026-11-04 13:09 · repo: `gifts-registry`
 
 ## P0
 
@@ -16,7 +16,7 @@ Generated: 2026-11-04 12:18 · repo: `gifts-registry`
 |------|-------|--------|------|------|
 | 3 | UX CR-01: one entry door and a self-serve create-circle (registration) flow | done | `ux-entry-and-registration.md` |  |
 | 3 | UX CR-02: put the lookup/proxy creation flow inside the app shell | done | `ux-lookup-shell.md` |  |
-| 4 | Owner circles return home — login, multi-circle dashboard, navigate back | ready | `owner-circles-return-home.md` | None from the interview. Implementation may surface `[TODO: needs clarification]` only if |
+| 4 | Owner circles return home — login, multi-circle dashboard, navigate back | implementing | `owner-circles-return-home.md` | None from the interview. Implementation may surface `[TODO: needs clarification]` only if |
 
 ## P1
 

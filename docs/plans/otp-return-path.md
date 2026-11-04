@@ -47,15 +47,16 @@ answers the same way.
 - **Request limits apply to the submitted identifier and the client address whether or not anything matched** (3/minute identifier, 60/minute address on find; 10 and 120 on verify). A separate cap allows 5 sends per recipient email-hash per hour. Over the cap, the page stays the uniform one and nothing is sent.
 - **`DEMO_MODE=on` logs the code and sends nothing.** The log line is `otp_demo_code_issued` plus the code. It does not include the address. `DEMO_MODE=off` without `RESEND_API_KEY` and `OTP_FROM_EMAIL` answers uniform and logs `otp_send_failed` with `reason: missing_mail_config`.
 
-## Live sending (not done)
+## Live sending (blocked on the key)
 
-Keep `DEMO_MODE=on` in `~/pinata-private/app.env` until all of these exist:
-
-1. Operator confirms the Piñata sender may use vault `RESEND_API_KEY` (shared / single), not a 3BO or hotmail key.
-2. Operator names the exact `OTP_FROM_EMAIL` on a domain they verify in Resend (a mailbox at `scholtz.work` or a subdomain). A Gmail address marked verified in the Resend account is the sandbox recipient, not a From. Resend rejects mail whose From is not on a domain this account has verified. The marketing site's contact function still defaults to Resend's shared onboarding address; that is not this sender.
-3. DNS on that domain: SPF, DKIM, and DMARC, as Resend instructs for the verified domain.
-4. Set `RESEND_API_KEY` and `OTP_FROM_EMAIL` in `~/pinata-private/app.env` (never git, never printed). Presence-check only.
-5. Operator explicitly sets `DEMO_MODE=off`.
+The sender in `deliver.ts` is the live path. On the VM (presence only, 2026-11-04):
+`DEMO_MODE=off`, `RESEND_API_KEY` set, `OTP_FROM_EMAIL` set on `scholtz.work`.
+Both that key and vault `RESEND_API_KEY` (`repo=shared`, `env=single`) are rejected
+by Resend (`HTTP 401` on `/domains` and `/emails`). A code is still stored and the
+page stays uniform; `deliverLoginCode` logs `otp_send_failed`. Do not switch to the
+3BO or hotmail Resend keys. A new key has to be minted in Resend, stored as
+`RESEND_API_KEY`, and the domain `scholtz.work` has to show verified before a
+message leaves the server. Do not print the key or the From address.
 
 WhatsApp webhook and media env vars stay. They are not the sign-in channel. There is no `WHATSAPP_OTP_TEMPLATE_NAME`.
 

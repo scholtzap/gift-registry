@@ -16,9 +16,11 @@ describe('entry hub (CR-UX-01)', () => {
     const html = render();
     expect(html).toContain('Create my circle');
     expect(html).toContain('Start a circle for someone');
-    expect(html).toContain('Open my circle');
+    expect(html).toContain('Open my circles');
     expect(html).toContain('action="/app/create"');
-    expect(html).toContain('action="/app/find"');
+    expect(html).toContain('href="/app/find"');
+    expect(html).not.toContain('action="/app/find"');
+    expect(html).not.toContain('open-my-circle');
     expect(html).toContain('href="/lookup"');
     // Brand/Home intentionally returns to this hub (CR-UX-05); no primary
     // button may reload it.
@@ -31,7 +33,7 @@ describe('entry hub (CR-UX-01)', () => {
     const field = html.indexOf('name="phone"');
     expect(why).toBeGreaterThan(-1);
     expect(field).toBeGreaterThan(why);
-    for (const name of ['name="name"', 'name="occasion"', 'name="eventDate"', 'name="wish"']) {
+    for (const name of ['name="name"', 'name="occasion"', 'name="eventDate"', 'name="email"', 'name="wish"']) {
       expect(html).toContain(name);
     }
   });
@@ -39,7 +41,7 @@ describe('entry hub (CR-UX-01)', () => {
   it('prefixes actions with the deployment basePath', () => {
     const html = render({ basePath: '/app' });
     expect(html).toContain('action="/app/app/create"');
-    expect(html).toContain('action="/app/app/find"');
+    expect(html).toContain('href="/app/app/find"');
     expect(html).toContain('href="/app/lookup"');
   });
 });

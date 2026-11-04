@@ -7,10 +7,11 @@ import { isStoredPhoto } from '@/server/photos';
  * The `/app` dashboard (docs/plans/shared-registry-and-circles.md Q3, Q7 and
  * ledger row 11: the owner return path). One entry door, two shapes:
  *
- * - An **owner** session sees owned + member circles and their own canonical
- *   registry. The registry is theirs to manage; friends never get this half.
- * - A **friend** session sees member circles only — no registry view, because
- *   friends gain nothing from one and might misread claim scope.
+ * - **Gifts for you:** active circles this person owns.
+ * - **Gifts for others:** active friend memberships, plus proxy circles they
+ *   created (even without a membership row).
+ * - The registry half renders only for an owner session. A friend session
+ *   never sees it.
  *
  * Read on the login role from a signed session: the user id comes from the
  * cookie's MAC, and every row returned belongs to that user (owned circles,
@@ -47,32 +48,70 @@ export interface DashboardView {
   userId: string;
   displayName: string;
   role: 'owner' | 'friend';
+  /** Active circles this person receives in (they are the owner). */
   owned: DashboardCircle[];
-  member: DashboardCircle[];
-  /** Null for friend sessions: no registry view (Q3). */
+  /** Active friend memberships plus proxy circles this person created. */
+  forOthers: DashboardCircle[];
+  /** Null unless the session is the owner path: friends never get a registry. */
   registry: DashboardRegistryItem[] | null;
+}
+
+async function circleGroups(db: Db, userId: string): Promise<{ owned: DashboardCircle[]; forOthers: DashboardCircle[] }> {
+  const [owned, memberships, proxies] = await Promise.all([
+    db.prisma.circle.findMany({
+      where: { ownerUserId: userId, status: 'active' },
+      orderBy: { createdAt: 'asc' },
+      select: { id: true, name: true, occasion: true, shareSlug: true },
+    }),
+    db.prisma.membership.findMany({
+      where: { userId, status: 'active', role: 'friend', circle: { status: 'active' } },
+      orderBy: { joinedAt: 'asc' },
+      select: { circle: { select: { id: true, name: true, occasion: true, shareSlug: true, ownerUserId: true } } },
+    }),
+    db.prisma.circle.findMany({
+      where: { proxyCreatedByUserId: userId, status: 'active' },
+      orderBy: { createdAt: 'asc' },
+      select: { id: true, name: true, occasion: true, shareSlug: true },
+    }),
+  ]);
+  const ownedIds = new Set(owned.map((circle) => circle.id));
+  const seen = new Set<string>(ownedIds);
+  const forOthers: DashboardCircle[] = [];
+  for (const row of memberships) {
+    if (ownedIds.has(row.circle.id) || seen.has(row.circle.id)) continue;
+    seen.add(row.circle.id);
+    forOthers.push({
+      id: row.circle.id,
+      name: row.circle.name,
+      occasion: row.circle.occasion,
+      shareSlug: row.circle.shareSlug,
+    });
+  }
+  for (const circle of proxies) {
+    if (seen.has(circle.id)) continue;
+    seen.add(circle.id);
+    forOthers.push(circle);
+  }
+  return { owned, forOthers };
+}
+
+/** Flat list for the circle side menu: receive-circles, then circles for other people. */
+export async function loadAccessibleCircles(db: Db, userId: string): Promise<Array<DashboardCircle & { role: 'owner' | 'friend' }>> {
+  const groups = await circleGroups(db, userId);
+  return [
+    ...groups.owned.map((circle) => ({ ...circle, role: 'owner' as const })),
+    ...groups.forOthers.map((circle) => ({ ...circle, role: 'friend' as const })),
+  ];
 }
 
 export async function loadDashboard(db: Db, session: Session | null): Promise<DashboardView | null> {
   if (!session) return null;
   const user = await db.prisma.user.findUnique({
     where: { id: session.userId },
-    select: {
-      id: true,
-      displayName: true,
-      ownedCircles: {
-        where: { status: 'active' },
-        orderBy: { createdAt: 'asc' },
-        select: { id: true, name: true, occasion: true, shareSlug: true },
-      },
-      memberships: {
-        where: { status: 'active', role: 'friend', circle: { status: 'active' } },
-        orderBy: { joinedAt: 'asc' },
-        select: { circle: { select: { id: true, name: true, occasion: true, shareSlug: true } } },
-      },
-    },
+    select: { id: true, displayName: true },
   });
   if (!user) return null;
+  const groups = await circleGroups(db, user.id);
 
   const registry =
     session.role !== 'owner'
@@ -108,8 +147,8 @@ export async function loadDashboard(db: Db, session: Session | null): Promise<Da
     userId: user.id,
     displayName: user.displayName,
     role: session.role,
-    owned: user.ownedCircles,
-    member: user.memberships.map((m) => m.circle),
+    owned: groups.owned,
+    forOthers: groups.forOthers,
     registry,
   };
 }

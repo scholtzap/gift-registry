@@ -165,7 +165,7 @@ describe('the circle link', () => {
         shareSlug: `t-other-${fx.circleId.slice(0, 8)}`,
       },
     });
-    const res = await get(slug, cookieFor({ userId: fx.friendAUserId, circleId: other.id, role: 'friend' }));
+    const res = await get(other.shareSlug, cookieFor({ userId: fx.friendAUserId, circleId: fx.circleId, role: 'friend' }));
     expect(res.status).toBe(200);
     expect(await res.text()).toContain('Join this circle');
   });

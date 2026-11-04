@@ -5,6 +5,8 @@ import { z } from 'zod';
 import type { Actor, Db } from "@/server/db/client";
 import { FriendLedgerScreen } from "@/components/screens/friend-ledger";
 import { OwnerLedgerScreen, OwnerItemScreen } from "@/components/screens/owner-ledger";
+import { CircleMenu } from "@/components/screens/circle-menu";
+import { loadAccessibleCircles } from "@/server/views/dashboard";
 import { JoinScreen } from "@/components/screens/join";
 import { SettingsScreen } from "@/components/screens/settings";
 import { DraftConfirmScreen } from '@/components/screens/draft-confirm';
@@ -21,7 +23,7 @@ import { isSameOrigin } from "@/server/auth/same-origin";
 import { gateThrottle } from "@/server/auth/throttle-store";
 import { claimIdempotencyKey, parseIdempotencyKey } from "@/server/auth/idempotency";
 import { checkTurnstile, turnstileField } from "@/server/auth/turnstile";
-import { issueSession, sessionCookie, sessionFromRequest } from "@/server/auth/session";
+import { issueSession, sessionCookie, sessionFromRequest, SESSION_COOKIE } from "@/server/auth/session";
 import { AI_CAPABILITIES, assertCan, CAPABILITY_COPY, CapabilityOffError, setCapability } from "@/server/entitlements";
 import { addItem, claimItem, contribute, createPool, markPaid, markPaidFor, purchasePool, releaseClaim, revealItem, savePayout, setEventDate, setItemPhoto } from '@/server/ledger';
 import { isCalendarDate } from '@/lib/dates';
@@ -96,16 +98,16 @@ function rejectedForm(name: string, phone: string): Response {
   return gateForm(REJECTED_NOTICE, { initialName: name, initialPhone: phone, rejected: true });
 }
 
-function renderOwner(view: NonNullable<Awaited<ReturnType<typeof ownerCircleView>>>, basePath: string, date?: { notice?: string; eventDateDraft?: string | null }): Response {
-  return new Response(page(view.name, renderToStaticMarkup(createElement(OwnerLedgerScreen, { view, basePath, ...date }))), {
+function renderOwner(view: NonNullable<Awaited<ReturnType<typeof ownerCircleView>>>, basePath: string, date?: { notice?: string; eventDateDraft?: string | null }, menu?: ReactNode): Response {
+  return new Response(page(view.name, renderToStaticMarkup(createElement(OwnerLedgerScreen, { view, basePath, menu, ...date }))), {
     status: date?.notice ? 422 : 200,
     headers: headers({ 'Content-Type': 'text/html; charset=utf-8' }),
   });
 }
 
-function renderFriend(view: NonNullable<Awaited<ReturnType<typeof friendCircleView>>>, basePath: string, date?: { notice?: string; eventDateDraft?: string | null }): Response {
+function renderFriend(view: NonNullable<Awaited<ReturnType<typeof friendCircleView>>>, basePath: string, date?: { notice?: string; eventDateDraft?: string | null }, menu?: ReactNode): Response {
   return new Response(
-    page(view.name, renderToStaticMarkup(createElement(FriendLedgerScreen, { view, basePath, ...date }))),
+    page(view.name, renderToStaticMarkup(createElement(FriendLedgerScreen, { view, basePath, menu, ...date }))),
     { status: date?.notice ? 422 : 200, headers: headers({ "Content-Type": "text/html; charset=utf-8" }) },
   );
 }
@@ -117,12 +119,22 @@ function renderFriend(view: NonNullable<Awaited<ReturnType<typeof friendCircleVi
  * on its own.
  */
 async function renderLedger(db: Db, actor: Actor, circleId: string, basePath: string, date?: { notice?: string; eventDateDraft?: string | null }): Promise<Response> {
+  const circles = actor.userId ? await loadAccessibleCircles(db, actor.userId) : [];
+  const currentSlug = decodeURIComponent(basePath.slice('/c/'.length));
+  const menuFor = (sectionLabel: string) => createElement(CircleMenu, {
+    circles: circles.map((circle) => ({ name: circle.name, shareSlug: circle.shareSlug, role: circle.role })),
+    currentSlug,
+    appHref: `${process.env.PINATA_BASE_PATH ?? ''}/app`,
+    sectionHref: basePath,
+    sectionLabel,
+    sectionCurrent: true,
+  });
   if (actor.role === 'owner') {
     const view = await db.withActor(actor, tx => ownerCircleView(tx, circleId));
-    return view === null ? notFound() : renderOwner(view, basePath, date);
+    return view === null ? notFound() : renderOwner(view, basePath, date, menuFor('Wishes'));
   }
   const view = await db.withActor(actor, tx => friendCircleView(tx, circleId, actor.userId));
-  return view === null ? notFound() : renderFriend(view, basePath, date);
+  return view === null ? notFound() : renderFriend(view, basePath, date, menuFor('Gifts'));
 }
 
 function screenResponse(title: string, content: ReactNode, status = 200): Response {
@@ -159,6 +171,53 @@ async function cardPng(db: Db, actor: Actor, itemId: string, variant: string | n
     if (error instanceof CardNotFoundError) return notFound();
     throw error;
   }
+}
+
+const refreshCookie = new WeakMap<Request, string>();
+
+/** Owner, active friend, or the person who created the proxy circle. Proxy creators without a membership row get one so the friend projection can open. */
+async function resolveCircleAccess(db: Db, userId: string, circleId: string): Promise<{ role: 'owner' | 'friend' } | null> {
+  const circle = await db.prisma.circle.findUnique({
+    where: { id: circleId },
+    select: {
+      status: true,
+      ownerUserId: true,
+      proxyCreatedByUserId: true,
+      memberships: { where: { userId, status: 'active' }, select: { role: true } },
+    },
+  });
+  if (!circle || circle.status !== 'active') return null;
+  if (circle.ownerUserId === userId) return { role: 'owner' };
+  if (circle.memberships.some((row) => row.role === 'friend')) return { role: 'friend' };
+  if (circle.proxyCreatedByUserId !== userId) return null;
+  await db.prisma.membership.upsert({
+    where: { circleId_userId: { circleId, userId } },
+    create: { circleId, userId, role: 'friend', status: 'active' },
+    update: { role: 'friend', status: 'active' },
+  });
+  return { role: 'friend' };
+}
+
+/** Point the signed cookie at the circle being opened, without trusting the cookie's old circle id. */
+async function bindCircleSession(db: Db, request: Request, circleId: string): Promise<Request> {
+  const session = sessionFromRequest(request);
+  if (!session) return request;
+  const access = await resolveCircleAccess(db, session.userId, circleId);
+  if (!access) return request;
+  if (session.circleId === circleId && session.role === access.role) return request;
+  const token = issueSession({ userId: session.userId, circleId, role: access.role });
+  const headers = new Headers(request.headers);
+  headers.set('cookie', `${SESSION_COOKIE}=${token}`);
+  refreshCookie.set(request, sessionCookie(token, new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)));
+  return new Request(request, { headers });
+}
+
+function applyRefresh(request: Request, response: Response): Response {
+  const cookie = refreshCookie.get(request);
+  if (!cookie) return response;
+  const next = new Headers(response.headers);
+  next.append('Set-Cookie', cookie);
+  return new Response(response.body, { status: response.status, headers: next });
 }
 
 async function privateActor(db: Db, request: Request, circleId: string): Promise<Actor | null> {
@@ -203,6 +262,7 @@ async function circleGet(db: Db, request: Request, slug: string): Promise<Respon
   const pathname = new URL(request.url).pathname;
   const circle = await db.prisma.circle.findUnique({ where: { shareSlug: slug }, select: { id: true, name: true, defaultCurrency: true } });
   if (!circle) return notFound();
+  request = await bindCircleSession(db, request, circle.id);
   const session = sessionFromRequest(request);
   if (!session || session.circleId !== circle.id) return pathname === basePath ? gateForm() : notFound();
   const actor = await privateActor(db, request, circle.id);
@@ -370,6 +430,7 @@ async function circlePost(db: Db, request: Request, slug: string, deps: CircleRo
   });
   if (!circle) return notFound();
   if (pathname !== basePath) {
+    request = await bindCircleSession(db, request, circle.id);
     const actor = await privateActor(db, request, circle.id);
     if (!actor) return notFound();
     // Authenticated write throttle (F2): per-session and per-address buckets
@@ -793,9 +854,9 @@ function unavailable(error: unknown): Response {
 }
 
 export async function handleCircleGet(db: Db, request: Request, slug: string): Promise<Response> {
-  try { return await circleGet(db, request, slug); } catch (error) { return unavailable(error); }
+  try { return applyRefresh(request, await circleGet(db, request, slug)); } catch (error) { return unavailable(error); }
 }
 
 export async function handleCirclePost(db: Db, request: Request, slug: string, deps: CircleRouteDeps = {}): Promise<Response> {
-  try { return await circlePost(db, request, slug, deps); } catch (error) { return unavailable(error); }
+  try { return applyRefresh(request, await circlePost(db, request, slug, deps)); } catch (error) { return unavailable(error); }
 }

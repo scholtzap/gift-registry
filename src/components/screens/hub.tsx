@@ -10,7 +10,7 @@ import { Button, Cta, Field, Notice, Panel, Screen, TurnstileWidget } from '@/co
 export function HubScreen({ basePath = '', notice, initial }: {
   basePath?: string;
   notice?: string;
-  initial?: { name?: string; occasion?: string; eventDate?: string; wish?: string };
+  initial?: { name?: string; occasion?: string; eventDate?: string; email?: string; wish?: string };
 }) {
   return (
     <Screen
@@ -18,7 +18,7 @@ export function HubScreen({ basePath = '', notice, initial }: {
       privacyHref={`${basePath}/privacy`}
       title="Start your circle"
       eyebrow="Piñata"
-      lede="Create your own circle, start one for someone else, or open a circle you already have."
+      lede="Create your own circle, start one for someone else, or open the circles you already have."
     >
       <div className="pn-measure-sm pn-stack pn-stack-lg">
         {notice !== undefined && <Notice kind="error">{notice}</Notice>}
@@ -33,11 +33,12 @@ export function HubScreen({ basePath = '', notice, initial }: {
             <Field label="Your name" name="name" id="hub-name" type="text" autoComplete="name" required maxLength={80} defaultValue={initial?.name} />
             <Field label="Occasion" name="occasion" id="hub-occasion" type="text" required maxLength={80} defaultValue={initial?.occasion} placeholder="Birthday" />
             <Field label="Party date (optional)" name="eventDate" id="hub-event-date" type="date" defaultValue={initial?.eventDate} hint="The day the gift is handed over. You can change it later." />
+            <Field label="Your email" name="email" id="hub-email" type="email" autoComplete="email" required maxLength={254} defaultValue={initial?.email} hint="This is how you open your circles later. A code is sent here." />
             <p className="pn-small pn-muted">
               We ask for your WhatsApp number so friends can join against it and find
               your circle. It is stored hashed on the invite list, never shown publicly.
             </p>
-            <Field label="Your WhatsApp number (international form)" name="phone" id="hub-phone" type="tel" autoComplete="tel" inputMode="tel" required />
+            <Field label="WhatsApp number (optional, international form)" name="phone" id="hub-phone" type="tel" autoComplete="tel" inputMode="tel" />
             <Field label="First wish (optional)" name="wish" id="hub-wish" type="text" maxLength={120} defaultValue={initial?.wish} placeholder="Something you would love" />
             <TurnstileWidget />
             <div className="pn-actions">
@@ -58,15 +59,11 @@ export function HubScreen({ basePath = '', notice, initial }: {
         </Panel>
 
         <Panel as="section" className="pn-stack">
-          <h2 id="open-my-circle">Open my circle</h2>
-          <p className="pn-muted">Enter the email or phone on your circle. Anyone else uses the link.</p>
-          <form method="post" action={`${basePath}/app/find`} className="pn-stack">
-            <Field label="Email or phone number" name="identifier" id="hub-open-identifier" type="text" autoComplete="username" required placeholder="you@example.test" />
-            <TurnstileWidget />
-            <div className="pn-actions">
-              <Button type="submit" variant="primary" block>Send my code</Button>
-            </div>
-          </form>
+          <h2>Open my circles</h2>
+          <p className="pn-muted">Use the email or phone on your circle. Anyone else uses the link.</p>
+          <div className="pn-actions">
+            <Cta href={`${basePath}/app/find`}>My circles</Cta>
+          </div>
         </Panel>
       </div>
     </Screen>

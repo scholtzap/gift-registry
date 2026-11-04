@@ -1,7 +1,7 @@
 ---
 title: Owner circles return home — login, multi-circle dashboard, navigate back
 type: spec
-status: ready
+status: implementing
 priority: P0
 rank: 4
 updated: 2026-11-04
@@ -187,6 +187,14 @@ False success (does **not** count as done):
 - Live Resend From DNS as a blocker (demo OTP acceptable until operator configures From)
 - Redesign of create or proxy lookup beyond wiring them into the return path
 - Claim/pool mechanics, card delivery, vision/SAM changes
+
+## Evidence
+
+2026-11-04: vitest 617 passed. Playwright `return-home` and `entry-hub` passed
+(landing → find → verify → both sections → open → back, and hub create still
+reaches the owner ledger). Caddy `@app` in `docs/deployment/Caddyfile.pinata`
+includes `/app/*`. Live pinata smoke is the deploy step after this merges.
+Resend delivery is blocked on a rejected API key; see `otp-return-path.md`.
 
 ## Open questions
 

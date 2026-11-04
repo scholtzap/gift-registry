@@ -2,6 +2,18 @@
 
 Agent error log. Newest entry first. No secrets, tokens, env dumps, or credentialed URLs.
 
+## 2026-11-04 — Root layout no-referrer made hub create refuse every browser
+**What happened:** `src/app/layout.tsx` set `referrer: 'no-referrer'`. Chromium then sent `Origin: null` on the hub create form POST. `isSameOrigin` rejected it, so the circle was never created. Circle HTML already used `Referrer-Policy: same-origin` for this reason.
+**Impact:** Playwright "landing to hub" stayed on `/app/create` with the origin warning. A signed-out person could not create a circle from the Next page.
+**Fix:** The root layout now uses `same-origin`. An opaque origin token is treated as missing, and the check still requires this app's origin.
+**Do not repeat:** Do not set a document that posts a session-issuing form to `no-referrer`. That policy makes the Origin header the string `null`.
+
+## 2026-11-04 — Hub create ignored the email the route test already required
+**What happened:** `tests/routes/hub.test.ts` posted `email` and expected it stored on the owner, with phone optional. `handleHubCreatePost` still required a phone and never wrote `users.email`, so a new circle could not receive a sign-in code.
+**Impact:** The return path could not see circles created from the hub. The route test and the handler disagreed.
+**Fix:** Create requires an email, stores `email` and `email_hash`, and treats phone as optional. Discoverable stays off the form and is stored only when the field is posted.
+**Do not repeat:** When a route test names a stored field, the handler in the same commit has to write it. Do not ship the assertion ahead of the write.
+
 ## 2026-11-04 — Deploy probe treated a missing health route as success
 **What happened:** `~/pinata/vm_deploy.sh` fetched `http://127.0.0.1:3000/app/health` and printed the body. The app only serves `GET /health`. The probe logged HTTP 404 and still exited 0, so the deploy printed STAGE1_DONE.
 **Impact:** A failed app can look deployed. The printed 404 body was the HTML error page.

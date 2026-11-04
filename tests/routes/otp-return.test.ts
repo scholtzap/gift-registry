@@ -294,6 +294,51 @@ describe('email and phone lookup stay indistinguishable', () => {
   }, 20_000);
 });
 
+describe('membership and proxy creators can ask for a code', () => {
+  it('sends for a friend membership or a proxy circle and stays silent when neither exists', async () => {
+    const memberEmail = `otp-member-${stamp}@example.test`;
+    const proxyEmail = `otp-proxy-${stamp}@example.test`;
+    const idleEmail = `otp-idle-${stamp}@example.test`;
+    const owner = await db.prisma.user.create({
+      data: { displayName: 'Seat owner', email: `otp-seat-${stamp}@example.test`, emailHash: hashEmail(`otp-seat-${stamp}@example.test`, PEPPER) },
+    });
+    const member = await db.prisma.user.create({
+      data: { displayName: 'Member only', email: memberEmail, emailHash: hashEmail(memberEmail, PEPPER) },
+    });
+    const planner = await db.prisma.user.create({
+      data: { displayName: 'Proxy planner', email: proxyEmail, emailHash: hashEmail(proxyEmail, PEPPER) },
+    });
+    await db.prisma.user.create({
+      data: { displayName: 'Idle', email: idleEmail, emailHash: hashEmail(idleEmail, PEPPER) },
+    });
+    await db.prisma.circle.create({
+      data: {
+        name: 'Friends only', occasion: 'birthday', discoverable: false,
+        eventDate: new Date('2026-12-05T00:00:00.000Z'), eventDateSetByUserId: owner.id,
+        ownerUserId: owner.id, shareSlug: `otpm-${salt}`,
+        memberships: { create: [{ userId: member.id, role: 'friend' }] },
+      },
+    });
+    await db.prisma.circle.create({
+      data: {
+        name: 'Planned surprise', occasion: 'birthday',
+        eventDate: new Date('2026-12-05T00:00:00.000Z'),
+        ownerUserId: null, proxyCreatedByUserId: planner.id, shareSlug: `otpx-${salt}`,
+      },
+    });
+    const sent: string[] = [];
+    const deliver = async (input: { to: string; code: string }) => {
+      sent.push(input.to);
+      return true;
+    };
+    for (const identifier of [memberEmail, proxyEmail, idleEmail]) {
+      const res = await handleFindPost(db, post('/app/find', { identifier }), deliver);
+      expect(res.status).toBe(422);
+    }
+    expect(sent.sort()).toEqual([memberEmail, proxyEmail].sort());
+  }, 20_000);
+});
+
 describe('address normalisation', () => {
   it('folds case and surrounding space and keeps plus-tags distinct', () => {
     expect(normalizeEmail('  User+Circle@Example.Test ')).toBe('user+circle@example.test');

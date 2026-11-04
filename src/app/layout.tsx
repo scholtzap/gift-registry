@@ -7,7 +7,10 @@ export const metadata: Metadata = {
   title: { default: 'Piñata', template: '%s · Piñata' },
   description: 'Group gifts nobody can spoil.',
   applicationName: 'Piñata',
-  referrer: 'no-referrer',
+  // Chromium sends Origin: null on a form POST from a no-referrer document, and the
+  // session-issuing routes then refuse the create. same-origin still withholds the path
+  // from other sites. Circle HTML uses the same policy (src/server/routes/circle.ts).
+  referrer: 'same-origin',
   // Next links /manifest.webmanifest (generated from src/app/manifest.ts) and these tags cover
   // iOS Safari, which still decides "Add to Home Screen" behaviour from them.
   appleWebApp: { capable: true, title: 'Piñata', statusBarStyle: 'default' },

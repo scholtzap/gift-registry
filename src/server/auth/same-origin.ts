@@ -13,8 +13,10 @@ import { env } from "@/lib/env";
  * at all is refused rather than trusted.
  */
 export function isSameOrigin(request: Request): boolean {
-  const candidate = request.headers.get("origin") ?? request.headers.get("referer");
-  if (!candidate) return false;
+  const raw = request.headers.get("origin");
+  // A no-referrer document makes Chromium send the opaque origin token "null".
+  const candidate = raw && raw !== "null" ? raw : request.headers.get("referer");
+  if (!candidate || candidate === "null") return false;
   try {
     return new URL(candidate).origin === new URL(env.CIRCLE_BASE_URL).origin;
   } catch {
