@@ -433,10 +433,11 @@ export function DateLine({ date, label, countdown }: {
  * `defaultValue` is the value the caller is allowed to see (the projection decided that already)
  * or the rejected draft, so a 422 re-render never empties the field the person just filled in.
  */
-export function EventDateForm({ basePath, defaultValue, notice }: {
+export function EventDateForm({ basePath, defaultValue, notice, submitVariant = "primary" }: {
   basePath: string;
   defaultValue: string | null;
   notice?: string;
+  submitVariant?: "primary" | "secondary";
 }) {
   // Pre-filled from the projection, so saving an unchanged date is never demanded:
   // the field is only required when no date is set yet (CR-UX-05).
@@ -455,7 +456,7 @@ export function EventDateForm({ basePath, defaultValue, notice }: {
         hint="The day the gift is handed over. Whoever sets it last decides whether it stays secret."
       />
       <div className="pn-actions">
-        <Button type="submit" variant="primary">Save the date</Button>
+        <Button type="submit" variant={submitVariant}>Save the date</Button>
       </div>
     </form>
   );

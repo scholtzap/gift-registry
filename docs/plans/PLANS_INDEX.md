@@ -8,7 +8,7 @@
 python scripts/ops/refresh_plans_index.py --write
 ```
 
-Generated: 2026-11-01 18:18 · repo: `gifts-registry`
+Generated: 2026-11-04 11:32 · repo: `gifts-registry`
 
 ## P0
 
@@ -28,6 +28,7 @@ Generated: 2026-11-01 18:18 · repo: `gifts-registry`
 | 4 | Design system, brand round and the seven in-app screens | ready | `design-system-and-brand.md` |  |
 | 4 | Next high-value work after site sign-up CTA and app deployment | ready | `next-high-value-work.md` | 7. **Retire the batch form once live WhatsApp intake works.** Done for the |
 | 5 | Handover finish-line outcome (site DNS, app follow-ups, remaining gates) | done | `handover-finish-line-outcome.md` |  |
+| 5 | OTP return path — email sign-in for a public circle | implementing | `otp-return-path.md` |  |
 | 5 | WhatsApp task-bot surface — six bounded tasks, fixed menu, no free chat | ready | `whatsapp-task-bot-surface.md` |  |
 | 6 | Day-3 nine follow-ups (throttle, creation, pun, reveal, dispatch, landing) | implementing | `day-3-nine-followups.md` |  |
 | 6 | Pool payout details, amounts-due share, and pledge visibility | done | `pool-payout-details.md` |  |
@@ -52,7 +53,7 @@ Generated: 2026-11-01 18:18 · repo: `gifts-registry`
 | 16 | RN-B — the resolution lookup route: one key in, always 200 out | backlog | `rn-b-lookup-route.md` | Does the found branch render inline or redirect to `/c/<slug>`? (A redirect re-introduces the slug oracle.) Is the |
 | 17 | RN-C — proxy circle creation, its share link, and the RLS that breaks without it | backlog | `rn-c-proxy-circle.md` | Does the creator gifter get any elevated right, or are they a plain member (RN-A says plain member — confirm it |
 | 22 | RN-J — ask for access: the permission request and the owner inbox that is never pushed | draft | `rn-j-permission-request.md` |  |
-| 30 | Shared registry and circles dashboard — canonical items, link rows, per-circle visibility | final | `shared-registry-and-circles.md` | None. All Q1–Q11 answered 2026-11-01. |
+| 30 | Shared registry and circles dashboard — canonical items, link rows, per-circle visibility | draft | `shared-registry-and-circles.md` | None. All Q1–Q11 answered 2026-11-01. |
 
 ## P3
 
@@ -65,4 +66,10 @@ Generated: 2026-11-01 18:18 · repo: `gifts-registry`
 | 21 | RN-H — on-platform search vs the noindex guarantee | out-of-window | `rn-h-crawlability.md` |  |
 | 40 | Deferred feature spikes (deal-finding, coordination agent, SAM duplicates) | backlog | `deferred-feature-spikes.md` |  |
 | 900 | Registry network - discovery, public visibility, and the deviations from the shipped spine | draft | `registry-network-discovery-deviations.md` | - G1 (RN-D): is the lookup **create-only** inside the submission window, given there is no visibility field yet for |
+
+## Archive (`archive/`)
+
+| Title | Status | Path |
+|-------|--------|------|
+| Shared registry and circles dashboard — canonical items, link rows, per-circle visibility | implemented | `archive/shared-registry-and-circles.md` |
 
