@@ -44,6 +44,7 @@ export function page(title: string, body: string): string {
 <link rel="manifest" href="${ASSET_BASE}/manifest.webmanifest">
 <link rel="stylesheet" href="${ASSET_BASE}/pinata.css">
 <script src="${ASSET_BASE}/register-sw.js" defer></script>
+<script src="${ASSET_BASE}/share-link.js" defer></script>
 <title>${escapeHtml(title)} · Piñata</title></head>
 <body>
 ${body}</body></html>`;
