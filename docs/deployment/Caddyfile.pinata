@@ -19,13 +19,19 @@
 		Referrer-Policy "same-origin"
 	}
 
-	# Legacy links from the short-lived /app subpath deployment (2026-10-28).
+	# Legacy links from the short-lived /app subpath deployment (2026-10-28),
+	# when form actions rendered doubled (/app/app/create). Exact page first,
+	# then the whole subtree: anything still carrying the doubled prefix lands
+	# on the matching single-prefix URL instead of a 404.
 	redir /app/app /app 308
+	handle_path /app/app/* {
+		redir https://{$CIRCLE_HOST}/app{path} 308
+	}
 	handle_path /app/c/* {
 		redir https://{$CIRCLE_HOST}/c{path} 308
 	}
 
-	@app path /app /app/* /c/* /lookup /privacy /offline /health /llms.txt /api/* /_next/* /pinata.css /register-sw.js /sw.js /manifest.webmanifest /icon.png /apple-icon.png /fonts/* /screenshots/*
+	@app path /app /app/* /c/* /lookup /privacy /offline /health /llms.txt /api/* /_next/* /pinata.css /register-sw.js /sw.js /card-preview.js /manifest.webmanifest /icon.png /apple-icon.png /fonts/* /icons/* /screenshots/*
 	handle @app {
 		reverse_proxy app:3000 {
 			header_up X-Forwarded-For {remote_host}

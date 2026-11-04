@@ -10,6 +10,24 @@ verified running (app+worker healthy, /app/health 200). Fixes found on the way:
 PR #21 (build fixtures), #22 (build env), #23 (migrate egress), #24 (caddy
 filecap), #25 (subpath assets), #26 (bare /app).
 
+## Keeping a live fix on the VM (GEO / Caddy matcher)
+
+The checkout’s `origin` is the local bundle `~/pinata/pinata.bundle`, not GitHub.
+`vm_deploy.sh` runs `git fetch origin main` then builds `pinata-app:1.0.0-<sha>`.
+A dirty overlay on top of an old SHA **does not survive** the next deploy.
+
+After GEO (or any matcher) lands on GitHub `main`:
+
+1. On a clean reviewed machine: `git bundle create pinata.bundle HEAD`
+2. Copy the bundle to the VM as `~/pinata/pinata.bundle` (keep the previous file as `.bak`)
+3. In `~/pinata/checkout`: `git fetch origin main && git reset --hard origin/main`
+4. Run `~/pinata/vm_deploy.sh` (or the same build + `up -d --force-recreate` steps) so the
+   running image SHA matches the checkout — do not leave `*-geo` overlay tags as the SoT
+5. Caddy `admin off`: recreate the `caddy` service after any `Caddyfile.pinata` change
+
+`@app` must keep `/llms.txt`, `/app/*`, `/card-preview.js`, and `/icons/*` or those paths fall
+through to the static site again.
+
 ## Artifact contract
 
 Use `docs/deployment/docker-compose.oracle.yml` as a **standalone** Compose file, project `gifts-oracle`, with `--project-directory` set to the repository root. Do not merge it into the root development Compose file: that file publishes a loopback development database port. The architecture's earlier “same Compose file” description needs parent reconciliation; the existing file was not edited here.

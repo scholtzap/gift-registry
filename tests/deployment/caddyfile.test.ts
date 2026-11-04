@@ -39,7 +39,18 @@ it('keeps the static landing surface off the proxy', () => {
 
 it('proxies the remaining Next surfaces (circles, lookup, api, health, assets)', () => {
   const patterns = loadAppPatterns();
-  for (const path of ['/c/nadia-30th', '/lookup', '/privacy', '/offline', '/health', '/llms.txt', '/api/wa/webhook', '/_next/static/x.js']) {
+  for (const path of [
+    '/c/nadia-30th',
+    '/lookup',
+    '/privacy',
+    '/offline',
+    '/health',
+    '/llms.txt',
+    '/card-preview.js',
+    '/icons/icon-192.png',
+    '/api/wa/webhook',
+    '/_next/static/x.js',
+  ]) {
     expect(routesToApp(patterns, path), `${path} must reach Next`).toBe(true);
   }
 });
