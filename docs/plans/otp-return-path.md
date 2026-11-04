@@ -6,8 +6,11 @@ priority: P1
 rank: 5
 updated: 2026-11-04
 apps: []
-related: [docs/plans/registry-network-discovery-deviations.md, docs/plans/archive/shared-registry-and-circles.md]
-evidence: operator decision 2026-11-04 (WhatsApp OTP dropped; email OTP; Resend; email required; plus-tags kept; one discoverable flag)
+related:
+  - docs/plans/registry-network-discovery-deviations.md
+  - docs/plans/archive/shared-registry-and-circles.md
+  - docs/plans/owner-circles-return-home.md
+evidence: operator decision 2026-11-04 (WhatsApp OTP dropped; email OTP; Resend; email required; plus-tags kept; one discoverable flag); interview 2026-11-04 return-home extends hub/landing/dashboard IA
 archived_date: null
 supersedes: null
 superseded_by: null
@@ -15,11 +18,16 @@ superseded_by: null
 
 # OTP return path
 
+Email send and uniform find/verify security stay here. Hub/landing copy, signed-in
+`/app` dashboard, **Gifts for you** / **Gifts for others**, and navigate-back are
+owned by [`owner-circles-return-home.md`](owner-circles-return-home.md) (ready P0).
+
 WhatsApp OTP is not the return path. Meta WABA (Scholtz.Work) has Business
 Verification not started, cannot create authentication templates, and only
 has a test number. Sign-in codes go by email. `/app/find` takes one field,
-an email or a phone. When that matches the owner of an active **discoverable**
-circle who has an email, the code is sent to that email. Every other case
+an email or a phone. When that matches a user with email who owns an active
+circle, has an active membership, or created a proxy circle, the code is sent
+to that email (discoverable ignored — see Decisions). Every other case
 answers the same way.
 
 ## Decisions (2026-11-04)
