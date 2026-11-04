@@ -62,6 +62,7 @@ export function HubScreen({ basePath = '', notice, initial }: {
           <p className="pn-muted">Enter the email or phone on your circle. Anyone else uses the link.</p>
           <form method="post" action={`${basePath}/app/find`} className="pn-stack">
             <Field label="Email or phone number" name="identifier" id="hub-open-identifier" type="text" autoComplete="username" required placeholder="you@example.test" />
+            <TurnstileWidget />
             <div className="pn-actions">
               <Button type="submit" variant="primary" block>Send my code</Button>
             </div>
