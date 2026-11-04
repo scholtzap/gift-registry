@@ -82,7 +82,7 @@ The webhook acknowledgement is **not an outgoing WhatsApp message**. Live media/
 
 ### 3.1. Frontend
 
-**Piñata web UI:** Next.js App Router serves the public landing/invite entry and stable `/c/<slug>` routes. Paper Fiesta (light-only cream paper, ink-outlined cards) uses local Bricolage Grotesque and DM Sans fonts; `public/pinata.css` is the one stylesheet and `src/components/status.ts` owns the friend status wording. Seven private/entry screens cover join, owner ledger, friend ledger, item detail, draft confirmation, card composition and capability settings.
+**Piñata web UI:** Next.js App Router serves the public landing/invite entry and stable `/c/<slug>` routes. Paper Fiesta (light-only cream paper, ink-outlined cards) uses local Bricolage Grotesque and DM Sans fonts; `public/pinata.css` is the one stylesheet and `src/components/status.ts` owns the friend status wording. Seven private/entry screens cover join, owner ledger, friend ledger, item detail, draft confirmation, card composition and capability settings. Shell footers use `SiteBuiltBy` (`src/components/site-built-by.tsx`); generative-engine summary is `GET /llms.txt` (`src/app/llms.txt/route.ts`, FAQ source `src/lib/site-faqs.ts`), with the marketing twin at `site/public/llms.txt`.
 
 Private routes return raw server-rendered HTML with native forms. The Node renderer loads `react-dom/server` through `createRequire(import.meta.url)` because Next's `react-server` export conditions reject the ordinary import in an App Route. Components have no hooks; every Field caller supplies a unique explicit ID. Card preview JavaScript is optional, and anonymous save works without it.
 
@@ -106,11 +106,13 @@ Private routes return raw server-rendered HTML with native forms. The Node rende
 
 ### 4.1. PostgreSQL 16
 
-One system of record, accessed through Prisma 7's PostgreSQL adapter and `pg`. The fourteen Prisma application tables are: `users`, `entitlements`, `attributes`, `circles`, `allowlist_entries`, `memberships`, `items`, `claims`, `pools`, `contributions`, `ingest_events`, `ledger_events`, `card_entries`, `gift_cards`. Prisma bookkeeping and pg-boss queue tables are separate infrastructure state.
+One system of record, accessed through Prisma 7's PostgreSQL adapter and `pg`. The seventeen Prisma application tables are: `users`, `entitlements`, `attributes`, `circles`, `allowlist_entries`, `memberships`, `items`, `registry_items`, `circle_item_links`, `claims`, `pools`, `contributions`, `ingest_events`, `ledger_events`, `card_entries`, `gift_cards`, `otp_codes`. Prisma bookkeeping and pg-boss queue tables are separate infrastructure state.
 
 Amounts are integer minor units with explicit ZAR currency. Unknown item prices are null; contributions and pool targets must be positive. Settlement is manual and no money is held. Billing decisions are recorded in [user-management-and-billing-path](docs/plans/user-management-and-billing-path.md); no payment integration is required before submission.
 
-Policy SQL is applied separately after migrations. RLS scopes rows; safe-column grants on `users` protect phone/BSUID columns. `app.user_id` and `app.circle_id` are transaction-local settings; there is no `app.role` authorization setting. Friend-circle predicates exclude the actual owner, require active membership/circle and bind to the actor's selected circle. Owner ledger-event reads are limited to the owner's own events. Card entries are writable only by their contributor.
+`users.phone_e164` and `users.email` are plaintext on purpose: the login role needs the value to match a webhook or to send a sign-in code. Lookup hashes are separate (`email_hash` is HMAC-SHA256 of `email:` + the normalised address, pepper `PHONE_HASH_PEPPER`). Allowlist phones and proxy recipient phones stay keyed hashes only. App roles are not granted `phone_e164`, `bsuid`, `email`, or `email_hash` (`src/server/db/policies/001_roles.sql`). `circles.discoverable` (default false) is the only public-find flag; there is no second visibility column. Sign-in codes live in `otp_codes`, keyed by `identifier_hash`.
+
+Policy SQL is applied separately after migrations. RLS scopes rows; safe-column grants on `users` protect phone, email, and BSUID columns. `app.user_id` and `app.circle_id` are transaction-local settings; there is no `app.role` authorization setting. Friend-circle predicates exclude the actual owner, require active membership/circle and bind to the actor's selected circle. Owner ledger-event reads are limited to the owner's own events. Card entries are writable only by their contributor.
 
 RLS cannot express a column that some roles may see and others may not, so column secrecy is decided in the projection builder and proved against the rendered HTML. `circles.event_date` is the first case: the owner sees it only when they wrote it, which is `ownerCircleView` plus a leak test, not a policy ([two dates and the countdown](docs/plans/birthday-and-event-countdown.md)). Writes that a role has no policy for go through a narrow `SECURITY DEFINER` function — `app_set_event_date(date)` takes a date and nothing else, because a friend UPDATE policy on `circles` would also permit renaming the circle or moving `share_slug`.
 
@@ -132,14 +134,15 @@ Migrations are hand-written expand-only SQL. Prisma 7.10.1 dropped `migrate diff
 | Retailer metadata | Exact allowlisted HTTPS hosts, redirects refused, bounded metadata/lexical money parsing. | No arbitrary marketplace scraping, retailer image download or live quality benchmark. |
 | Person/SAM service | Injection seam and conservative person/mask guard. | Unsupported live SAM refuses; not wired to multi-candidate screenshot intake. |
 | Cloudflare/Caddy | DNS-01 and private-network deployment templates. | No authorized VM/domain/token or TLS deployment verification. |
+| Resend (email OTP) | `src/server/otp/deliver.ts` posts a plain sign-in code when `DEMO_MODE=off` and both `RESEND_API_KEY` and `OTP_FROM_EMAIL` are set. Vault item `RESEND_API_KEY` is `repo=shared`, `env=single`. The marketing site's contact function is a separate caller. | No verified From address is chosen. `DEMO_MODE=on` logs the code and does not send. |
 
-Authentication OTP needs an approved, charged authentication template. Fixed-menu interactive messages require the service window; outside it approved templates are necessary. No unofficial WhatsApp clients, general chatbot, Marketplace scraping or automatic card/reveal delivery are allowed.
+Authentication OTP is email, not a WhatsApp template. See [otp-return-path](docs/plans/otp-return-path.md). Fixed-menu interactive messages require the service window; outside it approved templates are necessary. No unofficial WhatsApp clients, general chatbot, Marketplace scraping or automatic card/reveal delivery are allowed.
 
 ## 6. Deployment & Infrastructure
 
 **Local:** Windows x64, Node 24 and pnpm 10.33.0; root Compose starts PostgreSQL only on `127.0.0.1:5433`. The app and worker run separately. Browser tests own a loopback server on port 3001 and an isolated test database.
 
-**Candidate target:** Oracle Ampere ARM64, private PostgreSQL/app network, Caddy TLS and persistent private media. [oracle-vm.md](docs/deployment/oracle-vm.md) and sibling Docker/Compose/Caddy sources are unexecuted candidates. Backup/restore scripts exist; no restore drill is claimed. No runtime image, deployment, public flip or live endpoint was produced in this wave.
+**Live host (checked 2026-11-04):** shared Oracle VM, SSH `ubuntu@<oracle-vm-ip>`, checkout `~/pinata/checkout`, private env `~/pinata-private/app.env` (never print it). Running app image is the tag on `checkout-app-1` (`pinata-app:1.0.0-<gitsha>`); on that date it was still `2d68d40` (2026-10-28), behind local `main`. Caddyfile is bind-mounted from `docs/deployment/Caddyfile.pinata`. Caddy `admin off`, so a matcher edit needs the caddy service recreated, not `caddy reload`. The `@app` matcher must include `/app/*` or `POST /app/create` 404s on the static site while `/app` still returns 200. Steps: [oracle-vm.md](docs/deployment/oracle-vm.md). Backup/restore is still an undrilled candidate. Public flip is not done.
 
 The exact local production build passed Chromium routes with installed dependencies. Its circle traces contain Geist, sharp and resvg; the dynamic React renderer require is not listed in those traces. The Oracle candidate copies full dependencies. Minimal standalone deployment, ARM64 native bindings, container worker lifecycle and FFmpeg binary behavior still need verification. Materialize Google Drive reparse-sensitive files before Docker builds.
 
@@ -151,7 +154,7 @@ Migrations must remain expand-only. Recovery requires a previous image tag and a
 
 - Actual ownership and active membership are checked at HTTP/model boundaries; a signed cookie role alone is insufficient. Keep the explicit owner branch and friend-owner exclusion.
 - All private HTML, errors, redirects and PNG responses use `private, no-store, max-age=0, must-revalidate`. Missing and unauthorized resources are indistinguishable 404s. Cards have no OG/Twitter preview, automatic notification or delivery.
-- Cookies are signed, HttpOnly, SameSite=Lax and Secure in production. The current phone allowlist gate is not possession verification. Production OTP and the D4 owner-session workflow remain open.
+- Cookies are signed, HttpOnly, SameSite=Lax and Secure in production. The current phone allowlist gate is not possession verification. Email OTP (`/app/find`, `/app/verify`) is the sign-in path for a discoverable circle; live Resend sending waits on `OTP_FROM_EMAIL`. See [otp-return-path](docs/plans/otp-return-path.md).
 - Native POSTs compare Origin/Referer with configured `CIRCLE_BASE_URL`, not internal Next hostnames or untrusted forwarded headers. Private Referrer-Policy is `same-origin`; foreign/null origins remain denied. Form bodies are bounded to 16 KiB.
 - Raw webhook HMAC precedes JSON parsing. External media/model/retailer requests have host/protocol, redirect, byte and timeout bounds; FFmpeg receives fixed argv with `shell: false`.
 - User/model text is data. Only strict explicit task intents select transitions. Every model-spending stage rechecks consent; user opt-outs do not expire with inherited grants.
@@ -188,7 +191,7 @@ Repository: `scholtzap/gift-registry`; visibility changes require explicit appro
 
 Primary Contact: Arno Scholtz. Meta Global AI Developer Hackathon, Indie Developer track; submission deadline **2026-11-04 21:00 ET**.
 
-Date of Last Update: **2026-10-27**.
+Date of Last Update: **2026-11-04**.
 
 ## 11. Glossary / Acronyms
 

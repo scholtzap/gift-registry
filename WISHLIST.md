@@ -27,6 +27,38 @@ Newest first. No secrets (no tokens, passwords, or private URLs with credentials
 
 ---
 
+## 2026-11-04 — Vitest 5 exits before collecting files on this Windows checkout
+**Kind:** tooling
+**Requested by:** agent (screen tests after the circle share/edit UI change)
+**Pain:** `pnpm exec vitest run` printed "No test files found" and then crashed in Vite's source-map helper (`code.charCodeAt is not a function`). Screen markup was checked with `tsx` instead. `tsc --noEmit` still ran.
+**What would help:** a Vitest version or config that collects `tests/**/*.test.ts` under PowerShell without that runner crash, so `pnpm test` is usable again.
+**Where it should live:** `vitest.config.ts` / `package.json` once reproduced on a clean tree.
+**Status:** open
+
+## 2026-11-04 — No WhatsApp Manager or Cloud API MCP in this Cursor session
+**Kind:** tooling
+**Requested by:** agent (checking whether the authentication template is Approved)
+**Pain:** Template approval cannot be read from the repo or from any connected MCP. The operator has to open WhatsApp Manager. Graph can list templates only after `WHATSAPP_ACCESS_TOKEN` exists, and that key is absent from the VM env and from vault (`repo=gift-registry`).
+**What would help:** a Meta WhatsApp Business MCP, or a documented `presence_check` plus a redacted Graph template-status command once the token is in vault.
+**Where it should live:** Cursor MCP config (not the product). Checklist already notes an optional day-1 Meta MCP in `docs/operations/meta-integration-setup-checklist.md` §E.
+**Status:** open
+
+## 2026-11-04 — Live image tag and Caddy recreate rule were not in the architecture map
+**Kind:** quickref
+**Requested by:** agent (create-circle 404 on pinata.scholtz.work, then share/edit work that is not deployed)
+**Pain:** Had to SSH, `docker ps`, and read the mounted Caddyfile to learn the image tag, that `admin off` blocks `caddy reload`, and that `@app` matched only exact `/app`.
+**What would help:** one paragraph in the architecture map. Added this turn.
+**Where it should live:** `ARCHITECTURE.md` §6
+**Status:** fulfilled
+
+## 2026-11-01 — `prisma migrate dev` hangs on stdin under muse.powershell; entry-hub browser spec red on base too
+**Kind:** inefficiency
+**Requested by:** agent (applying migration `20261101000000_shared_registry` to the dev DB; running `tests/browser/entry-hub.spec.ts`)
+**Pain:** `pnpm db:migrate` sat ~15 min with no output (likely a TTY prompt with no TTY), had to be terminated, and left orphaned backends holding the migrate advisory lock so `db:deploy` then timed out (P1002) until the orphans were terminated via `pg_terminate_backend`. Separately, the browser `entry-hub` create-circle flow 422s on same-origin in this dev environment — reproduced on the base tree with work stashed, so pre-existing, not a regression — while the Vitest hub tests covering the same handler stay green.
+**What would help:** document `pnpm db:deploy` (non-interactive) as the apply path for existing migrations and reserve `db:migrate` for authoring new ones; triage why the Playwright-booted Next dev server rejects the browser `Origin` (suspect `webServer.env` `CIRCLE_BASE_URL` not reaching the server, or a Chromium quirk in this host).
+**Where it should live:** README dev-commands note; browser-runbook or `playwright.config.ts` comment.
+**Status:** open
+
 ## 2026-10-27 — No draw.io CLI, so `.drawio` cannot be verified as a picture
 **Kind:** tooling
 **Requested by:** agent (drew the intended registry-network journey in `docs/diagrams/*.drawio`)
