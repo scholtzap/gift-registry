@@ -90,6 +90,9 @@ export interface FriendItemView {
   secret: boolean;
   addedByMe: boolean;
   claimedByMe: boolean;
+  /** Active solo claimer's display name when someone (including the viewer) claimed the gift alone.
+   * Null when there is no solo claim. Friends need this so non-buyers can see who is buying. */
+  claimedByName: string | null;
   /** F14: a friend may hand this secret suggestion over now — event passed, no author veto. */
   canReveal: boolean;
   pool: {
@@ -102,6 +105,8 @@ export interface FriendItemView {
     settledMinor: number;
     currency: string;
     status: string;
+    /** Pool buyer's display name — visible to every friend in the circle, not only the buyer. */
+    buyerName: string;
     iAmBuyer: boolean;
     contributors: number;
     /** Pledged (promised + marked paid + settled) across all contributions. Friends
@@ -262,11 +267,11 @@ export async function friendCircleView(tx: Tx, circleId: string, viewerUserId: s
       items: {
         orderBy: { createdAt: 'asc' },
         include: {
-          claims: true,
+          // displayName only: phone_e164 / bsuid are revoked from app roles (001_roles.sql).
+          claims: { include: { user: { select: { displayName: true } } } },
           pools: {
             include: {
-              // `select`, not a bare include: users.phone_e164 / users.bsuid are
-              // revoked from the app roles (001_roles.sql); a bare include raises.
+              buyer: { select: { displayName: true } },
               contributions: { include: { user: { select: { displayName: true } } } },
               payout: true,
             },
@@ -287,6 +292,7 @@ export async function friendCircleView(tx: Tx, circleId: string, viewerUserId: s
     items: circle.items.map((item) => {
       const pool = item.pools.find((p) => p.status !== 'purchased') ?? null;
       const myClaim = item.claims.find((c) => c.userId === viewerUserId && c.status === 'claimed') ?? null;
+      const soloClaim = item.claims.find((c) => c.status === 'claimed' && c.kind === 'solo') ?? null;
       const totals = (pool?.contributions ?? []).reduce(
         (sums, c) => ({
           settled: sums.settled + (c.status === 'settled' ? c.amountMinor : 0),
@@ -317,6 +323,7 @@ export async function friendCircleView(tx: Tx, circleId: string, viewerUserId: s
         secret: item.visibility === 'friend_only',
         addedByMe: item.addedByUserId === viewerUserId,
         claimedByMe: myClaim !== null,
+        claimedByName: soloClaim?.user.displayName ?? null,
         canReveal: item.status === 'active' && item.visibility === 'friend_only' && item.revealOk
           && circle.eventDate !== null && daysUntil(circle.eventDate.toISOString().slice(0, 10), zoneDay(now)) < 0,
         pool:
@@ -332,6 +339,7 @@ export async function friendCircleView(tx: Tx, circleId: string, viewerUserId: s
                 settledMinor,
                 currency: pool.currency,
                 status: pool.status,
+                buyerName: pool.buyer.displayName,
                 iAmBuyer,
                 contributors: pool.contributions.length,
                 pledged: formatMinor(pledgedMinor, pool.currency),

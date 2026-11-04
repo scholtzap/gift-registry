@@ -18,7 +18,7 @@ describe('entry hub (CR-UX-01)', () => {
     expect(html).toContain('Start a circle for someone');
     expect(html).toContain('Open my circle');
     expect(html).toContain('action="/app/create"');
-    expect(html).toContain('action="/app/open"');
+    expect(html).toContain('action="/app/find"');
     expect(html).toContain('href="/lookup"');
     // Brand/Home intentionally returns to this hub (CR-UX-05); no primary
     // button may reload it.
@@ -39,7 +39,7 @@ describe('entry hub (CR-UX-01)', () => {
   it('prefixes actions with the deployment basePath', () => {
     const html = render({ basePath: '/app' });
     expect(html).toContain('action="/app/app/create"');
-    expect(html).toContain('action="/app/app/open"');
+    expect(html).toContain('action="/app/app/find"');
     expect(html).toContain('href="/app/lookup"');
   });
 });

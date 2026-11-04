@@ -63,6 +63,10 @@ const schema = z.object({
   MEDIA_DIR: z.string().default("/data/media"),
   FFMPEG_PATH: z.string().default("ffmpeg"),
   DEMO_MODE: z.enum(["on", "off"]).default("off"),
+  /// Vault `RESEND_API_KEY` (shared / single). Empty while DEMO_MODE=on.
+  RESEND_API_KEY: z.string().min(8).optional(),
+  /// From address on a domain verified in Resend. A display name form is allowed.
+  OTP_FROM_EMAIL: z.string().min(3).optional(),
 }).superRefine((value, ctx) => {
   if (value.PHONE_HASH_PEPPER === value.SESSION_SECRET) {
     ctx.addIssue({

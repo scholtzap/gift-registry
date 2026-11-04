@@ -17,6 +17,7 @@ const pivotItem: FriendItemView = {
   secret: false,
   addedByMe: false,
   claimedByMe: true,
+  claimedByName: null,
   canReveal: false,
   pool: {
     id: 'pool-pivot',
@@ -26,6 +27,7 @@ const pivotItem: FriendItemView = {
     settledMinor: 80000,
     currency: 'ZAR',
     status: 'pivot_needed',
+    buyerName: 'Fictional Buyer',
     iAmBuyer: true,
     contributors: 2,
     pledged: 'R1 200.00',
@@ -61,6 +63,7 @@ const buyerItem: FriendItemView = {
   secret: true,
   addedByMe: true,
   claimedByMe: false,
+  claimedByName: null,
   canReveal: false,
   pool: {
     id: 'pool-buyer',
@@ -70,6 +73,7 @@ const buyerItem: FriendItemView = {
     settledMinor: 0,
     currency: 'ZAR',
     status: 'funded',
+    buyerName: 'Fictional Buyer',
     iAmBuyer: true,
     contributors: 3,
     pledged: 'R1 800.00',
@@ -117,6 +121,7 @@ const contributorItem: FriendItemView = {
   secret: true,
   addedByMe: false,
   claimedByMe: false,
+  claimedByName: null,
   canReveal: false,
   pool: {
     id: 'pool-contributor',
@@ -126,6 +131,7 @@ const contributorItem: FriendItemView = {
     settledMinor: 0,
     currency: 'ZAR',
     status: 'open',
+    buyerName: 'Fictional Buyer',
     iAmBuyer: false,
     contributors: 1,
     pledged: 'R250.00',
@@ -161,6 +167,7 @@ const soloItem: FriendItemView = {
   secret: false,
   addedByMe: false,
   claimedByMe: false,
+  claimedByName: null,
   canReveal: false,
   pool: null,
 };
@@ -232,7 +239,16 @@ describe('ItemDetailScreen public friend render', () => {
   it('never offers purchase to a friend who is not the buyer', () => {
     const html = render({ ...buyerItem, pool: { ...buyerItem.pool!, iAmBuyer: false } });
     expectNoIntent(html, 'purchase');
-    expect(html).toContain('Only the buyer can record the purchase.');
+    expect(html).toContain('Fictional Buyer is the buyer');
+    expect(html).toContain('Only Fictional Buyer can record the purchase.');
+  });
+
+  it('names the solo claimer and blocks a second claim', () => {
+    const html = render({ ...soloItem, claimedByName: 'Sibusiso' });
+    expect(html).toContain('Sibusiso is buying this');
+    expect(html).toContain('Sibusiso is buying it');
+    expectNoIntent(html, 'claim');
+    expectNoIntent(html, 'create_pool');
   });
 
   it('offers claim and a required rand pool target without inventing availability', () => {

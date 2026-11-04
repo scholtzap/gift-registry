@@ -4,7 +4,7 @@ import { expect, it } from 'vitest';
 /**
  * The pinata.scholtz.work proxy contract: Caddy v2 `path` patterns match
  * exactly unless they end in `*`. The entry-hub forms POST to /app/create and
- * /app/open, so the @app matcher must cover /app/* — an exact `/app` alone
+ * /app/find, so the @app matcher must cover /app/* — an exact `/app` alone
  * lets those POSTs fall through to the static file server, which answers 404
  * (seen live 2026-10-28: "No web page was found for ... /app/create").
  */
@@ -25,7 +25,7 @@ function routesToApp(patterns: string[], path: string): boolean {
 
 it('proxies every hub URL to Next, never to the static file server', () => {
   const patterns = loadAppPatterns();
-  for (const path of ['/app', '/app/create', '/app/open']) {
+  for (const path of ['/app', '/app/create', '/app/find', '/app/verify']) {
     expect(routesToApp(patterns, path), `${path} must reach Next`).toBe(true);
   }
 });
@@ -47,6 +47,7 @@ it('proxies the remaining Next surfaces (circles, lookup, api, health, assets)',
     '/health',
     '/llms.txt',
     '/card-preview.js',
+    '/share-link.js',
     '/icons/icon-192.png',
     '/api/wa/webhook',
     '/_next/static/x.js',

@@ -24,7 +24,8 @@ export function ItemDetailScreen({
   const pool = item.pool;
   const isPivot = pool?.status === 'pivot_needed';
   const isActive = item.status === 'active' && !isPivot;
-  const canStart = isActive && pool === null && !item.claimedByMe;
+  const takenBySomeoneElse = pool === null && item.claimedByName !== null && !item.claimedByMe;
+  const canStart = isActive && pool === null && !item.claimedByMe && item.claimedByName === null;
   const canMarkPaid = isActive && pool !== null && (pool.status === 'open' || pool.status === 'funded');
   const isPurchased = pool?.status === 'purchased';
   const status = itemStatus(item);
@@ -102,6 +103,15 @@ export function ItemDetailScreen({
               {item.addedByMe && <PhotoUploadForm basePath={basePath} itemId={item.id} hasPhoto={item.hasPhoto} />}
             </section>
           </Panel>
+
+          {takenBySomeoneElse && (
+            <Panel>
+              <section className="pn-stack" aria-labelledby="item-taken-heading">
+                <h2 id="item-taken-heading">{item.claimedByName} is buying this</h2>
+                <p className="pn-muted">Someone in the group already claimed it. Ask them if the plan needs to change.</p>
+              </section>
+            </Panel>
+          )}
 
           {canStart && (
             <Panel>
@@ -231,10 +241,10 @@ export function ItemDetailScreen({
                 </section>
 
                 <section className="pn-item pn-stack" aria-labelledby="item-buyer-heading">
-                  <h3 id="item-buyer-heading">{pool.iAmBuyer ? 'You’re the buyer' : 'The buyer'}</h3>
+                  <h3 id="item-buyer-heading">{pool.iAmBuyer ? 'You’re the buyer' : `${pool.buyerName} is the buyer`}</h3>
                   <p className="pn-small pn-muted">{pool.iAmBuyer
                     ? 'Record the purchase once you have bought the gift.'
-                    : 'Only the buyer can record the purchase.'}</p>
+                    : `Only ${pool.buyerName} can record the purchase.`}</p>
                   {pool.iAmBuyer && isActive && pool.status === 'open' && (
                     <p className="pn-small pn-muted">You can record it once the pool is full.</p>
                   )}

@@ -59,11 +59,12 @@ export function HubScreen({ basePath = '', notice, initial }: {
 
         <Panel as="section" className="pn-stack">
           <h2 id="open-my-circle">Open my circle</h2>
-          <p className="pn-muted">Paste your circle link, or just type the code at the end of it.</p>
-          <form method="post" action={`${basePath}/app/open`} className="pn-stack">
-            <Field label="Circle link or code" name="link" id="hub-open-link" type="text" autoComplete="off" required placeholder="Paste your circle link" />
+          <p className="pn-muted">Enter the email or phone on your circle. Anyone else uses the link.</p>
+          <form method="post" action={`${basePath}/app/find`} className="pn-stack">
+            <Field label="Email or phone number" name="identifier" id="hub-open-identifier" type="text" autoComplete="username" required placeholder="you@example.test" />
+            <TurnstileWidget />
             <div className="pn-actions">
-              <Button type="submit" variant="primary" block>Open my circle</Button>
+              <Button type="submit" variant="primary" block>Send my code</Button>
             </div>
           </form>
         </Panel>

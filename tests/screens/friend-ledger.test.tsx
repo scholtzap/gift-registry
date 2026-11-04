@@ -25,6 +25,7 @@ const friendView: FriendCircleView = {
       secret: false,
       addedByMe: false,
       claimedByMe: false,
+      claimedByName: null,
       canReveal: false,
       pool: null,
     },
@@ -40,6 +41,7 @@ const friendView: FriendCircleView = {
       secret: true,
       addedByMe: true,
       claimedByMe: true,
+      claimedByName: null,
       canReveal: false,
       pool: {
         id: 'grinder-pool',
@@ -49,6 +51,7 @@ const friendView: FriendCircleView = {
         settledMinor: 70000,
         currency: 'ZAR',
         status: 'open',
+        buyerName: 'Thabo',
         iAmBuyer: true,
         contributors: 713,
         pledged: 'R1 000.00',
@@ -70,6 +73,7 @@ const friendView: FriendCircleView = {
       secret: false,
       addedByMe: false,
       claimedByMe: true,
+      claimedByName: null,
       canReveal: false,
       pool: {
         id: 'pan-pool',
@@ -79,6 +83,7 @@ const friendView: FriendCircleView = {
         settledMinor: 35000,
         currency: 'ZAR',
         status: 'pivot_needed',
+        buyerName: 'Lerato',
         iAmBuyer: false,
         contributors: 829,
         pledged: 'R350.00',
@@ -141,8 +146,17 @@ describe('FriendLedgerScreen public static render', () => {
     expect(text(grinder)).toContain('You’re the buyer');
     const runners = text(itemMarkup(markup, 'Trail runners, burnt orange'));
     expect(runners).toContain('No pool yet');
-    // Another friend's claim is not in this projection, so the row must not call it available.
+    // Unclaimed and no pool: do not invent availability wording.
     expect(runners).not.toMatch(/You’re buying it|You’re the buyer|Your idea|Secret idea|Up for grabs|Unclaimed/);
+    expect(text(itemMarkup(markup, 'Copper pan'))).toContain('Lerato is the buyer');
+  });
+
+  it('names the solo claimer when someone else is buying it', () => {
+    const view = {
+      ...friendView,
+      items: [{ ...friendView.items[0]!, claimedByName: 'Sibusiso' }],
+    };
+    expect(text(itemMarkup(render(view), 'Trail runners, burnt orange'))).toContain('Sibusiso is buying it');
   });
 
   it('labels the exact settled and target values without inventing pledged money or people', () => {
@@ -150,7 +164,7 @@ describe('FriendLedgerScreen public static render', () => {
     const grinder = text(itemMarkup(markup, 'Coffee grinder'));
     expect(grinder).toContain('R700.00 settled of R4 200.00');
     expect(grinder).toContain('Pooling · R3 500 to go');
-    expect(text(markup)).not.toMatch(/promised|pledged|remaining|saved|savings|\b713\b|\b829\b|contributors|members|Thabo|Lerato|Sibusiso/i);
+    expect(text(markup)).not.toMatch(/promised|pledged|remaining|saved|savings|\b713\b|\b829\b|contributors|members/i);
     expect(markup).not.toContain('<progress');
   });
 

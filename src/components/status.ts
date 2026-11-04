@@ -55,5 +55,6 @@ export function itemStatus(item: FriendItemView): { label: string; tone: BadgeTo
     return { label: 'Pool paused', tone: 'neutral' };
   }
   if (item.claimedByMe) return { label: 'You’re buying it', tone: 'done' };
+  if (item.claimedByName !== null) return { label: `${item.claimedByName} is buying it`, tone: 'done' };
   return { label: 'No pool yet', tone: 'open' };
 }

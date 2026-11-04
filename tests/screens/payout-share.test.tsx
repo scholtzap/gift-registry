@@ -10,6 +10,7 @@ const basePool = {
   settledMinor: 0,
   currency: 'ZAR',
   status: 'open',
+  buyerName: 'Fictional Buyer',
   iAmBuyer: false,
   contributors: 2,
   pledged: 'R350.00',

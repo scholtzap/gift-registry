@@ -100,7 +100,7 @@ export function OwnerLedgerScreen({ view, basePath, notice, eventDateDraft }: {
 
           <Panel className="pn-stack">
             <h2>Check drafts before you confirm</h2>
-            <p>After a voice note becomes a draft, check the title and price before you confirm.</p>
+            <p>After you add a wish, check the title and price before you confirm it onto your list.</p>
             <Cta href={draftHref}>Review a draft</Cta>
           </Panel>
         </div>
@@ -115,7 +115,7 @@ export function OwnerLedgerScreen({ view, basePath, notice, eventDateDraft }: {
             </div>
             <EventDateForm basePath={basePath} defaultValue={eventDateDraft ?? view.eventDate} notice={notice} />
             <hr className="pn-divider" />
-            <p className="pn-small pn-muted">Open the circle link, then copy its address into your WhatsApp group.</p>
+            <p className="pn-small pn-muted">Open the circle link, then share it with your group from the circle page.</p>
             <Cta href={circleHref}>Open your circle link</Cta>
           </Panel>
         </aside>

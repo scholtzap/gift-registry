@@ -96,6 +96,5 @@
 
   document.addEventListener("DOMContentLoaded", () => {
     bindForm(document.getElementById("contact-form"), document.getElementById("contact-status"));
-    bindForm(document.getElementById("signup-form"), document.getElementById("signup-status"));
   });
 })();

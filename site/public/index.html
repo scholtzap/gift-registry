@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Piñata: group gifts nobody can spoil</title>
-  <meta name="description" content="A wish list for your WhatsApp group. Friends plan who buys what, and the person getting the gift never sees it.">
+  <meta name="description" content="A wish list for your group. Friends plan who buys what in the browser, and the person getting the gift never sees it.">
   <link rel="canonical" href="https://gifts.scholtz.work/">
   <meta name="theme-color" content="#fbf5ec">
   <link rel="icon" href="/icon.png" type="image/png">
@@ -19,7 +19,6 @@
       <a class="brand" href="/" aria-label="Piñata home"><img src="/icon.png" alt="" width="40" height="40"><span>Piñata</span></a>
       <nav class="nav" aria-label="Sections">
         <a href="#how-it-works">How it works</a>
-        <a href="/guide">Guide</a>
         <a href="#faq">Questions</a>
         <a href="/privacy">Privacy</a>
       </nav>
@@ -34,12 +33,12 @@
           <p class="sticker">Group gifts nobody can spoil</p>
           <h1>Group gifts. Surprise intact.</h1>
           <p class="lede">Tell your friends what you'd like and still get a surprise. They see who is buying what; you don't.</p>
-          <p class="muted">The demo app is open. Make your circle, add your wishes, and paste the link into your group.</p>
+          <p class="muted">Make your circle, add your wishes, and share one link with your group.</p>
           <div class="actions">
             <a class="btn" href="https://pinata.scholtz.work/app">Start your circle</a>
-            <a class="quiet-link" href="#contact">or get in touch</a>
+            <a class="quiet-link" href="https://pinata.scholtz.work/app#open-my-circle">or log in</a>
           </div>
-          <p class="small muted">No app to install. It opens from the link in your WhatsApp group.</p>
+          <p class="small muted">No app to install. It opens in your browser.</p>
         </div>
 
         <figure class="card list" aria-label="Example: what friends see for a fictional birthday">
@@ -66,49 +65,35 @@
       </div>
     </section>
 
-    <section id="start">
-      <div class="shell">
-        <div class="section-head">
-          <p class="sticker">Prefer email?</p>
-          <h2>Tell us about the birthday. We will email your setup link.</h2>
-          <p class="muted">Rather have a hand? Tell us about the birthday and we will email a setup link instead. Most people just open the app: make the circle, add wishes, then paste one link into the WhatsApp group.</p>
-        </div>
-        <form class="card contact" id="signup-form" data-success="Thanks. We will email your setup link when your batch opens." novalidate>
-          <div class="field"><label for="signup-name">Your name (optional)</label><input id="signup-name" name="name" autocomplete="name" maxlength="120"></div>
-          <div class="field"><label for="signup-email">Email</label><input id="signup-email" name="email" type="email" autocomplete="email" required maxlength="160"></div>
-          <div class="field"><label for="signup-message">Whose birthday is it, and roughly when?</label><textarea id="signup-message" name="message" required maxlength="4000" placeholder="e.g. My sister, mid-December. About eight of us in the group."></textarea></div>
-          <input type="hidden" name="topic" value="signup">
-          <div class="hp" aria-hidden="true"><label for="signup-website">Leave empty</label><input id="signup-website" name="website" tabindex="-1" autocomplete="off"></div>
-          <button class="btn" type="submit">Request my setup link</button>
-          <p class="status" id="signup-status" role="status" hidden></p>
-          <p class="small muted">We only use your email to send the setup link and answer you. See the <a href="/privacy">privacy notice</a>.</p>
-        </form>
-      </div>
-    </section>
-
     <section id="how-it-works">
       <div class="shell">
         <div class="section-head">
           <p class="sticker">How it works</p>
           <h2>You pick the wishes. Your friends plan the rest.</h2>
+          <p class="muted">Everything happens in the browser. Share one circle link; friends claim, pool, and write the card there.</p>
         </div>
         <ol class="grid grid-3 steps">
           <li class="card step">
             <span class="num" aria-hidden="true">1</span>
-            <h3>Say it, then check it</h3>
-            <p>Send the Piñata WhatsApp number a voice note, a screenshot or a shop link. You check the draft before it goes on your list, or type the wish in yourself.</p>
+            <h3>Make a circle and add wishes</h3>
+            <p>Open the app, create your circle, and type each wish with a price, shop and photo if you have one. Check every draft before it goes on your list.</p>
           </li>
           <li class="card step">
             <span class="num" aria-hidden="true">2</span>
-            <h3>Friends plan it</h3>
-            <p>A friend claims a gift, or a few friends pool money behind one buyer. They pay each other the way your group already does; Piñata keeps the tally and holds no money.</p>
+            <h3>Share one link</h3>
+            <p>Use Share this link on your circle page, or copy the address into your group chat. That one link is the invite.</p>
           </li>
           <li class="card step">
             <span class="num" aria-hidden="true">3</span>
-            <h3>Hand it over</h3>
-            <p>Friends write messages for a gift card. Someone hands it over in person or shares it themselves. Piñata never sends it.</p>
+            <h3>Friends plan; someone hands it over</h3>
+            <p>Friends claim a gift or pool behind one buyer, mark what they paid, and write card messages. Someone downloads the card and hands it over themselves. Piñata never sends it.</p>
           </li>
         </ol>
+        <div class="grid grid-3 how-guide-links">
+          <article class="card step"><span class="num" aria-hidden="true">1</span><h3>For the birthday person</h3><p>Add wishes in the browser, share one link. You never see who claimed what.</p><p><a href="/guide#owner">Read the owner guide</a></p></article>
+          <article class="card step"><span class="num" aria-hidden="true">2</span><h3>For friends</h3><p>Open the shared link, join, then claim a gift or pool behind one buyer.</p><p><a href="/guide#friends">Read the friend guide</a></p></article>
+          <article class="card step"><span class="num" aria-hidden="true">3</span><h3>The gift card</h3><p>Each person writes their own message. Someone downloads the card and hands it over with the gift.</p><p><a href="/guide#card">Read about the card</a></p></article>
+        </div>
       </div>
     </section>
 
@@ -130,27 +115,12 @@
           <div class="card card-human">
             <h3>What your friends see</h3>
             <ul>
-              <li>Who has claimed what, and how much each pool still needs</li>
+              <li>Who is buying what, and how much each pool still needs</li>
               <li>Secret gift ideas the group adds</li>
               <li>Card messages from everyone</li>
             </ul>
             <p class="small muted">Only people on the invite list can open the circle.</p>
           </div>
-        </div>
-      </div>
-    </section>
-
-    <section id="guide">
-      <div class="shell">
-        <div class="section-head">
-          <p class="sticker">Guide</p>
-          <h2>How Piñata works, in plain steps</h2>
-          <p class="muted">Three short reads. One for the person getting the gift, one for friends, one for the card at the end.</p>
-        </div>
-        <div class="grid grid-3">
-          <article class="card step"><span class="num" aria-hidden="true">1</span><h3>For the birthday person</h3><p>Add wishes, check each draft, paste one link. You never see who claimed what.</p><p><a href="/guide#owner">Read the owner guide</a></p></article>
-          <article class="card step"><span class="num" aria-hidden="true">2</span><h3>For friends</h3><p>Join with the number that was invited. Claim a gift or pool behind one buyer, and mark what you paid.</p><p><a href="/guide#friends">Read the friend guide</a></p></article>
-          <article class="card step"><span class="num" aria-hidden="true">3</span><h3>The gift card</h3><p>Each person writes their own message. Someone downloads the card and hands it over with the gift.</p><p><a href="/guide#card">Read about the card</a></p></article>
         </div>
       </div>
     </section>
@@ -165,8 +135,8 @@
         <dl class="grid grid-2 faq">
           <div class="card"><dt>Does Piñata hold our money?</dt><dd>No. Friends pay each other directly. Piñata only records who pledged what and who has marked it paid.</dd></div>
           <div class="card"><dt>Which currencies does it use?</dt><dd>US dollars by default. You can price each gift in rand, euro or pounds instead, and a pool always uses its gift's currency.</dd></div>
-          <div class="card"><dt>Do I need to install an app?</dt><dd>No. It opens in the browser from the link in your WhatsApp group. Friends need to be on the circle's invite list.</dd></div>
-          <div class="card"><dt>Does the AI decide anything?</dt><dd>No. It turns a voice note, photo or link into a draft, and a person confirms it. You can switch each AI feature off in Settings.</dd></div>
+          <div class="card"><dt>Do I need to install an app?</dt><dd>No. Piñata opens in your browser. Create a circle, then share its link with your group.</dd></div>
+          <div class="card"><dt>How do friends join?</dt><dd>They open the circle link you shared, enter the name they want on the gift card, and the number that was invited. If they are not on the list yet, they can ask and you let them in.</dd></div>
         </dl>
       </div>
     </section>

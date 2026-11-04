@@ -102,12 +102,43 @@ describe('the friend projection', () => {
     expect(view.items.filter((i) => i.status === 'tombstoned')).toHaveLength(1);
 
     const grinder = view.items.find((i) => i.title === 'Coffee grinder')!;
-    expect(grinder.pool).toMatchObject({ target: '$4,200', settled: '$0', currency: 'USD', status: 'open', iAmBuyer: true, contributors: 2 });
+    expect(grinder.pool).toMatchObject({
+      target: '$4,200', settled: '$0', currency: 'USD', status: 'open',
+      buyerName: 'Thabo Nkosi', iAmBuyer: true, contributors: 2,
+    });
     expect(grinder.claimedByMe).toBe(true);
+    expect(grinder.claimedByName).toBeNull();
 
     const shoe = view.items.find((i) => i.title === 'Trail runners')!;
     expect(shoe).toMatchObject({ price: '$1,899', currency: 'USD', hasPhoto: false });
     expect(shoe.pool).toBeNull();
+    expect(shoe.claimedByName).toBeNull();
+  });
+
+  it('shows the solo claimer to a friend who is not buying it', async () => {
+    const claimed = await db.prisma.item.create({
+      data: {
+        circle: { connect: { id: fx.circleId } },
+        addedBy: { connect: { id: fx.ownerUserId } },
+        title: 'Claimed picnic blanket',
+        visibility: 'owner_visible',
+        confirmed: true,
+      },
+    });
+    await db.prisma.claim.create({
+      data: { itemId: claimed.id, userId: fx.friendAUserId, kind: 'solo', status: 'claimed' },
+    });
+    try {
+      const view = await db.withActor(friendActor(fx.friendBUserId), (tx) =>
+        friendCircleView(tx, fx.circleId, fx.friendBUserId, NOW),
+      );
+      const blanket = view!.items.find((i) => i.title === 'Claimed picnic blanket')!;
+      expect(blanket.claimedByMe).toBe(false);
+      expect(blanket.claimedByName).toBe('Thabo Nkosi');
+      expect(blanket.pool).toBeNull();
+    } finally {
+      await db.prisma.item.delete({ where: { id: claimed.id } });
+    }
   });
 
   it('keeps both dates when a friend wrote the party date — the writer is not a viewer', async () => {
