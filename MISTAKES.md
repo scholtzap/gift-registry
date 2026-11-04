@@ -2,6 +2,12 @@
 
 Agent error log. Newest entry first. No secrets, tokens, env dumps, or credentialed URLs.
 
+## 2026-11-04 — Deploy probe treated a missing health route as success
+**What happened:** `~/pinata/vm_deploy.sh` fetched `http://127.0.0.1:3000/app/health` and printed the body. The app only serves `GET /health`. The probe logged HTTP 404 and still exited 0, so the deploy printed STAGE1_DONE.
+**Impact:** A failed app can look deployed. The printed 404 body was the HTML error page.
+**Fix:** The script now requests `/health` and exits 1 unless the response is successful. The same script is in `docs/deployment/vm_deploy.sh`.
+**Do not repeat:** Probe the route the app actually serves, and fail the script when the status is not successful.
+
 ## 2026-11-04 — Email OTP commit was created on main
 **What happened:** A feature branch was created, then the shared checkout was switched back to `main` before `git commit`. The email sign-in commit was recorded on `main`.
 **Impact:** Local `main` was one commit ahead of `origin/main`. The commit was not pushed.

@@ -26,7 +26,8 @@ After GEO (or any matcher) lands on GitHub `main`:
 5. Caddy `admin off`: recreate the `caddy` service after any `Caddyfile.pinata` change
 
 `@app` must keep `/llms.txt`, `/app/*`, `/card-preview.js`, `/share-link.js`, and `/icons/*` or those paths fall
-through to the static site again.
+through to the static site again. `docs/deployment/vm_deploy.sh` probes `GET /health` inside the
+app container and exits non-zero unless that response is successful. `/app/health` is not a route.
 
 ## Artifact contract
 
