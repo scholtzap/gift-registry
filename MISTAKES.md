@@ -5,7 +5,7 @@ Agent error log. Newest entry first. No secrets, tokens, env dumps, or credentia
 ## 2026-11-04 — Published the Oracle VM public IP in tracked docs
 **What happened:** Deploy notes put the live host address (`ubuntu@…`) into `ARCHITECTURE.md` and `docs/deployment/oracle-vm.md` on a repo that was already public.
 **Impact:** SSH recon surface on GitHub for as long as those commits were reachable. Not a credential leak, but unnecessary attack surface.
-**Fix:** Moved the address to gitignored `docs/private/oracle-host.md`, pointed tracked docs at that file, synced the note to the Gift Registry Notion hub, and rewrote history with `git filter-repo` (`<oracle-vm-ip>` → `<oracle-vm-ip>`) then force-pushed `main`.
+**Fix:** Moved the address to gitignored `docs/private/oracle-host.md`, pointed tracked docs at that file, synced the note to the Gift Registry Notion hub, and rewrote history with `git filter-repo` (literal IPv4 → `<oracle-vm-ip>`) then force-pushed `main`.
 **Do not repeat:** Never commit host IPs, SSH inventory, or private env paths into the public tree. Operator facts go in `docs/private/` + Notion via `/doc-kb-save` only.
 
 ## 2026-11-04 — Shut down Docker while the engine was already returning HTTP 500
