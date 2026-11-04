@@ -2,6 +2,18 @@
 
 Agent error log. Newest entry first. No secrets, tokens, env dumps, or credentialed URLs.
 
+## 2026-11-04 — Published the Oracle VM public IP in tracked docs
+**What happened:** Deploy notes put the live host address (`ubuntu@…`) into `ARCHITECTURE.md` and `docs/deployment/oracle-vm.md` on a repo that was already public.
+**Impact:** SSH recon surface on GitHub for as long as those commits were reachable. Not a credential leak, but unnecessary attack surface.
+**Fix:** Moved the address to gitignored `docs/private/oracle-host.md`, pointed tracked docs at that file, synced the note to the Gift Registry Notion hub, and rewrote history with `git filter-repo` (`<oracle-vm-ip>` → `<oracle-vm-ip>`) then force-pushed `main`.
+**Do not repeat:** Never commit host IPs, SSH inventory, or private env paths into the public tree. Operator facts go in `docs/private/` + Notion via `/doc-kb-save` only.
+
+## 2026-11-04 — Shut down Docker while the engine was already returning HTTP 500
+**What happened:** Local Postgres on 127.0.0.1:5433 was down, and `docker version` returned HTTP 500 from the Linux engine pipe. I ran `DockerCli.exe -Shutdown`, which stopped `com.docker.service`. `Start-Service` then failed with access denied. Relaunching Docker Desktop did not restore a healthy engine in this session.
+**Impact:** The email-OTP suite could not be run. `pnpm typecheck` and `pnpm build` did pass. Docker was already unhealthy before the shutdown; the shutdown removed the service as a recovery path without an elevated start.
+**Fix:** Leave a 500 engine alone. Ask the operator to restart Docker Desktop from the tray. Do not call `-Shutdown` unless they asked.
+**Do not repeat:** Do not stop `com.docker.service` to "repair" an API 500. Confirm `docker ps` exits 0 before `docker compose up`.
+
 ## 2026-11-04 — Live Caddy proxied only exact `/app`, so `/app/create` 404'd on the static site
 **What happened:** Operator hit HTTP 404 on `https://pinata.scholtz.work/app/create` after submitting circle creation. Live Caddyfile (mounted from `~/pinata/checkout/docs/deployment/Caddyfile.pinata`) matched `@app path /app /c/* …` — exact `/app` only. `/app` returned 200 via Next; `/app/*` fell through to the landing `file_server` and 404'd. Git on this machine already had `/app /app/*` in that file, but the VM checkout never received the update (image still `pinata-app:1.0.0-2d68d40` from 2026-10-28).
 **Impact:** Circle creation on the live site was broken for anyone using the hub form; looked like an app bug, was ingress.

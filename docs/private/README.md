@@ -23,4 +23,8 @@ tracked markdown file.
 
 CI sync skips this folder’s ignored files (they are not in the repo). To publish
 `oracle-host.md` into the Gift Registry Notion hub, run `/doc-kb-save` from a
-machine that has the local file, targeting `--file private/oracle-host.md`.
+machine that has the local file (Notion MCP or
+`scripts/ops/sync_docs_to_notion.py --docs-dir docs --file private/oracle-host.md`
+with hub title **Gift Registry**).
+
+Published page (2026-11-04): [Oracle host (operator-private)](https://www.notion.so/40ee495d9bdc817aa82de5a7b940be26).

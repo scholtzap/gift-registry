@@ -43,3 +43,10 @@
 ## Conclusion
 
 Safe for the **already-public** GitHub tree from a secrets / real-phone standpoint. Stale “flip not done” wording in the architecture map was wrong and should be corrected in the same turn.
+
+## Follow-up (same day) — history scrub
+
+- `git filter-repo --replace-text` replaced `<oracle-vm-ip>` with `<oracle-vm-ip>` across all commits; `main` force-pushed to `origin`.
+- Pickaxe on rewritten history: **0** commits still contain the literal IP.
+- Host address now only in gitignored `docs/private/oracle-host.md` + Notion (Gift Registry hub).
+- Note: old SHAs may linger in clones, forks, or GitHub caches until GC; treat force-push as best-effort scrub of the default branch tip.
