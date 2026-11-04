@@ -37,4 +37,16 @@ describe('site copy alignment (CR-UX-06)', () => {
     expect(html).not.toContain('Does the AI decide anything?');
     expect(html).toContain('How do friends join?');
   });
+
+  it('privacy notice matches the browser-first product and buyer visibility', () => {
+    const html = site('privacy.html');
+    expect(html).toContain('you use in the browser');
+    expect(html).toContain('shares one circle link');
+    expect(html).toContain('who claimed or is buying each gift');
+    expect(html).toContain('who is buying each gift');
+    expect(html).toContain('log in');
+    expect(html).toContain('Optional WhatsApp intake');
+    expect(html).not.toContain('Prefer email?');
+  });
 });
+
