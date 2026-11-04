@@ -5,6 +5,7 @@ import type { Actor, Db } from "@/server/db/client";
 import { trustedClientAddress } from "@/server/auth/client-address";
 import { isSameOrigin } from "@/server/auth/same-origin";
 import { hashPhone, normalizeE164 } from "@/server/auth/phone-hash";
+import { hashEmail, normalizeEmail } from "@/server/auth/email-hash";
 import { gateThrottle } from "@/server/auth/throttle-store";
 import { checkTurnstile, turnstileField } from "@/server/auth/turnstile";
 import { issueSession, sessionCookie } from "@/server/auth/session";
@@ -36,52 +37,9 @@ function headers(extra: Record<string, string> = {}): Record<string, string> {
   };
 }
 
-function hubForm(notice: string, initial: { name?: string; occasion?: string; eventDate?: string; wish?: string }): Response {
+function hubForm(notice: string, initial: { name?: string; occasion?: string; eventDate?: string; email?: string; wish?: string }): Response {
   const body = page("Start your circle", renderToStaticMarkup(createElement(HubScreen, { basePath: BASE, notice, initial })));
   return new Response(body, { status: 422, headers: headers({ "Content-Type": "text/html; charset=utf-8" }) });
-}
-
-/** Extract a share slug from a pasted link, a path, or a bare slug. No lookup: `/c/` decides existence. */
-export function parseCircleSlug(raw: string): string | null {
-  const trimmed = raw.trim();
-  if (!trimmed) return null;
-  const withoutQuery = trimmed.split(/[?#]/)[0] ?? "";
-  const marker = "/c/";
-  const at = withoutQuery.indexOf(marker);
-  const candidate = (at >= 0 ? withoutQuery.slice(at + marker.length) : withoutQuery)
-    .split("/").filter(Boolean).pop() ?? "";
-  let decoded: string;
-  try { decoded = decodeURIComponent(candidate); } catch { return null; }
-  return /^[A-Za-z0-9_-]{1,64}$/.test(decoded) ? decoded : null;
-}
-
-export async function handleHubOpenPost(db: Db, request: Request): Promise<Response> {
-  // No session is issued here, but the path fans out to link-expand + model
-  // spend, so it shares the gate throttle (address-only + payload-hash keys,
-  // shared across processes behind the proxy via `gateThrottle`).
-  const preAddress = trustedClientAddress(request);
-  const preGate = await gateThrottle(db, [{ key: `hub-open:${preAddress}`, max: 60 }]);
-  if (!preGate.allowed) {
-    return new Response(
-      page("Start your circle", renderToStaticMarkup(createElement(HubScreen, { basePath: BASE, notice: "Too many tries. Wait a minute and try again.", initial: {} }))),
-      { status: 429, headers: headers({ "Content-Type": "text/html; charset=utf-8", "Retry-After": String(preGate.retryAfter) }) },
-    );
-  }
-  let form: FormData;
-  try { form = await request.formData(); } catch { return hubForm("Paste your circle link, or type the code at the end of it.", {}); }
-  const payloadGate = await gateThrottle(db, [
-    { key: `hub-open:${preAddress}`, max: 60 },
-    `hub-open-link:${preAddress}:${Buffer.from(String(form.get("link") ?? "").trim().slice(0, 64)).toString("base64url")}`,
-  ]);
-  if (!payloadGate.allowed) {
-    return new Response(
-      page("Start your circle", renderToStaticMarkup(createElement(HubScreen, { basePath: BASE, notice: "Too many tries. Wait a minute and try again.", initial: {} }))),
-      { status: 429, headers: headers({ "Content-Type": "text/html; charset=utf-8", "Retry-After": String(payloadGate.retryAfter) }) },
-    );
-  }
-  const slug = parseCircleSlug(String(form.get("link") ?? ""));
-  if (!slug) return hubForm("That does not look like a circle link. Paste the full link from your WhatsApp group.", {});
-  return new Response(null, { status: 303, headers: headers({ Location: `${BASE}/c/${encodeURIComponent(slug)}` }) });
 }
 
 export async function handleHubCreatePost(db: Db, request: Request): Promise<Response> {
@@ -97,12 +55,14 @@ export async function handleHubCreatePost(db: Db, request: Request): Promise<Res
   const name = String(form.get("name") ?? "").trim();
   const occasion = String(form.get("occasion") ?? "").trim();
   const eventDateRaw = String(form.get("eventDate") ?? "").trim();
-  const phone = normalizeE164(String(form.get("phone") ?? ""));
+  const email = normalizeEmail(String(form.get("email") ?? ""));
+  const phoneRaw = String(form.get("phone") ?? "").trim();
+  const phone = phoneRaw ? normalizeE164(phoneRaw) : null;
   const wish = String(form.get("wish") ?? "").trim();
-  const initial = { name, occasion, eventDate: eventDateRaw, wish };
-  const invalid = "Check the form: your name, occasion and a WhatsApp number in international form (starting with +) are needed.";
+  const initial = { name, occasion, eventDate: eventDateRaw, email: email ?? String(form.get("email") ?? "").trim(), wish };
+  const invalid = "Check the form: your name, occasion and email are needed. A phone number, if you add one, starts with +.";
 
-  if (!name || name.length > 80 || !occasion || occasion.length > 80 || !phone || wish.length > 120) {
+  if (!name || name.length > 80 || !occasion || occasion.length > 80 || !email || (phoneRaw !== "" && !phone) || wish.length > 120) {
     return hubForm(invalid, initial);
   }
   if (eventDateRaw && !/^\d{4}-\d{2}-\d{2}$/.test(eventDateRaw)) return hubForm(invalid, initial);
@@ -114,12 +74,13 @@ export async function handleHubCreatePost(db: Db, request: Request): Promise<Res
   }
 
   const pepper = env.PHONE_HASH_PEPPER;
-  const phoneHash = hashPhone(phone, pepper);
+  const emailHash = hashEmail(email, pepper);
+  const phoneHash = phone ? hashPhone(phone, pepper) : undefined;
   const hubAddress = trustedClientAddress(request);
   const gate = await gateThrottle(db, [
-    `hub-create:${phoneHash}:${hubAddress}`,
+    `hub-create:${phoneHash ?? emailHash}:${hubAddress}`,
     { key: `hub-create-addr:${hubAddress}`, max: 60 },
-    { key: `gate-number:${phoneHash}`, max: 20 },
+    ...(phoneHash ? [{ key: `gate-number:${phoneHash}`, max: 20 }] : []),
   ]);
   if (!gate.allowed) {
     return new Response(
@@ -136,17 +97,34 @@ export async function handleHubCreatePost(db: Db, request: Request): Promise<Res
   if (Number.isNaN(eventDate.getTime())) return hubForm(invalid, initial);
 
   try {
-    const user = await db.prisma.user.upsert({
-      where: { phoneE164: phone },
-      create: { phoneE164: phone, displayName: name },
-      update: { displayName: name },
-    });
+    const byEmail = await db.prisma.user.findUnique({ where: { emailHash }, select: { id: true } });
+    const byPhone = phone
+      ? await db.prisma.user.findUnique({ where: { phoneE164: phone }, select: { id: true, email: true } })
+      : null;
+    if (byEmail && byPhone && byEmail.id !== byPhone.id) return hubForm(invalid, initial);
+    if (byPhone?.email && byPhone.email !== email) return hubForm(invalid, initial);
+    const user = byEmail
+      ? await db.prisma.user.update({
+        where: { id: byEmail.id },
+        data: { displayName: name, ...(phone ? { phoneE164: phone } : {}) },
+      })
+      : byPhone
+        ? await db.prisma.user.update({
+          where: { id: byPhone.id },
+          data: { displayName: name, email, emailHash },
+        })
+        : await db.prisma.user.create({
+          data: { displayName: name, email, emailHash, ...(phone ? { phoneE164: phone } : {}) },
+        });
     const actor: Actor = { role: "owner", userId: user.id, circleId: null, phoneHash };
     const circle = await db.withActor(actor, (tx) => createCircle(tx, actor, {
       name: `${name} — ${occasion}`,
       occasion,
       eventDate,
     }));
+    if (String(form.get("discoverable") ?? "") === "on") {
+      await db.prisma.circle.update({ where: { id: circle.id }, data: { discoverable: true } });
+    }
     if (wish) {
       const owner: Actor = { ...actor, circleId: circle.id };
       await db.withActor(owner, (tx) => addItem(tx, owner, { title: wish }));

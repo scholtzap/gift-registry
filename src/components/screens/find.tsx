@@ -13,9 +13,9 @@ export function FindCirclesScreen({ basePath, notice }: {
     <Screen
       homeHref={`${basePath}/app`}
       privacyHref={`${basePath}/privacy`}
-      title="Open my circle"
+      title="Open my circles"
       eyebrow="Piñata"
-      lede="Enter the email or phone on your circle. If it's yours, a code is on its way. Anyone else uses the link."
+      lede="Enter the email or phone on your circles. If it's yours, a code is on its way. Anyone else uses the link."
     >
       <div className="pn-measure-sm pn-stack pn-stack-lg">
         {notice !== undefined && <Notice kind="error">{notice}</Notice>}
@@ -23,7 +23,7 @@ export function FindCirclesScreen({ basePath, notice }: {
           <form action={`${basePath}/app/find`} method="post" className="pn-stack">
             <Field label="Email or phone number" name="identifier" id="find-identifier" type="text"
               required autoComplete="username" placeholder="you@example.test" />
-            <p className="pn-hint pn-small pn-muted">This opens your circle. It answers the same way either way. Friends use the link you share.</p>
+            <p className="pn-hint pn-small pn-muted">This opens your circles. It answers the same way either way. Friends use the link you share.</p>
             <TurnstileWidget />
             <div className="pn-actions">
               <Button type="submit" variant="primary" block>Send my code</Button>

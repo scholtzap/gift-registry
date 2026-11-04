@@ -1,4 +1,7 @@
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { DashboardScreen } from '@/components/screens/dashboard';
 import { createDb, type Db } from '@/server/db/client';
 import { issueSession } from '@/server/auth/session';
 import { handleCircleGet } from '@/server/routes/circle';
@@ -37,6 +40,7 @@ const slugA = `reg-a-${Date.now().toString(36)}`;
 const slugB = `reg-b-${Date.now().toString(36)}`;
 const slugC = `reg-c-${Date.now().toString(36)}`;
 const slugP = `reg-p-${Date.now().toString(36)}`;
+const slugPlanned = `reg-planned-${Date.now().toString(36)}`;
 
 const salt = `regtest${Date.now().toString(36)}`;
 const person = (n: number, name: string) => ({
@@ -93,6 +97,16 @@ async function seed(): Promise<void> {
       proxyCreatedByUserId: friend.id,
       shareSlug: slugP,
       memberships: { create: [{ userId: friend.id, role: 'friend' }] },
+    },
+  });
+  await db.prisma.circle.create({
+    data: {
+      name: 'Planned without a seat',
+      occasion: 'birthday',
+      eventDate: new Date('2026-12-05T00:00:00.000Z'),
+      ownerUserId: null,
+      proxyCreatedByUserId: receiver.id,
+      shareSlug: slugPlanned,
     },
   });
 
@@ -247,9 +261,14 @@ describe('the circles dashboard', () => {
       { userId: ids.receiver, circleId: ids.circleA, role: 'owner', expiresAt: new Date(Date.now() + 3600_000) },
     );
     expect(dashboard?.owned.map((c) => c.shareSlug).sort()).toEqual([slugA, slugB].sort());
-    expect(dashboard?.member.map((c) => c.shareSlug)).toEqual([slugC]);
+    expect(dashboard?.forOthers.map((c) => c.shareSlug)).toEqual([slugC, slugPlanned]);
     expect(dashboard?.registry?.map((i) => i.title)).toContain('Shared espresso machine');
     expect(JSON.stringify(dashboard)).not.toContain('pool');
+    const html = renderToStaticMarkup(createElement(DashboardScreen, { view: dashboard!, basePath: '' }));
+    expect(html).toContain('Gifts for you');
+    expect(html).toContain('Gifts for others');
+    expect(html).toContain('My registry');
+    expect(html.toLowerCase()).not.toMatch(/claim|pool|contribut/);
   });
 
   it('shows a friend member circles only, never the registry', async () => {
@@ -260,8 +279,13 @@ describe('the circles dashboard', () => {
     expect(dashboard?.owned).toEqual([]);
     // A, B, and the proxy circle, where the friend is a plain member: every
     // listed circle is one the viewer can open.
-    expect(dashboard?.member.map((c) => c.shareSlug).sort()).toEqual([slugA, slugB, slugP].sort());
+    expect(dashboard?.forOthers.map((c) => c.shareSlug).sort()).toEqual([slugA, slugB, slugP].sort());
     expect(dashboard?.registry).toBeNull();
+    const html = renderToStaticMarkup(createElement(DashboardScreen, { view: dashboard!, basePath: '' }));
+    expect(html).not.toContain('My registry');
+    expect(html).toContain('Gifts for you');
+    expect(html).toContain('No circles where you are the recipient yet.');
+    expect(html).toContain('Gifts for others');
   });
 
   it('answers null without a session', async () => {

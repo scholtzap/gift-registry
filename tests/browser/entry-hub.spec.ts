@@ -10,14 +10,14 @@ test('landing to hub to created owner ledger with share link', async ({ page }) 
   await page.getByRole('link', { name: 'Start your circle' }).first().click();
   await expect(page).not.toHaveURL(landingUrl);
   await expect(page.getByRole('heading', { name: 'Create my circle' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Open my circle' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Open my circles' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Start a circle for someone' })).toBeVisible();
 
   await page.getByLabel(/Your name/).fill('Browser Owner');
   await page.getByLabel('Occasion').fill('birthday');
   await page.getByLabel(/Party date/).fill('2026-12-05');
-  await page.getByLabel(/Your email/).fill(`browser-${suffix}@example.test`);
-  await page.getByLabel(/Phone number/).fill(num(91));
+  await page.getByLabel('Your email').fill(`browser-${suffix}@example.test`);
+  await page.getByLabel(/WhatsApp number/).fill(num(91));
   await page.getByLabel(/First wish/).fill('Browser first wish');
   await page.getByRole('button', { name: 'Create my circle' }).click();
 
@@ -28,12 +28,14 @@ test('landing to hub to created owner ledger with share link', async ({ page }) 
   await expect(page.getByRole('link', { name: 'Open your circle link' })).toHaveAttribute('href', `/c/${slug}`);
 });
 
-test('hub open-my-circle asks for an email, not a link', async ({ page }) => {
+test('hub My circles opens find, not a paste link', async ({ page }) => {
   await page.goto('/app');
-  await expect(page.getByRole('heading', { name: 'Open my circle' })).toBeVisible();
   await expect(page.getByLabel(/Circle link or code/)).toHaveCount(0);
+  await page.getByRole('link', { name: 'My circles' }).click();
+  await expect(page).toHaveURL(/\/app\/find$/);
+  await expect(page.getByRole('heading', { name: 'Open my circles' })).toBeVisible();
   await page.getByLabel(/Email or phone number/).fill('owner@example.test');
   await page.getByRole('button', { name: 'Send my code' }).click();
   await expect(page.getByRole('heading', { name: 'Enter the code' })).toBeVisible();
-  await expect(page.getByText(/code is on its way/)).toBeVisible();
+  await expect(page.getByRole('alert')).toContainText(/code is on its way/);
 });

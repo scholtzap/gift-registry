@@ -4,9 +4,9 @@ import type { DashboardView } from '@/server/views/dashboard';
 
 /**
  * The `/app` dashboard (docs/plans/shared-registry-and-circles.md Q3, Q7).
- * Owner projection of the receiver's own data: "My registry" plus "My circles".
- * A friend session renders member circles only — the registry never leaves the
- * receiver's hands. Nothing here names money coordination state.
+ * Signed-in home. "Gifts for you" and "Gifts for others" are the two lists.
+ * The registry renders only for an owner session. Nothing here names claim,
+ * pool, or contributor money state.
  */
 export function DashboardScreen({ view, basePath, notice }: {
   view: DashboardView;
@@ -18,7 +18,7 @@ export function DashboardScreen({ view, basePath, notice }: {
     <Screen
       homeHref={`${basePath}/app`}
       privacyHref={`${basePath}/privacy`}
-      title={isOwner ? 'Your registry and circles' : 'Your circles'}
+      title="Your circles"
       eyebrow="Piñata"
       lede={isOwner
         ? 'Save each wish once, then choose which circle shows it.'
@@ -114,49 +114,45 @@ export function DashboardScreen({ view, basePath, notice }: {
           </Panel>
         )}
 
+        <div className="pn-actions">
+          <Cta href={`${basePath}/app/new`} variant="primary">Start another circle</Cta>
+        </div>
+
         <Panel as="section" className="pn-stack">
-          <h2>My circles</h2>
-          <div className="pn-actions">
-            <Cta href={`${basePath}/app/new`} variant="primary">Start another circle</Cta>
-          </div>
-          {view.owned.length > 0 && (
-            <>
-              <h3 className="pn-eyebrow">Circles you receive in</h3>
-              <ul className="pn-list">
-                {view.owned.map((circle) => (
-                  <li key={circle.id} className="pn-between">
-                    <div>
-                      <p><strong>{circle.name}</strong></p>
-                      <p className="pn-small pn-muted">{circle.occasion}</p>
-                    </div>
-                    <Cta href={`/c/${encodeURIComponent(circle.shareSlug)}`}>Open</Cta>
-                  </li>
-                ))}
-              </ul>
-            </>
-          )}
-          {view.member.length > 0 ? (
-            <>
-              <h3 className="pn-eyebrow">Circles you buy in</h3>
-              <ul className="pn-list">
-                {view.member.map((circle) => (
-                  <li key={circle.id} className="pn-between">
-                    <div>
-                      <p><strong>{circle.name}</strong></p>
-                      <p className="pn-small pn-muted">{circle.occasion}</p>
-                    </div>
-                    <Cta href={`/c/${encodeURIComponent(circle.shareSlug)}`}>Open</Cta>
-                  </li>
-                ))}
-              </ul>
-            </>
+          <h2 id="gifts-for-you">Gifts for you</h2>
+          {view.owned.length === 0 ? (
+            <p className="pn-muted">No circles where you are the recipient yet.</p>
           ) : (
-            <p className="pn-muted pn-small">You are not buying in any circle yet. Friends add you from their group link.</p>
+            <ul className="pn-list">
+              {view.owned.map((circle) => (
+                <li key={circle.id} className="pn-between">
+                  <div>
+                    <p><strong>{circle.name}</strong></p>
+                    <p className="pn-small pn-muted">{circle.occasion}</p>
+                  </div>
+                  <Cta href={`/c/${encodeURIComponent(circle.shareSlug)}`}>Open</Cta>
+                </li>
+              ))}
+            </ul>
           )}
-          {view.owned.length === 0 && view.member.length === 0 && (
-            <EmptyState title="No circles yet">
-              Start one from this page, or open the link a friend shared with you.
-            </EmptyState>
+        </Panel>
+
+        <Panel as="section" className="pn-stack">
+          <h2 id="gifts-for-others">Gifts for others</h2>
+          {view.forOthers.length === 0 ? (
+            <p className="pn-muted">No circles you are planning for someone else yet.</p>
+          ) : (
+            <ul className="pn-list">
+              {view.forOthers.map((circle) => (
+                <li key={circle.id} className="pn-between">
+                  <div>
+                    <p><strong>{circle.name}</strong></p>
+                    <p className="pn-small pn-muted">{circle.occasion}</p>
+                  </div>
+                  <Cta href={`/c/${encodeURIComponent(circle.shareSlug)}`}>Open</Cta>
+                </li>
+              ))}
+            </ul>
           )}
         </Panel>
       </div>

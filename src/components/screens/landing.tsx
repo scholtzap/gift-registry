@@ -22,7 +22,7 @@ export function LandingScreen({ hubHref = '/app', demo = false, assetBase = '' }
           </p>
           <div className="pn-actions">
             <a className="pn-button pn-button-primary" href={hubHref}>Start your circle</a>
-            <Cta href={`${hubHref}#open-my-circle`}>Open my circle</Cta>
+            <Cta href={`${hubHref}/find`}>My circles</Cta>
           </div>
         </div>
 

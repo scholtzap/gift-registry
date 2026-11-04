@@ -61,6 +61,7 @@ export function Screen({
   footer,
   homeHref,
   privacyHref,
+  menu,
 }: {
   children: ReactNode;
   title?: ReactNode;
@@ -71,12 +72,15 @@ export function Screen({
   circle?: CircleContext;
   nav?: NavItem[];
   footer?: ReactNode;
-  /** Where the brand link goes. Defaults to the user's circle (first nav item) when signed in. */
+  /** Where the brand link goes. A circle screen goes to the signed-in dashboard. */
   homeHref?: string;
+  /** Flat circle switcher. When absent, a circle screen still links to All circles. */
+  menu?: ReactNode;
   /** The app's own privacy route. Defaults to it under the deployment base path (CR-UX-05). */
   privacyHref?: string;
 }) {
-  const resolvedHomeHref = homeHref ?? (circle && nav && nav.length > 0 ? nav[0]!.href : '/');
+  const appHome = `${process.env.PINATA_BASE_PATH ?? ''}/app`;
+  const resolvedHomeHref = homeHref ?? (circle ? appHome : '/');
   const resolvedPrivacyHref = privacyHref ?? `${process.env.PINATA_BASE_PATH ?? ''}/privacy`;
   return (
     <div className="pn-screen">
@@ -107,6 +111,11 @@ export function Screen({
             </nav>
           )}
         </div>
+        {menu ?? (circle ? (
+          <nav className="pn-sidemenu" aria-label="Circles">
+            <a className="pn-sidemenu-item" href={appHome}>All circles</a>
+          </nav>
+        ) : null)}
       </header>
       <main className="pn-main pn-stack" id="pn-content" tabIndex={-1}>
         {backHref && <a className="pn-back pn-link" href={backHref}><span aria-hidden="true">← </span>{backLabel}</a>}

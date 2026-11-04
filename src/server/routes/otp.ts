@@ -19,11 +19,11 @@ const { renderToStaticMarkup } = createRequire(import.meta.url)("react-dom/serve
 /**
  * Email return path (docs/plans/otp-return-path.md).
  * One field accepts an email or a phone. A code is sent when that identifier
- * matches someone who owns an active circle and has an email. The circle's
- * discoverable flag does not matter: this is the owner's door, and friends
- * open `/c/<slug>` instead. A miss and a circle with no email answer with
- * the same status, body and latency floor. The page never echoes the address
- * on record.
+ * matches someone with an email who owns an active circle, has an active
+ * membership, or created a proxy circle. Discoverable is ignored. A miss
+ * and a circle with no email answer with the same status, body and latency
+ * floor. The page never echoes the address on record. Friends without an
+ * email still use `/c/<slug>`.
  */
 
 const NO_STORE = "private, no-store, max-age=0, must-revalidate";
@@ -46,7 +46,7 @@ function sleep(ms: number): Promise<void> {
 }
 
 function findPage(notice?: string): Response {
-  const body = page("Open my circle", renderToStaticMarkup(
+  const body = page("Open my circles", renderToStaticMarkup(
     createElement(FindCirclesScreen, { basePath: BASE, notice }),
   ));
   return new Response(body, { status: 422, headers: headers({ "Content-Type": "text/html; charset=utf-8" }) });
@@ -79,7 +79,7 @@ async function defaultSender(input: { to: string; code: string }): Promise<boole
   });
 }
 
-/** The circle a fresh session opens: most recent owned circle, else most recent membership. */
+/** The circle a fresh session is scoped to. The browser still lands on `/app`. */
 async function homeCircle(db: Db, userId: string): Promise<{ circleId: string; role: "owner" | "friend" } | null> {
   const owned = await db.prisma.circle.findFirst({
     where: { ownerUserId: userId, status: "active" },
@@ -92,8 +92,16 @@ async function homeCircle(db: Db, userId: string): Promise<{ circleId: string; r
     orderBy: { joinedAt: "desc" },
     select: { circleId: true, role: true },
   });
-  if (!member || (member.role !== "owner" && member.role !== "friend")) return null;
-  return { circleId: member.circleId, role: member.role };
+  if (member && (member.role === "owner" || member.role === "friend")) {
+    return { circleId: member.circleId, role: member.role };
+  }
+  const proxy = await db.prisma.circle.findFirst({
+    where: { proxyCreatedByUserId: userId, status: "active" },
+    orderBy: { createdAt: "desc" },
+    select: { id: true },
+  });
+  if (proxy) return { circleId: proxy.id, role: "friend" };
+  return null;
 }
 
 async function deliverableOwner(
@@ -109,11 +117,21 @@ async function deliverableOwner(
       select: { id: true, email: true, emailHash: true },
     });
   if (!user?.email || !user.emailHash) return null;
-  const owned = await db.prisma.circle.findFirst({
-    where: { ownerUserId: user.id, status: "active" },
-    select: { id: true },
-  });
-  if (!owned) return null;
+  const [owned, member, proxy] = await Promise.all([
+    db.prisma.circle.findFirst({
+      where: { ownerUserId: user.id, status: "active" },
+      select: { id: true },
+    }),
+    db.prisma.membership.findFirst({
+      where: { userId: user.id, status: "active", circle: { status: "active" } },
+      select: { id: true },
+    }),
+    db.prisma.circle.findFirst({
+      where: { proxyCreatedByUserId: user.id, status: "active" },
+      select: { id: true },
+    }),
+  ]);
+  if (!owned && !member && !proxy) return null;
   return { userId: user.id, email: user.email, emailHash: user.emailHash };
 }
 
@@ -141,7 +159,7 @@ export async function handleFindPost(
   ]);
   if (!gate.allowed) {
     return new Response(
-      page("Open my circle", renderToStaticMarkup(
+      page("Open my circles", renderToStaticMarkup(
         createElement(FindCirclesScreen, { basePath: BASE, notice: "Too many tries. Wait a minute and try again." }),
       )),
       { status: 429, headers: headers({ "Content-Type": "text/html; charset=utf-8", "Retry-After": String(gate.retryAfter) }) },
@@ -177,7 +195,7 @@ export async function handleFindPost(
 
 export async function handleFindGet(db: Db): Promise<Response> {
   void db;
-  const body = page("Open my circle", renderToStaticMarkup(
+  const body = page("Open my circles", renderToStaticMarkup(
     createElement(FindCirclesScreen, { basePath: BASE }),
   ));
   return new Response(body, { status: 200, headers: headers({ "Content-Type": "text/html; charset=utf-8" }) });

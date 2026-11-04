@@ -216,6 +216,11 @@ export async function ownerCircleView(tx: Tx, circleId: string, now: Date = new 
     where: { id: circleId },
     include: {
       items: { orderBy: { createdAt: 'asc' } },
+      itemLinks: {
+        where: { visible: true, registryItem: { private: false } },
+        orderBy: { createdAt: 'asc' },
+        include: { registryItem: true },
+      },
       // `select`, not a bare `include`: Prisma expands an included relation into every column of
       // the table, and `users.phone_e164` / `users.bsuid` are revoked from the app roles on
       // purpose (001_roles.sql). A bare include here would raise 42501 at the first read.
@@ -233,14 +238,24 @@ export async function ownerCircleView(tx: Tx, circleId: string, now: Date = new 
     ...circleDates(circle, circle.eventDateSetByUserId === circle.ownerUserId, zoneDay(now)),
     shareSlug: circle.shareSlug,
     // RLS has already removed friend-only suggestions and the owner's own tombstones.
-    items: circle.items.map((item) => ({
-      id: item.id,
-      title: item.title,
-      retailer: item.retailer,
-      price: formatPrice(item.priceMinor, item.currency),
-      confirmed: item.confirmed,
-      hasPhoto: isStoredPhoto(item.imagePath),
-    })),
+    items: [
+      ...circle.items.map((item) => ({
+        id: item.id,
+        title: item.title,
+        retailer: item.retailer,
+        price: formatPrice(item.priceMinor, item.currency),
+        confirmed: item.confirmed,
+        hasPhoto: isStoredPhoto(item.imagePath),
+      })),
+      ...circle.itemLinks.map((link) => ({
+        id: link.registryItem.id,
+        title: link.registryItem.title,
+        retailer: link.registryItem.retailer,
+        price: formatPrice(link.registryItem.priceMinor, link.registryItem.currency),
+        confirmed: true,
+        hasPhoto: isStoredPhoto(link.registryItem.imagePath),
+      })),
+    ],
     // Proxy circles have no owner, hence no owner attributes (RN-A D4).
     attributes: (circle.owner?.attributes ?? []).map((a) => ({ kind: a.kind, valueText: a.valueText, unit: a.unit })),
     accessRequests: await liveAccessRequests(tx, circle.id, circle.eventDate),
@@ -264,6 +279,11 @@ export async function friendCircleView(tx: Tx, circleId: string, viewerUserId: s
   const circle = await tx.circle.findUnique({
     where: { id: circleId },
     include: {
+      itemLinks: {
+        where: { visible: true, registryItem: { private: false } },
+        orderBy: { createdAt: 'asc' },
+        include: { registryItem: true },
+      },
       items: {
         orderBy: { createdAt: 'asc' },
         include: {
@@ -289,7 +309,7 @@ export async function friendCircleView(tx: Tx, circleId: string, viewerUserId: s
     // Friends see the party date whenever it is set, and the real birthday always — a wish that
     // lands on the wrong day is worse than a wish that lands late.
     ...circleDates(circle, true, zoneDay(now)),
-    items: circle.items.map((item) => {
+    items: [...circle.items.map((item) => {
       const pool = item.pools.find((p) => p.status !== 'purchased') ?? null;
       const myClaim = item.claims.find((c) => c.userId === viewerUserId && c.status === 'claimed') ?? null;
       const soloClaim = item.claims.find((c) => c.status === 'claimed' && c.kind === 'solo') ?? null;
@@ -364,6 +384,23 @@ export async function friendCircleView(tx: Tx, circleId: string, viewerUserId: s
               },
       };
     }),
+    ...circle.itemLinks.map((link) => ({
+      id: link.registryItem.id,
+      title: link.registryItem.title,
+      retailer: link.registryItem.retailer,
+      price: formatPrice(link.registryItem.priceMinor, link.registryItem.currency),
+      currency: link.registryItem.currency,
+      hasPhoto: isStoredPhoto(link.registryItem.imagePath),
+      status: 'active' as const,
+      tombstoneReason: null,
+      secret: false,
+      addedByMe: false,
+      claimedByMe: false,
+      claimedByName: null,
+      canReveal: false,
+      pool: null,
+    })),
+    ],
     attributes: (circle.owner?.attributes ?? [])
       .filter((a) => a.visibility === 'friends')
       .map((a) => ({ kind: a.kind, valueText: a.valueText, unit: a.unit })),

@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { AttributeList, Badge, Cta, EmptyState, EventDateForm, ItemPhoto, Meter, Money, Notice, Panel, Screen, Stat, StatList } from '@/components/ui';
 import type { NavItem } from '@/components/ui';
 import { itemStatus, poolPercent } from '@/components/status';
@@ -59,11 +60,12 @@ function LedgerRow({ item, basePath }: { item: FriendItemView; basePath: string 
 }
 
 // Friend projection only; the parent route owns authentication and role selection.
-export function FriendLedgerScreen({ view, basePath, notice, eventDateDraft }: {
+export function FriendLedgerScreen({ view, basePath, notice, eventDateDraft, menu }: {
   view: FriendCircleView;
   basePath: string;
   notice?: string;
   eventDateDraft?: string | null;
+  menu?: ReactNode;
 }) {
   const nav: NavItem[] = [
     { href: basePath, label: 'Gifts', icon: 'ledger', current: true },
@@ -76,7 +78,7 @@ export function FriendLedgerScreen({ view, basePath, notice, eventDateDraft }: {
   const pooledMinor = pools.reduce((sum, pool) => sum + pool.settledMinor, 0);
 
   return (
-    <Screen title="The gift list" circle={{ name: view.name, role: 'friend' }} nav={nav}>
+    <Screen title="The gift list" circle={{ name: view.name, role: 'friend' }} nav={nav} menu={menu}>
       <div className="pn-cols">
         <section aria-label="Gift list" className="pn-stack">
           <Panel tone="human" className="pn-panel-tight">

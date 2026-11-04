@@ -86,7 +86,8 @@ describe('a party date a friend wrote is not the owner’s to see', () => {
   it('names nobody — the writer is recorded, never rendered', async () => {
     await setDate('friend', fx.friendAUserId, '2026-12-19');
     const friend = await body('friend', fx.friendBUserId);
-    expect(friend).not.toMatch(/Thabo|Lerato|set by|who set/i);
+    // Buyer names belong on the friend list. The date writer is not named as the writer.
+    expect(friend).not.toMatch(/set by|who set/i);
   });
 
   it('becomes visible again when the owner overwrites it, because last writer wins', async () => {

@@ -50,7 +50,10 @@ describe('private circle actions', () => {
   });
   it('never hands friend item state to an owner wearing a friend cookie', async () => {
     const response = await get(`/items/${fx.itemOwnId}`, cookie('friend', fx.ownerUserId));
-    expect(response.status).toBe(404);
+    expect(response.status).toBe(200);
+    const html = await response.text();
+    expect(html).toContain('Your wish');
+    expect(html).not.toMatch(/pool|claimed|contribut|Thabo|Lerato/i);
   });
   it('hides a friend-only suggestion from the owner item route', async () => {
     const response = await get(`/items/${fx.itemSecretId}`, cookie('owner'));
