@@ -2,6 +2,12 @@
 
 Agent error log. Newest entry first. No secrets, tokens, env dumps, or credentialed URLs.
 
+## 2026-11-04 ? Mislabeled main commit claimed Caddyfile survival but only touched MISTAKES.md
+**What happened:** Under concurrent agents, a commit whose message said it aligned `Caddyfile.pinata` (card-preview, icons, `/app/app/*`) and documented VM bundle survival landed on `main` while the diff was only `MISTAKES.md` churn. GEO source was already on `main`; the matcher paths and survival section were not.
+**Impact:** GitHub looked updated; the next `vm_deploy` from a refreshed bundle would still omit live Caddy asset matchers if someone trusted the message. Local `git push` races also tried to update `main` while tracking `origin/main`.
+**Fix:** Land the real Caddyfile + `oracle-vm.md` survival section on a feature branch/PR; refresh `~/pinata/pinata.bundle` from that SHA and rebuild so the running image is not an overlay tag.
+**Do not repeat:** After a commit, `git show --stat HEAD` before push. Never `git push origin HEAD` from a branch that tracks `main` ? push `HEAD:refs/heads/<feature>`. Do not trust a commit message without reading the stat.
+
 ## 2026-11-04 — Published the Oracle VM public IP in tracked docs
 **What happened:** Deploy notes put the live host address (`ubuntu@…`) into `ARCHITECTURE.md` and `docs/deployment/oracle-vm.md` on a repo that was already public.
 **Impact:** SSH recon surface on GitHub for as long as those commits were reachable. Not a credential leak, but unnecessary attack surface.
