@@ -14,7 +14,7 @@ export function GET() {
 
   const body = `# Piñata
 
-> A WhatsApp-native group gift list: one owner keeps a wish list; friends claim gifts or pool money behind one buyer, and the owner never sees those plans.
+> A browser-based group gift list: one owner keeps a wish list; friends claim gifts or pool money behind one buyer, and the owner never sees those plans.
 
 Site: ${site}
 Marketing site: ${marketing}/
@@ -26,11 +26,11 @@ FAQ on page: ${marketing}/#faq
 ## Product facts
 
 - Owner view and friend view are two projections of one ledger; the gift recipient does not see claims, pools, pledges or friend-added ideas.
-- Circles are joined from a gated link pasted into a WhatsApp group; friends must be on the circle invite list.
+- Circles are joined from a gated link the owner shares with their group; friends must be on the circle invite list.
 - Piñata holds no money; friends settle payments with each other. Prices default to US dollars, with ZAR, EUR or GBP per gift.
-- Optional Meta AI intake turns a voice note, product screenshot or URL into a draft a person confirms; each AI capability can be switched off in Settings.
+- Friends see who is buying each gift (solo claim or pool buyer).
 - Gift cards are composed for human handover only — no automatic send, notification or social preview.
-- Status: circles open in small batches; start from the app hub or the marketing contact form.
+- Status: start from the app hub (create a circle or log in to your circles dashboard), or use the contact form for help.
 
 ## FAQ
 

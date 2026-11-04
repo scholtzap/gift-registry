@@ -16,11 +16,11 @@ export const SITE_FAQS = [
   {
     question: 'Do I need to install an app?',
     answer:
-      "No. It opens in the browser from the link in your WhatsApp group. Friends need to be on the circle's invite list.",
+      'No. Piñata opens in your browser. Create a circle, then share its link with your group.',
   },
   {
-    question: 'Does the AI decide anything?',
+    question: 'How do friends join?',
     answer:
-      'No. It turns a voice note, photo or link into a draft, and a person confirms it. You can switch each AI feature off in Settings.',
+      'They open the circle link you shared, enter the name they want on the gift card, and the number that was invited. If they are not on the list yet, they can ask and you let them in.',
   },
 ] as const;

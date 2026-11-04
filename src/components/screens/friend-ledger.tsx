@@ -34,6 +34,9 @@ function LedgerRow({ item, basePath }: { item: FriendItemView; basePath: string 
           {item.secret && <Badge tone="human">Secret idea · hidden from them</Badge>}
           {item.addedByMe && <Badge>Your idea</Badge>}
           {pool?.iAmBuyer && <Badge tone="human">You’re the buyer</Badge>}
+          {pool !== null && !pool.iAmBuyer && (
+            <Badge tone="human">{pool.buyerName} is the buyer</Badge>
+          )}
         </div>
 
         {item.status === 'tombstoned' && (
