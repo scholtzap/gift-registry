@@ -44,8 +44,12 @@ describe('the public Piñata landing', () => {
     const primary = appLinks.find((anchor) => anchor[0].includes('pn-button-primary'));
     expect(primary).toBeDefined();
     expect(textOf(primary![2]!)).toBe('Start your circle');
-    expect(anchors.map((anchor) => anchor[1])).toEqual(['#pn-content', '/app', '/app', '/app#open-my-circle', '/privacy']);
-    expect(html).not.toMatch(/(?:href|src)="(?:https?:|\/c\/|\/cards?\/|\/api\/)/);
+    expect(anchors.map((anchor) => anchor[1])).toEqual([
+      '#pn-content', '/app', '/app', '/app#open-my-circle', 'https://scholtz.work', '/privacy',
+    ]);
+    expect(html).toContain('Site built by');
+    expect([...html.matchAll(/(?:href|src)="(https?:[^"]+)"/g)].map((m) => m[1])).toEqual(['https://scholtz.work']);
+    expect(html).not.toMatch(/(?:href|src)="(?:\/c\/|\/cards?\/|\/api\/)/);
   });
 
   it('does not repeat the site how-it-works telling (CR-UX-06)', () => {

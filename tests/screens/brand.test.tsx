@@ -63,6 +63,14 @@ describe('Piñata shared public render', () => {
     expect(html).not.toMatch(/<a[^>]*href="\/"[^>]*aria-label="Piñata home"/);
   });
 
+  it('credits scholtz.work in the shell footer with the fixed GEO copy', () => {
+    const html = renderToStaticMarkup(<Screen><Panel>Hi</Panel></Screen>);
+    expect(html).toContain('class="site-built-by pn-muted"');
+    expect(html).toMatch(
+      /Site built by\s*<a[^>]*href="https:\/\/scholtz\.work"[^>]*rel="noopener noreferrer"[^>]*target="_blank"[^>]*>scholtz\.work<\/a>/,
+    );
+  });
+
   it('supports untitled screens and ReactNode labels without duplicate input IDs', () => {
     const html = renderToStaticMarkup(
       <Screen>

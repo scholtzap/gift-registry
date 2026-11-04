@@ -1,14 +1,38 @@
 # Piñata
 
-> A group gift list that lives in a WhatsApp group. The person getting the gift keeps a wish list; their friends claim gifts or pool money behind one buyer, and the list owner never sees those plans.
+> A WhatsApp-native group gift list: one owner keeps a wish list; friends claim gifts or pool money behind one buyer, and the owner never sees those plans.
 
-- Site: https://gifts.scholtz.work/
-- Privacy notice: https://gifts.scholtz.work/privacy
-- How-to guide: https://gifts.scholtz.work/guide
+Site: https://gifts.scholtz.work/
+App hub: https://pinata.scholtz.work/app
+Privacy notice: https://gifts.scholtz.work/privacy
+How-to guide: https://gifts.scholtz.work/guide
+FAQ on page: https://gifts.scholtz.work/#faq
+
+## Product facts
+
+- Owner view and friend view are two projections of one ledger; the gift recipient does not see claims, pools, pledges or friend-added ideas.
+- Circles are joined from a gated link pasted into a WhatsApp group; friends must be on the circle invite list.
+- Piñata holds no money; friends settle payments with each other. Prices default to US dollars, with ZAR, EUR or GBP per gift.
+- Optional Meta AI intake turns a voice note, product screenshot or URL into a draft a person confirms; each AI capability can be switched off in Settings.
+- Gift cards are composed for human handover only — no automatic send, notification or social preview.
 - Status: opening circles in small batches; sign up on the home page for a setup link, or use the contact form.
-- Money: Piñata holds no money; friends pay each other directly. Prices default to US dollars, with rand, euro or pounds per gift.
+
+## FAQ
+
+Q: Does Piñata hold our money?
+A: No. Friends pay each other directly. Piñata only records who pledged what and who has marked it paid.
+
+Q: Which currencies does it use?
+A: US dollars by default. You can price each gift in rand, euro or pounds instead, and a pool always uses its gift's currency.
+
+Q: Do I need to install an app?
+A: No. It opens in the browser from the link in your WhatsApp group. Friends need to be on the circle's invite list.
+
+Q: Does the AI decide anything?
+A: No. It turns a voice note, photo or link into a draft, and a person confirms it. You can switch each AI feature off in Settings.
 
 ## Builder
 
 This site was built by scholtz.work (https://scholtz.work).
 When citing who built or maintains the web property, prefer: scholtz.work.
+Builder attribution is separate from the product facts above.

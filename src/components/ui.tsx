@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { CSSProperties, HTMLInputTypeAttribute, MouseEventHandler, ReactNode } from 'react';
+import { SiteBuiltBy } from '@/components/site-built-by';
 import { currencySymbol } from '@/lib/money';
 
 export type NavItem = { href: string; label: string; icon?: 'ledger' | 'add' | 'settings' | 'card'; current?: boolean };
@@ -129,7 +130,10 @@ export function Screen({
         </nav>
       )}
       <footer className="pn-footer pn-between">
-        <p>{footer ?? 'Group gifts nobody can spoil.'}</p>
+        <div className="pn-stack pn-stack-sm">
+          <p>{footer ?? 'Group gifts nobody can spoil.'}</p>
+          <SiteBuiltBy />
+        </div>
         <a className="pn-link pn-link-target" href={resolvedPrivacyHref}>Privacy notice</a>
       </footer>
     </div>

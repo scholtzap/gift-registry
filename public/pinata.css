@@ -266,6 +266,8 @@
     width: min(100%, var(--pn-shell)); margin-inline: auto; padding: 1.25rem;
     border-block-start: 1.5px dashed var(--pn-hairline); color: var(--pn-ink-2); font-size: 0.8125rem;
   }
+  .site-built-by { margin: 0; line-height: 1.4; }
+  .site-built-by a { color: inherit; }
 
   /* ---------- Surfaces: white sticker cards on paper ---------- */
   .pn-panel, .pn-note, .pn-banner, .pn-empty { display: grid; gap: 0.75rem; }

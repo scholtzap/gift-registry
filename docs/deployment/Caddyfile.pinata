@@ -2,6 +2,7 @@
 #   pinata.scholtz.work/         -> landing page (static files from site/public)
 #   pinata.scholtz.work/app      -> the app hub (Next route /app, no base path)
 #   pinata.scholtz.work/c/<slug> -> circles, /lookup, /api, app assets -> Next
+#   pinata.scholtz.work/llms.txt -> Next GEO summary (site/public/llms.txt stays for gifts.scholtz.work)
 # gifts.scholtz.work keeps serving the same landing page from Cloudflare Pages.
 # Public ACME (TLS-ALPN) - no DNS plugin.
 {
@@ -24,7 +25,7 @@
 		redir https://{$CIRCLE_HOST}/c{path} 308
 	}
 
-	@app path /app /app/* /c/* /lookup /privacy /offline /health /api/* /_next/* /pinata.css /register-sw.js /sw.js /manifest.webmanifest /icon.png /apple-icon.png /fonts/* /screenshots/*
+	@app path /app /app/* /c/* /lookup /privacy /offline /health /llms.txt /api/* /_next/* /pinata.css /register-sw.js /sw.js /manifest.webmanifest /icon.png /apple-icon.png /fonts/* /screenshots/*
 	handle @app {
 		reverse_proxy app:3000 {
 			header_up X-Forwarded-For {remote_host}
