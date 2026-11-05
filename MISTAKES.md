@@ -2,6 +2,18 @@
 
 Agent error log. Newest entry first. No secrets, tokens, env dumps, or credentialed URLs.
 
+## 2026-11-05 — PR #53 squash-merged before tsc/vitest fixes landed
+**What happened:** `gh pr merge --auto --squash` merged #53 at the same timestamp the first `tsc` job failed. Follow-up pushes (tsc + event-date leak fixes) never ran CI because the PR was already merged; `main` stayed on the broken first squash.
+**Impact:** `main` briefly carried known `tsc` errors and two red event-date leak tests until a follow-up PR.
+**Fix:** Open `fix/flow-simplification-ci` with the cherry-picked fixes and merge that before treating flow-simplification as green.
+**Do not repeat:** Do not assume `--auto` waited for green if `mergedAt` matches a failed check's `completedAt`. Confirm `headRefOid` on the merge commit includes the fix SHAs.
+
+## 2026-11-05 — Auto-join broke event-date leak tests that assumed cross-circle 404
+**What happened:** Share-link auto-join made signed-in outsiders and cross-slug sessions succeed on `/date` POSTs (303). Leak tests still expected 404 for “never joined” and “session names another circle”.
+**Impact:** CI vitest failed on `tests/leak/event-date-secrecy.test.ts` after the flow-simplification push.
+**Fix:** Assert unsigned writes still 404; treat signed-in outsider / cross-slug as auto-join + writer recorded. Secrecy cases on owner HTML stayed.
+**Do not repeat:** When changing who can open `/c/<slug>`, re-run the event-date and circle-link suites before claiming green — those tests encode the old access model.
+
 ## 2026-11-05 — Resend VM sync wrote nothing because SSH stdin was already the script
 **What happened:** `scripts/ops/sync_resend_api_key_to_vm.ps1` ran remote Python as `echo SCRIPT | base64 -d | python3 -` and then wrote `RESEND_API_KEY` to the same SSH stdin. The pipe already owned stdin, so `sys.stdin.read()` in the updater got an empty key (`ERROR bad_key`).
 **Impact:** First resync attempt failed; the VM kept the previous env value.

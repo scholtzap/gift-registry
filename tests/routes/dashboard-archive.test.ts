@@ -49,7 +49,12 @@ it('sorts and archives friend memberships without deleting the membership row', 
     },
   });
 
-  const session = { userId: fx.friendAUserId, circleId: fx.circleId, role: 'friend' as const };
+  const session = {
+    userId: fx.friendAUserId,
+    circleId: fx.circleId,
+    role: 'friend' as const,
+    expiresAt: new Date(Date.now() + 60_000),
+  };
   let view = await loadDashboard(db, session);
   expect(view).not.toBeNull();
   const activeIds = view!.forOthers.map((c) => c.id);

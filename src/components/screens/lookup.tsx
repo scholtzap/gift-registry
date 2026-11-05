@@ -12,11 +12,11 @@ export type PublicCircleHit = { name: string; occasion: string; shareSlug: strin
  */
 export function LookupResultScreen({
   basePath = '',
-  publicCircles,
+  publicCircles = [],
 }: {
   basePath?: string;
-  publicCircles: PublicCircleHit[];
-} = { publicCircles: [] }) {
+  publicCircles?: PublicCircleHit[];
+} = {}) {
   return (
     <Screen
       privacyHref={`${basePath}/privacy`}
