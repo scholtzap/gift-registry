@@ -1,7 +1,9 @@
 # AGENTS.md — gift-registry (Gift Circles)
 
 WhatsApp-native group gift registry, built for the Meta Global AI Developer Hackathon
-(Indie Developer track). Submission deadline **2026-11-04 21:00 ET**; repo must be **public**.
+(Indie Developer track). Submission deadline was **2026-11-04 21:00 ET** — **the hackathon
+window is closed**. Remaining work (membership, lookup, archive, polish) is in scope to
+round off the product; repo stays **public**.
 
 ## What this product is
 

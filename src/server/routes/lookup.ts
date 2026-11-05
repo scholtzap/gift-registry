@@ -3,31 +3,25 @@ import type { Db } from "@/server/db/client";
 import { trustedClientAddress } from "@/server/auth/client-address";
 import { isSameOrigin } from "@/server/auth/same-origin";
 import { hashPhone, normalizeE164 } from "@/server/auth/phone-hash";
+import { classifyIdentifier, hashEmail } from "@/server/auth/email-hash";
 import { generateShareSlug } from "@/server/auth/slug";
 import { gateThrottle } from "@/server/auth/throttle-store";
 import { checkTurnstile, turnstileField } from "@/server/auth/turnstile";
 import { issueSession, sessionCookie } from "@/server/auth/session";
 import { createElement, type ComponentType } from "react";
 import { createRequire } from "node:module";
-import { LookupSearchScreen, ProxyOfferScreen } from "@/components/screens/lookup";
+import {
+  LookupResultScreen, LookupSearchScreen, ProxyOfferScreen, type PublicCircleHit,
+} from "@/components/screens/lookup";
 import { CONTENT_SECURITY_POLICY, page, escapeHtml } from "@/server/routes/shell";
 const { renderToStaticMarkup } = createRequire(import.meta.url)("react-dom/server") as typeof import("react-dom/server");
 
 /**
- * RN-B (create-only, per the owner's Wave 0 answer to RN-D G1) + the RN-C
- * create path.
+ * Lookup + proxy create (flow-simplification / post-hackathon round-off).
  *
- * The lookup half never reads a registry and never renders an existing
- * circle: it takes a number, and always answers 200 with the same offer to
- * create a proxy registry. One body for registered, unregistered and invalid
- * input, so the response is not an existence oracle in status, wording, size
- * or error string. No lookup body contains a share slug or a /c/ href
- * (RN-D M-no-slug), and no raw number is echoed or logged.
- *
- * The create half mints a proxy circle (RN-A D2/D3): no owner, the recipient
- * stored only as a keyed digest plus a pending allowlist row, the creator a
- * plain friend member. Per-creator caps live in the database, not the
- * in-process throttle map (RN-D Gate 4).
+ * Lookup returns one 200 shell for hit and miss: a public-circles list (empty
+ * or filled) plus the same proxy CTA. Create still mints a proxy circle
+ * (RN-A D2/D3). No distinct “not registered” wording.
  */
 
 const NO_STORE = "private, no-store, max-age=0, must-revalidate";
@@ -45,16 +39,53 @@ function headers(extra: Record<string, string> = {}): Record<string, string> {
   };
 }
 
-/** The single lookup answer. Static by design: identical bytes for every input. */
-function offerBody(): string {
-  return page("Start a gift circle", renderToStaticMarkup(createElement(ProxyOfferScreen as ComponentType<{ basePath?: string }>, { basePath: BASE })));
+/** Uniform result: same shell whether publicCircles is empty or not. */
+function resultBody(publicCircles: PublicCircleHit[]): string {
+  return page(
+    "Circles you can open",
+    renderToStaticMarkup(createElement(LookupResultScreen, { basePath: BASE, publicCircles })),
+  );
 }
 
-function offer(extra: Record<string, string> = {}): Response {
-  return new Response(offerBody(), {
+function result(publicCircles: PublicCircleHit[] = [], extra: Record<string, string> = {}): Response {
+  return new Response(resultBody(publicCircles), {
     status: 200,
     headers: headers({ "Content-Type": "text/html; charset=utf-8", ...extra }),
   });
+}
+
+/** Create-path refusals fold into the empty-result shell (same status/shape). */
+function offer(extra: Record<string, string> = {}): Response {
+  return result([], extra);
+}
+
+async function discoverableCirclesForIdentifier(db: Db, raw: string, pepper: string): Promise<PublicCircleHit[]> {
+  const id = classifyIdentifier(raw);
+  if (!id) return [];
+  const user = id.kind === "email"
+    ? await db.prisma.user.findFirst({
+      where: { emailHash: hashEmail(id.normalized, pepper) },
+      select: { id: true },
+    })
+    : await db.prisma.user.findFirst({
+      where: { phoneE164: id.normalized },
+      select: { id: true },
+    });
+  if (!user) return [];
+  const rows = await db.prisma.circle.findMany({
+    where: {
+      status: "active",
+      discoverable: true,
+      OR: [
+        { ownerUserId: user.id },
+        { memberships: { some: { userId: user.id, status: "active" } } },
+      ],
+    },
+    orderBy: [{ eventDate: "asc" }, { name: "asc" }],
+    select: { name: true, occasion: true, shareSlug: true },
+    take: 24,
+  });
+  return rows.map((row) => ({ name: row.name, occasion: row.occasion, shareSlug: row.shareSlug }));
 }
 
 async function readForm(request: Request): Promise<FormData> {
@@ -92,15 +123,17 @@ export async function handleLookupPost(db: Db, request: Request): Promise<Respon
   // Human-proof gate (F12): folds into the uniform offer body, so the check
   // cannot be probed apart from any other refusal. Open seam until set.
   if (intent === "create" && !(await checkTurnstile(request, turnstileField(form)))) return offer();
-  const keyPhoneRaw = String(form.get(intent === "create" ? "recipientPhone" : "phone") ?? "");
-  const normalizedKey = normalizeE164(keyPhoneRaw);
   const pepper = env.PHONE_HASH_PEPPER;
-  const hashPart = normalizedKey ? hashPhone(normalizedKey, pepper) : "invalid";
+  const keyRaw = intent === "create"
+    ? String(form.get("recipientPhone") ?? "")
+    : String(form.get("identifier") ?? form.get("phone") ?? "");
+  const classified = classifyIdentifier(keyRaw);
+  const hashPart = classified
+    ? (classified.kind === "email" ? hashEmail(classified.normalized, pepper) : hashPhone(classified.normalized, pepper))
+    : "invalid";
 
   // The throttle runs before any database read, for successes and failures
   // alike; a denial is the same body plus Retry-After (RN-D SS5).
-  // Rotation-resistant: the pair key, an address-only key and a global
-  // per-number key must ALL allow (F2).
   const lookupAddress = trustedClientAddress(request);
   const gate = await gateThrottle(db, [
     `lookup:${hashPart}:${lookupAddress}`,
@@ -109,7 +142,10 @@ export async function handleLookupPost(db: Db, request: Request): Promise<Respon
   ]);
   if (!gate.allowed) return offer({ "Retry-After": String(gate.retryAfter) });
 
-  if (intent !== "create") return offer();
+  if (intent !== "create") {
+    const publicCircles = await discoverableCirclesForIdentifier(db, keyRaw, pepper);
+    return result(publicCircles);
+  }
 
   const creatorName = String(form.get("creatorName") ?? "").trim();
   const creatorPhone = normalizeE164(String(form.get("creatorPhone") ?? ""));

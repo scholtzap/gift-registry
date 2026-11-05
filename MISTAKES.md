@@ -2,6 +2,12 @@
 
 Agent error log. Newest entry first. No secrets, tokens, env dumps, or credentialed URLs.
 
+## 2026-11-05 — Resend VM sync wrote nothing because SSH stdin was already the script
+**What happened:** `scripts/ops/sync_resend_api_key_to_vm.ps1` ran remote Python as `echo SCRIPT | base64 -d | python3 -` and then wrote `RESEND_API_KEY` to the same SSH stdin. The pipe already owned stdin, so `sys.stdin.read()` in the updater got an empty key (`ERROR bad_key`).
+**Impact:** First resync attempt failed; the VM kept the previous env value.
+**Fix:** Pass the key as remote env `KEY_B64` (base64) alongside `SCRIPT_B64`, and require `PINATA_SSH_HOST` (no hardcoded host). Re-ran successfully (`OK resync`).
+**Do not repeat:** Do not send a second payload on stdin when the remote command is already a stdin-fed interpreter. Use a separate channel (env, argv file, or a framed protocol).
+
 ## 2026-11-04 — Deploy fetched the new bundle and still built the old checkout
 **What happened:** `vm_deploy.sh` ran `git fetch origin main` and `git checkout main`, then tagged the image from `HEAD`. Fetch does not move a local `main` that is already checked out, so the VM stayed on `ce77015c` and compose left the running containers in place.
 **Impact:** A new bundle looked deployed (`STAGE1_DONE`) while the live app was the previous image.

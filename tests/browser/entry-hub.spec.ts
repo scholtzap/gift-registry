@@ -11,7 +11,8 @@ test('landing to hub to created owner ledger with share link', async ({ page }) 
   await expect(page).not.toHaveURL(landingUrl);
   await expect(page.getByRole('heading', { name: 'Create my circle' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Open my circles' })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Start a circle for someone' })).toBeVisible();
+  await expect(page.getByText('More: surprise circle for someone else')).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Start a surprise circle' })).toBeVisible();
 
   await page.getByLabel(/Your name/).fill('Browser Owner');
   await page.getByLabel('Occasion').fill('birthday');

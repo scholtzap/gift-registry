@@ -14,13 +14,21 @@ export type DraftScreenData = {
 
 // Adder-scoped draft only. The route supplies the authenticated role and private, no-store headers.
 // Both projections land here: `role` selects the copy and the hidden visibility value.
-export function DraftConfirmScreen({ draft, basePath, role, notice, circle, defaultCurrency }: {
+export type RegistrySuggestion = {
+  id: string;
+  title: string;
+  price: string | null;
+};
+
+export function DraftConfirmScreen({ draft, basePath, role, notice, circle, defaultCurrency, suggestions = [] }: {
   draft: DraftScreenData | null;
   basePath: string;
   role: 'owner' | 'friend';
   notice?: string;
   circle?: CircleContext;
   defaultCurrency?: string;
+  /** Owner-only: registry wishes not yet linked to this circle. */
+  suggestions?: RegistrySuggestion[];
 }) {
   const currency = draft?.currency ?? defaultCurrency ?? DEFAULT_CURRENCY;
   const supportsCurrency = isCurrency(currency);
@@ -48,6 +56,28 @@ export function DraftConfirmScreen({ draft, basePath, role, notice, circle, defa
           `.pn-cols`: splitting three fields across columns would only scatter the confirm path. */}
       <div className="pn-stack pn-measure">
         {notice && <Notice kind="success">{notice}</Notice>}
+
+        {isOwner && suggestions.length > 0 && (
+          <Panel as="section" className="pn-stack" aria-labelledby="registry-suggestions-title">
+            <h2 id="registry-suggestions-title">From your registry</h2>
+            <p className="pn-muted">Wishes you saved that are not linked to this circle yet. New links stay hidden until you show them from Sharing.</p>
+            <ul className="pn-list">
+              {suggestions.map((item) => (
+                <li key={item.id} className="pn-between">
+                  <div>
+                    <p><strong>{item.title}</strong></p>
+                    {item.price && <p className="pn-small pn-muted">{item.price}</p>}
+                  </div>
+                  <form method="post" action={`${basePath}/draft`}>
+                    <input type="hidden" name="intent" value="link_registry" />
+                    <input type="hidden" name="registryItemId" value={item.id} />
+                    <Button type="submit" variant="secondary">Add, hidden</Button>
+                  </form>
+                </li>
+              ))}
+            </ul>
+          </Panel>
+        )}
 
         {/* A foreign-currency draft is a refusal, not a conversion: error severity, never a note. */}
         {!supportsCurrency && (

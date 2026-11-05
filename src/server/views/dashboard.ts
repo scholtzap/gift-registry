@@ -5,18 +5,7 @@ import { isStoredPhoto } from '@/server/photos';
 
 /**
  * The `/app` dashboard (docs/plans/shared-registry-and-circles.md Q3, Q7 and
- * ledger row 11: the owner return path). One entry door, two shapes:
- *
- * - **Gifts for you:** active circles this person owns.
- * - **Gifts for others:** active friend memberships, plus proxy circles they
- *   created (even without a membership row).
- * - The registry half renders only for an owner session. A friend session
- *   never sees it.
- *
- * Read on the login role from a signed session: the user id comes from the
- * cookie's MAC, and every row returned belongs to that user (owned circles,
- * active memberships, own registry). Nothing here renders claim, pool or
- * contribution state, so the surprise rule holds by construction.
+ * flow-simplification: event-date sort + per-user Archived hide).
  */
 
 export interface DashboardCircle {
@@ -24,6 +13,7 @@ export interface DashboardCircle {
   name: string;
   occasion: string;
   shareSlug: string;
+  eventDate: string | null;
 }
 
 export interface DashboardRegistryLink {
@@ -48,54 +38,76 @@ export interface DashboardView {
   userId: string;
   displayName: string;
   role: 'owner' | 'friend';
-  /** Active circles this person receives in (they are the owner). */
   owned: DashboardCircle[];
-  /** Active friend memberships plus proxy circles this person created. */
   forOthers: DashboardCircle[];
-  /** Null unless the session is the owner path: friends never get a registry. */
+  /** Friend memberships the person hid from the active list (collapsible). */
+  archived: DashboardCircle[];
   registry: DashboardRegistryItem[] | null;
 }
 
-async function circleGroups(db: Db, userId: string): Promise<{ owned: DashboardCircle[]; forOthers: DashboardCircle[] }> {
-  const [owned, memberships, proxies] = await Promise.all([
+function byEventDate(a: DashboardCircle, b: DashboardCircle): number {
+  if (a.eventDate === null && b.eventDate === null) return a.name.localeCompare(b.name);
+  if (a.eventDate === null) return 1;
+  if (b.eventDate === null) return -1;
+  return a.eventDate < b.eventDate ? -1 : a.eventDate > b.eventDate ? 1 : a.name.localeCompare(b.name);
+}
+
+function mapCircle(row: { id: string; name: string; occasion: string; shareSlug: string; eventDate: Date | null }): DashboardCircle {
+  return {
+    id: row.id,
+    name: row.name,
+    occasion: row.occasion,
+    shareSlug: row.shareSlug,
+    eventDate: row.eventDate ? row.eventDate.toISOString().slice(0, 10) : null,
+  };
+}
+
+async function circleGroups(db: Db, userId: string): Promise<{
+  owned: DashboardCircle[];
+  forOthers: DashboardCircle[];
+  archived: DashboardCircle[];
+}> {
+  const select = { id: true, name: true, occasion: true, shareSlug: true, eventDate: true } as const;
+  const [ownedRows, memberships, proxies] = await Promise.all([
     db.prisma.circle.findMany({
       where: { ownerUserId: userId, status: 'active' },
-      orderBy: { createdAt: 'asc' },
-      select: { id: true, name: true, occasion: true, shareSlug: true },
+      select,
     }),
     db.prisma.membership.findMany({
       where: { userId, status: 'active', role: 'friend', circle: { status: 'active' } },
-      orderBy: { joinedAt: 'asc' },
-      select: { circle: { select: { id: true, name: true, occasion: true, shareSlug: true, ownerUserId: true } } },
+      select: {
+        dashboardHidden: true,
+        circle: { select },
+      },
     }),
     db.prisma.circle.findMany({
       where: { proxyCreatedByUserId: userId, status: 'active' },
-      orderBy: { createdAt: 'asc' },
-      select: { id: true, name: true, occasion: true, shareSlug: true },
+      select,
     }),
   ]);
+  const owned = ownedRows.map(mapCircle).sort(byEventDate);
   const ownedIds = new Set(owned.map((circle) => circle.id));
   const seen = new Set<string>(ownedIds);
   const forOthers: DashboardCircle[] = [];
+  const archived: DashboardCircle[] = [];
   for (const row of memberships) {
     if (ownedIds.has(row.circle.id) || seen.has(row.circle.id)) continue;
     seen.add(row.circle.id);
-    forOthers.push({
-      id: row.circle.id,
-      name: row.circle.name,
-      occasion: row.circle.occasion,
-      shareSlug: row.circle.shareSlug,
-    });
+    const mapped = mapCircle(row.circle);
+    if (row.dashboardHidden) archived.push(mapped);
+    else forOthers.push(mapped);
   }
   for (const circle of proxies) {
     if (seen.has(circle.id)) continue;
     seen.add(circle.id);
-    forOthers.push(circle);
+    forOthers.push(mapCircle(circle));
   }
-  return { owned, forOthers };
+  forOthers.sort(byEventDate);
+  archived.sort(byEventDate);
+  return { owned, forOthers, archived };
 }
 
-/** Flat list for the circle side menu: receive-circles, then circles for other people. */
+/** Flat list for the circle side menu: active receive + for-others only (not archived). */
 export async function loadAccessibleCircles(db: Db, userId: string): Promise<Array<DashboardCircle & { role: 'owner' | 'friend' }>> {
   const groups = await circleGroups(db, userId);
   return [
@@ -149,6 +161,23 @@ export async function loadDashboard(db: Db, session: Session | null): Promise<Da
     role: session.role,
     owned: groups.owned,
     forOthers: groups.forOthers,
+    archived: groups.archived,
     registry,
   };
+}
+
+/** Login-role toggle for dashboard archive (hide from active list only). */
+export async function setMembershipDashboardHidden(
+  db: Db, userId: string, circleId: string, hidden: boolean,
+): Promise<boolean> {
+  const row = await db.prisma.membership.findFirst({
+    where: { userId, circleId, status: 'active', role: 'friend' },
+    select: { id: true },
+  });
+  if (!row) return false;
+  await db.prisma.membership.update({
+    where: { id: row.id },
+    data: { dashboardHidden: hidden },
+  });
+  return true;
 }

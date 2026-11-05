@@ -135,11 +135,20 @@ describe('the circle link', () => {
     expect(await res.text()).not.toContain('Naledi');
   });
 
-  it('404s rather than 403s for a signed session belonging to a real user who never joined', async () => {
-    // The signature is valid and the role is honest. RLS is what says no, and the route's job
-    // is to make "no" indistinguishable from "nothing here".
-    const res = await get(slug, cookieFor({ userId: fx.outsiderUserId, role: 'friend' }));
-    expect(res.status).toBe(404);
+  it('auto-joins a signed-in person who opens the share link (friend membership upsert)', async () => {
+    const before = await db.prisma.membership.findFirst({
+      where: { circleId: fx.circleId, userId: fx.outsiderUserId },
+    });
+    expect(before).toBeNull();
+    // Cookie can name any circleId; bindCircleSession rewrites onto this slug's circle.
+    const res = await get(slug, cookieFor({ userId: fx.outsiderUserId, circleId: fx.circleId, role: 'friend' }));
+    expect(res.status).toBe(200);
+    expect(await res.text()).toContain('Trail runners');
+    const membership = await db.prisma.membership.findFirst({
+      where: { circleId: fx.circleId, userId: fx.outsiderUserId },
+      select: { role: true, status: true, dashboardHidden: true },
+    });
+    expect(membership).toEqual({ role: 'friend', status: 'active', dashboardHidden: false });
   });
 
   it('shows the gate, and no circle content, to a caller with no session', async () => {
@@ -154,8 +163,8 @@ describe('the circle link', () => {
     expect(body).not.toContain(slug);
   });
 
-  it('refuses to read a session that was minted for a different circle', async () => {
-    // The forwarded-link bug: one valid cookie, used against someone else's group.
+  it('rewrites a session onto the opened share link and auto-joins that circle', async () => {
+    // Signed-in friend opens a different owner's share link: membership attaches; no gate.
     const other = await db.prisma.circle.create({
       data: {
         name: 'Unrelated circle',
@@ -167,7 +176,14 @@ describe('the circle link', () => {
     });
     const res = await get(other.shareSlug, cookieFor({ userId: fx.friendAUserId, circleId: fx.circleId, role: 'friend' }));
     expect(res.status).toBe(200);
-    expect(await res.text()).toContain('Join this circle');
+    const body = await res.text();
+    expect(body).toContain('Unrelated circle');
+    expect(body).not.toContain('Join this circle');
+    const membership = await db.prisma.membership.findFirst({
+      where: { circleId: other.id, userId: fx.friendAUserId },
+      select: { role: true, status: true },
+    });
+    expect(membership).toEqual({ role: 'friend', status: 'active' });
   });
 
   it('shows the gate to a tampered cookie instead of failing open or throwing', async () => {
