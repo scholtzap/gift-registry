@@ -8,7 +8,7 @@
 python scripts/ops/refresh_plans_index.py --write
 ```
 
-Generated: 2026-11-05 08:59 · repo: `gifts-registry`
+Generated: 2026-11-05 09:09 · repo: `gifts-registry`
 
 ## P0
 
@@ -37,7 +37,6 @@ Generated: 2026-11-05 08:59 · repo: `gifts-registry`
 | 6 | UX CR-06: align site/guide/app copy with what is actually live | done | `ux-copy-alignment.md` |  |
 | 6 | UX CR-04: join-gate error recovery | done | `ux-join-recovery.md` |  |
 | 6 | UX CR-03: fix or remove the broken screenshot strip | done | `ux-landing-strip-assets.md` |  |
-| 7 | Flow simplification — membership, lookup, friend archive, gift suggestions | implementing | `flow-simplification-circles-membership.md` |  |
 | 12 | Registry-network tracks — order, dependencies and what can run in parallel | ready | `rn-tracks.md` |  |
 | 13 | RN-I — submission-window triage: what of the registry network fits before 2026-11-04 | ready | `rn-i-submission-window-triage.md` |  |
 | 14 | RN-A - proxy registry data model and authority rules | ready | `rn-a-proxy-registry-spec.md` | - **Pepper: distinct.** `recipient_phone_e164_hash` uses a separate `PHONE_HASH_PEPPER`, not |

@@ -1,7 +1,7 @@
 ---
 title: Flow simplification — membership, lookup, friend archive, gift suggestions
 type: spec
-status: implementing
+status: implemented
 priority: P1
 rank: 7
 updated: 2026-11-05
