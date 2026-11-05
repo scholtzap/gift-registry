@@ -26,6 +26,8 @@ import { checkTurnstile, turnstileField } from "@/server/auth/turnstile";
 import { issueSession, sessionCookie, sessionFromRequest, SESSION_COOKIE } from "@/server/auth/session";
 import { AI_CAPABILITIES, assertCan, CAPABILITY_COPY, CapabilityOffError, setCapability } from "@/server/entitlements";
 import { addItem, claimItem, contribute, createPool, markPaid, markPaidFor, purchasePool, releaseClaim, revealItem, savePayout, setEventDate, setItemPhoto } from '@/server/ledger';
+import { linkRegistryItem } from '@/server/ledger/registry';
+import { formatMinor } from '@/lib/money';
 import { isCalendarDate } from '@/lib/dates';
 import { readStoredMedia } from '@/server/wa/store';
 import { guardNoPersonPixels, type VisionServices } from '@/server/vision';
@@ -172,25 +174,27 @@ async function cardPng(db: Db, actor: Actor, itemId: string, variant: string | n
 
 const refreshCookie = new WeakMap<Request, string>();
 
-/** Owner, active friend, or the person who created the proxy circle. Proxy creators without a membership row get one so the friend projection can open. */
+/**
+ * Owner, active friend, or share-link auto-join. A signed-in person who opens
+ * `/c/<slug>` gets a friend membership (login-role upsert). Anonymous visitors
+ * still hit the phone allowlist gate. The owner never gets a friend row.
+ */
 async function resolveCircleAccess(db: Db, userId: string, circleId: string): Promise<{ role: 'owner' | 'friend' } | null> {
   const circle = await db.prisma.circle.findUnique({
     where: { id: circleId },
     select: {
       status: true,
       ownerUserId: true,
-      proxyCreatedByUserId: true,
       memberships: { where: { userId, status: 'active' }, select: { role: true } },
     },
   });
   if (!circle || circle.status !== 'active') return null;
   if (circle.ownerUserId === userId) return { role: 'owner' };
   if (circle.memberships.some((row) => row.role === 'friend')) return { role: 'friend' };
-  if (circle.proxyCreatedByUserId !== userId) return null;
   await db.prisma.membership.upsert({
     where: { circleId_userId: { circleId, userId } },
     create: { circleId, userId, role: 'friend', status: 'active' },
-    update: { role: 'friend', status: 'active' },
+    update: { role: 'friend', status: 'active', dashboardHidden: false },
   });
   return { role: 'friend' };
 }
@@ -292,7 +296,29 @@ async function circleGet(db: Db, request: Request, slug: string): Promise<Respon
     if (parsed && !parsed.success) return screenResponse('Draft unavailable', createElement(Screen, { title: 'Draft unavailable', backHref: basePath, circle: circleContext, children: 'This draft could not be read. Return to the circle and add the item manually.' }), 503);
     const candidate = parsed?.success ? parsed.data.candidates[0] : null;
     const draft = candidate ? { id: ingest!.id, title: candidate.title, retailer: candidate.brand, priceMinor: candidate.priceMinor, currency: candidate.currency } : null;
-    return screenResponse('Review your draft', createElement(DraftConfirmScreen, { draft, basePath, role: actor.role, circle: circleContext, defaultCurrency: circle.defaultCurrency }));
+    const suggestions = actor.role !== 'owner' ? [] : (
+      await db.withActor(actor, tx => tx.registryItem.findMany({
+        where: {
+          ownerUserId: actor.userId,
+          private: false,
+          links: { none: { circleId: circle.id } },
+        },
+        orderBy: { createdAt: 'asc' },
+        take: 12,
+        select: { id: true, title: true, priceMinor: true, currency: true },
+      }))
+    ).map((item) => ({
+      id: item.id,
+      title: item.title,
+      price: item.priceMinor === null ? null : formatMinor(item.priceMinor, item.currency),
+    }));
+    const linked = new URL(request.url).searchParams.get('linked') === '1';
+    return screenResponse('Review your draft', createElement(DraftConfirmScreen, {
+      draft, basePath, role: actor.role, circle: circleContext, defaultCurrency: circle.defaultCurrency, suggestions,
+      notice: linked
+        ? 'Added from your registry — still hidden here until you show it from Sharing.'
+        : undefined,
+    }));
   }
   const cardSuffix = pathname.slice(basePath.length);
   const cardPngSuffix = cardSuffix.match(/^\/items\/([^/]+)\/card(\/png)?$/);
@@ -521,6 +547,18 @@ async function circlePost(db: Db, request: Request, slug: string, deps: CircleRo
       return new Response(null, { status: 303, headers: headers({ Location: `${basePath}/items/${itemId}/card` }) });
     }
     if (pathname === `${basePath}/draft`) {
+      if (fields.get('intent') === 'link_registry') {
+        if (actor.role !== 'owner') return notFound();
+        const registryItemId = String(fields.get('registryItemId') ?? '');
+        if (!z.uuid().safeParse(registryItemId).success) return notFound();
+        try {
+          await db.withActor(actor, tx => linkRegistryItem(tx, actor, registryItemId, circle.id));
+        } catch (error) {
+          if (error instanceof Error && error.message === 'ledger_not_found') return notFound();
+          throw error;
+        }
+        return new Response(null, { status: 303, headers: headers({ Location: `${basePath}/draft?linked=1` }) });
+      }
       if (fields.get('intent') !== 'confirm') return notFound();
       const draft = {
         title: String(fields.get('title') ?? ''), retailer: String(fields.get('retailer') ?? ''),

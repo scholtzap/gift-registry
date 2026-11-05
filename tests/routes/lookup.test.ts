@@ -6,11 +6,10 @@ import { handleCircleGet } from '@/server/routes/circle';
 import { seedCircle, type CircleFixture } from '../leak/fixtures';
 
 /**
- * RN-B create-only + RN-C create path. The invariant under test is the
- * always-200 rule as the owner narrowed it (RN-D G1): the lookup renders no
- * existing registry, so registered, unregistered and invalid numbers receive
- * byte-identical answers, and no body carries a slug, a /c/ href, or digits
- * the caller typed. Generated numbers only: this repo is public.
+ * Lookup lists discoverable public circles + always offers proxy create.
+ * Miss/invalid stay byte-identical empty shells (no slug, no typed digits).
+ * Hit shares status and shell headings; Open links are intentional on a hit.
+ * Generated numbers only: this repo is public.
  */
 
 let db: Db;
@@ -45,22 +44,70 @@ function post(fields: Record<string, string>, origin = appOrigin): Promise<Respo
   );
 }
 
-it('answers 200 with byte-identical bodies for registered, unregistered and invalid numbers', async () => {
-  const registered = await post({ phone: num(41) });
-  const unregistered = await post({ phone: num(42) });
+it('answers 200 with byte-identical empty shells for miss and invalid lookups', async () => {
+  const missA = await post({ phone: num(41) });
+  const missB = await post({ phone: num(42) });
   const invalid = await post({ phone: 'not-a-number' });
-  for (const res of [registered, unregistered, invalid]) expect(res.status).toBe(200);
-  const bodies = await Promise.all([registered, unregistered, invalid].map((r) => r.text()));
+  for (const res of [missA, missB, invalid]) expect(res.status).toBe(200);
+  const bodies = await Promise.all([missA, missB, invalid].map((r) => r.text()));
   expect(bodies[0]).toBe(bodies[1]);
   expect(bodies[1]).toBe(bodies[2]);
+  expect(bodies[0]).toContain('Public circles');
+  expect(bodies[0]).toContain('None listed here');
+  expect(bodies[0]).toContain('Start a surprise circle');
 });
 
-it('leaks nothing in the lookup body: no slug, no /c/ href, no typed digits', async () => {
+it('leaks nothing on a miss: no slug, no /c/ href, no typed digits', async () => {
   const res = await post({ phone: num(43) });
   const body = await res.text();
   expect(body).not.toContain('/c/');
   expect(body).not.toContain(num(43));
   expect(body).not.toContain(fx.circleId);
+});
+
+it('lists discoverable circles on a hit with the same shell shape as a miss', async () => {
+  const salt = `lk${suffix}`;
+  const email = `public-${salt}@example.test`;
+  const pepper = env.PHONE_HASH_PEPPER;
+  const { hashEmail } = await import('@/server/auth/email-hash');
+  const owner = await db.prisma.user.create({
+    data: { displayName: 'Public Owner', email, emailHash: hashEmail(email, pepper) },
+  });
+  const publicCircle = await db.prisma.circle.create({
+    data: {
+      name: `Public ${salt}`,
+      occasion: 'birthday',
+      ownerUserId: owner.id,
+      shareSlug: `pub-${salt}`,
+      discoverable: true,
+      status: 'active',
+    },
+  });
+  await db.prisma.circle.create({
+    data: {
+      name: `Private ${salt}`,
+      occasion: 'birthday',
+      ownerUserId: owner.id,
+      shareSlug: `prv-${salt}`,
+      discoverable: false,
+      status: 'active',
+    },
+  });
+  const hit = await post({ identifier: email });
+  const miss = await post({ phone: num(48) });
+  expect(hit.status).toBe(200);
+  expect(miss.status).toBe(200);
+  const hitBody = await hit.text();
+  const missBody = await miss.text();
+  expect(hitBody).toContain('Public circles');
+  expect(missBody).toContain('Public circles');
+  expect(hitBody).toContain('Start a surprise circle');
+  expect(missBody).toContain('Start a surprise circle');
+  expect(hitBody).toContain(publicCircle.name);
+  expect(hitBody).toContain(`/c/${publicCircle.shareSlug}`);
+  expect(hitBody).not.toContain(`prv-${salt}`);
+  expect(missBody).toContain('None listed here');
+  expect(missBody).not.toContain('/c/');
 });
 
 it('throttles a burst on one number with the uniform body plus Retry-After', async () => {
@@ -130,14 +177,13 @@ it('renders /lookup and the proxy offer inside the app shell with the explainer 
   const getBody = await get.text();
   expect(getBody).toContain('/pinata.css');
   expect(getBody).toContain('register-sw.js');
-  expect(getBody).toContain('Buying a gift for someone?');
-  expect(getBody).toContain('You are starting a circle for someone else.');
+  expect(getBody).toContain('Find or start a circle');
 
   const offerRes = await post({ phone: num(46) });
   expect(offerRes.status).toBe(200);
   const body = await offerRes.text();
   expect(body).toContain('/pinata.css');
-  expect(body).toContain('Start a gift circle for someone');
+  expect(body).toContain('Start a surprise circle');
   const explainer = 'You are starting a circle for someone else. They never need an account; you will get a link to share with the group, and the plan stays hidden from them.';
   expect(body).toContain(explainer);
   expect(body.indexOf(explainer)).toBeLessThan(body.indexOf('name="creatorName"'));

@@ -13,10 +13,11 @@ it('keeps brand on the landing and privacy under the base path', () => {
 });
 
 describe('entry hub (CR-UX-01)', () => {
-  it('offers create, proxy and open on one screen with no self-link', () => {
+  it('offers create and open; proxy sits under More', () => {
     const html = render();
     expect(html).toContain('Create my circle');
-    expect(html).toContain('Start a circle for someone');
+    expect(html).toContain('Start a surprise circle');
+    expect(html).toContain('More: surprise circle for someone else');
     expect(html).toContain('Open my circles');
     expect(html).toContain('Open with a code');
     expect(html).toContain('action="/app/create"');

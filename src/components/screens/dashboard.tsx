@@ -127,7 +127,10 @@ export function DashboardScreen({ view, basePath, notice }: {
                 <li key={circle.id} className="pn-between">
                   <div>
                     <p><strong>{circle.name}</strong></p>
-                    <p className="pn-small pn-muted">{circle.occasion}</p>
+                    <p className="pn-small pn-muted">
+                      {circle.occasion}
+                      {circle.eventDate ? ` · ${circle.eventDate}` : ''}
+                    </p>
                   </div>
                   <Cta href={`/c/${encodeURIComponent(circle.shareSlug)}`}>Open</Cta>
                 </li>
@@ -146,14 +149,51 @@ export function DashboardScreen({ view, basePath, notice }: {
                 <li key={circle.id} className="pn-between">
                   <div>
                     <p><strong>{circle.name}</strong></p>
-                    <p className="pn-small pn-muted">{circle.occasion}</p>
+                    <p className="pn-small pn-muted">
+                      {circle.occasion}
+                      {circle.eventDate ? ` · ${circle.eventDate}` : ''}
+                    </p>
                   </div>
-                  <Cta href={`/c/${encodeURIComponent(circle.shareSlug)}`}>Open</Cta>
+                  <div className="pn-actions">
+                    <Cta href={`/c/${encodeURIComponent(circle.shareSlug)}`}>Open</Cta>
+                    <form method="post" action={`${basePath}/app/dashboard`}>
+                      <input type="hidden" name="intent" value="archive" />
+                      <input type="hidden" name="circleId" value={circle.id} />
+                      <Button type="submit" variant="quiet">Archive</Button>
+                    </form>
+                  </div>
                 </li>
               ))}
             </ul>
           )}
         </Panel>
+
+        {view.archived.length > 0 && (
+          <Panel as="section" className="pn-stack">
+            <details>
+              <summary className="pn-item-title">Archived ({view.archived.length})</summary>
+              <p className="pn-small pn-muted">Hidden from your active list only. The circle and its ledger stay intact.</p>
+              <ul className="pn-list">
+                {view.archived.map((circle) => (
+                  <li key={circle.id} className="pn-between">
+                    <div>
+                      <p><strong>{circle.name}</strong></p>
+                      <p className="pn-small pn-muted">{circle.occasion}</p>
+                    </div>
+                    <div className="pn-actions">
+                      <Cta href={`/c/${encodeURIComponent(circle.shareSlug)}`}>Open</Cta>
+                      <form method="post" action={`${basePath}/app/dashboard`}>
+                        <input type="hidden" name="intent" value="unarchive" />
+                        <input type="hidden" name="circleId" value={circle.id} />
+                        <Button type="submit" variant="quiet">Restore</Button>
+                      </form>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </details>
+          </Panel>
+        )}
       </div>
     </Screen>
   );

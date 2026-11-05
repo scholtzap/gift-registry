@@ -276,6 +276,8 @@ model Membership {
   userId    String           @map("user_id") @db.Uuid
   role      MembershipRole   @default(friend)
   status    MembershipStatus @default(active)
+  /// Per-user dashboard hide only. Does not leave the circle or touch the ledger.
+  dashboardHidden Boolean    @default(false) @map("dashboard_hidden")
   joinedAt  DateTime         @default(now()) @map("joined_at") @db.Timestamptz(6)
 
   circle Circle @relation(fields: [circleId], references: [id], onDelete: Cascade)

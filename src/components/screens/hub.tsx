@@ -47,23 +47,25 @@ export function HubScreen({ basePath = '', notice, initial }: {
         </Panel>
 
         <Panel as="section" className="pn-stack">
-          <h2>Start a circle for someone</h2>
-          <p className="pn-muted">
-            Planning a surprise for someone else? Start their circle and share the
-            link with the group — the plan stays hidden from them.
-          </p>
-          <div className="pn-actions">
-            <Cta href={`${basePath}/lookup`}>Start a circle for someone</Cta>
-          </div>
-        </Panel>
-
-        <Panel as="section" className="pn-stack">
           <h2>Open my circles</h2>
-          <p className="pn-muted">Use the email or phone on your circle. Anyone else uses the link.</p>
+          <p className="pn-muted">Use the email or phone on your circle. Anyone else uses the shared link — opening it while signed in adds it here.</p>
           <div className="pn-actions">
             <Cta href={`${basePath}/app/find`}>Open with a code</Cta>
           </div>
         </Panel>
+
+        <details className="pn-stack">
+          <summary className="pn-muted">More: surprise circle for someone else</summary>
+          <Panel as="section" className="pn-stack">
+            <p className="pn-muted">
+              Planning a surprise when they have no account yet? Start a proxy circle
+              and share the link with the group — the plan stays hidden from them.
+            </p>
+            <div className="pn-actions">
+              <Cta href={`${basePath}/lookup`}>Start a surprise circle</Cta>
+            </div>
+          </Panel>
+        </details>
       </div>
     </Screen>
   );
