@@ -18,7 +18,7 @@ A dirty overlay on top of an old SHA **does not survive** the next deploy.
 
 After GEO (or any matcher) lands on GitHub `main`:
 
-1. On a clean reviewed machine: `git bundle create pinata.bundle HEAD`
+1. On a clean reviewed machine: `git bundle create pinata.bundle main` (include the `main` ref — bare `HEAD` alone leaves `origin/main` stuck on the VM)
 2. Copy the bundle to the VM as `~/pinata/pinata.bundle` (keep the previous file as `.bak`)
 3. In `~/pinata/checkout`: `git fetch origin main && git reset --hard origin/main`
 4. Run `~/pinata/vm_deploy.sh` (or the same build + `up -d --force-recreate` steps) so the
