@@ -43,7 +43,7 @@ function headers(extra: Record<string, string> = {}): Record<string, string> {
 function resultBody(publicCircles: PublicCircleHit[]): string {
   return page(
     "Circles you can open",
-    renderToStaticMarkup(createElement(LookupResultScreen, { basePath: BASE, publicCircles })),
+    renderToStaticMarkup(createElement(LookupResultScreen as ComponentType<{ basePath?: string; publicCircles: PublicCircleHit[] }>, { basePath: BASE, publicCircles })),
   );
 }
 
