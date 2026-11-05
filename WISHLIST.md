@@ -27,6 +27,14 @@ Newest first. No secrets (no tokens, passwords, or private URLs with credentials
 
 ---
 
+## 2026-11-05 — GitHub required checks do not block merge on gift-registry
+**Kind:** access
+**Requested by:** agent (PR #53/#54)
+**Pain:** `gh pr merge --squash` completed while verify was red or still running; first squash of #53 landed broken `tsc`/leak tests on `main`.
+**What would help:** Branch protection on `main` requiring `tsc --noEmit` and `vitest (Postgres 16 service)` (and gitleaks) before merge.
+**Where it should live:** GitHub repo Settings → Rules / branch protection for `main`
+**Status:** open
+
 ## 2026-11-05 — secrets-mcp allowlist for Resend → Oracle app.env sync
 **Kind:** automation
 **Requested by:** agent (flow-simplification Resend resync)
