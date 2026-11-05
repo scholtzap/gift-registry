@@ -110,26 +110,48 @@ describe('the write itself', () => {
     expect(circle.eventDateSetByUserId).toBe(fx.friendBUserId);
   });
 
-  it('refuses a person who never joined, and does not move the date', async () => {
+  it('refuses an unsigned date write and does not move the date', async () => {
     const before = await db.prisma.circle.findUniqueOrThrow({ where: { id: fx.circleId } });
-    const response = await setDate('friend', fx.outsiderUserId, '2026-11-30');
+    const response = await handleCirclePost(db, new Request(`${origin}/c/${slug}/date`, {
+      method: 'POST',
+      headers: { origin, 'content-type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ intent: 'set_event_date', eventDate: '2026-11-30' }),
+    }), slug);
     expect(response.status).toBe(404);
     const after = await db.prisma.circle.findUniqueOrThrow({ where: { id: fx.circleId } });
     expect(after.eventDate?.toISOString()).toBe(before.eventDate?.toISOString());
     expect(after.eventDateSetByUserId).toBe(before.eventDateSetByUserId);
   });
 
-  it('cannot be aimed at a circle the session does not name', async () => {
-    // The session carries `fx.circleId`; the only way to reach the other circle is through the
-    // slug. `app_set_event_date` takes a date and nothing else, so there is no argument to aim.
+  it('auto-joins a signed-in outsider on a date write (share-link membership)', async () => {
+    const response = await setDate('friend', fx.outsiderUserId, '2026-11-30');
+    expect(response.status).toBe(303);
+    const after = await db.prisma.circle.findUniqueOrThrow({ where: { id: fx.circleId } });
+    expect(after.eventDate?.toISOString().slice(0, 10)).toBe('2026-11-30');
+    expect(after.eventDateSetByUserId).toBe(fx.outsiderUserId);
+    const membership = await db.prisma.membership.findFirst({
+      where: { circleId: fx.circleId, userId: fx.outsiderUserId },
+      select: { role: true, status: true },
+    });
+    expect(membership).toEqual({ role: 'friend', status: 'active' });
+  });
+
+  it('rewrites a session onto another share slug before a date write', async () => {
+    // Cookie names fx.circleId; posting to other.shareSlug auto-joins that circle (flow-simplification).
     const other = await db.prisma.circle.findUniqueOrThrow({ where: { id: fx.otherCircleId } });
-    const before = other.eventDate?.toISOString();
     const response = await handleCirclePost(db, new Request(`${origin}/c/${other.shareSlug}/date`, {
       method: 'POST',
       headers: { cookie: cookie('friend', fx.friendAUserId), origin, 'content-type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({ intent: 'set_event_date', eventDate: '2026-11-30' }),
     }), other.shareSlug);
-    expect(response.status).toBe(404);
-    expect((await db.prisma.circle.findUniqueOrThrow({ where: { id: fx.otherCircleId } })).eventDate?.toISOString()).toBe(before);
+    expect(response.status).toBe(303);
+    const updated = await db.prisma.circle.findUniqueOrThrow({ where: { id: fx.otherCircleId } });
+    expect(updated.eventDate?.toISOString().slice(0, 10)).toBe('2026-11-30');
+    expect(updated.eventDateSetByUserId).toBe(fx.friendAUserId);
+    const membership = await db.prisma.membership.findFirst({
+      where: { circleId: other.id, userId: fx.friendAUserId },
+      select: { role: true, status: true },
+    });
+    expect(membership).toEqual({ role: 'friend', status: 'active' });
   });
 });
