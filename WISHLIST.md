@@ -41,7 +41,7 @@ Newest first. No secrets (no tokens, passwords, or private URLs with credentials
 **Pain:** Had to unlock bw CLI, custom runner, and `Invoke-SecretScript` around `sync_resend_api_key_to_vm.ps1` because no `run_with_secrets` `command_id` covers VM env rewrite.
 **What would help:** Allowlisted `command_id` (e.g. `pinata_resync_resend`) that injects `RESEND_API_KEY` and runs the repo script with `PINATA_SSH_HOST` from operator private inventory — never printing the key.
 **Where it should live:** secrets-mcp `config.json` commands + vaultwarden-secrets skill allowlist table
-**Status:** open
+**Status:** fulfilled (2026-11-05) — `pinata_resync_resend` in vaultwarden-infra + local secrets-mcp configs; skill table updated. Reload secrets-mcp after copy.
 
 ## 2026-11-04 — Notion doc sync secret is empty
 **Kind:** access
