@@ -33,7 +33,7 @@ Newest first. No secrets (no tokens, passwords, or private URLs with credentials
 **Pain:** `gh pr merge --squash` completed while verify was red or still running; first squash of #53 landed broken `tsc`/leak tests on `main`.
 **What would help:** Branch protection on `main` requiring `tsc --noEmit` and `vitest (Postgres 16 service)` (and gitleaks) before merge.
 **Where it should live:** GitHub repo Settings → Rules / branch protection for `main`
-**Status:** open
+**Status:** fulfilled (2026-11-05) — classic protection on `main` with those three contexts, `strict` + `enforce_admins`
 
 ## 2026-11-05 — secrets-mcp allowlist for Resend → Oracle app.env sync
 **Kind:** automation

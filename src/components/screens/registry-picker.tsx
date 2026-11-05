@@ -17,13 +17,14 @@ export interface PickerLinkedItem extends PickerAvailableItem {
  * in their own projection only. New links stay hidden until the receiver runs
  * the preview and shows them — hiding is always one tap, showing never is.
  */
-export function RegistryPickerScreen({ circleName, basePath, circle, available, linked, notice }: {
+export function RegistryPickerScreen({ circleName, basePath, circle, available, linked, notice, noticeKind = 'error' }: {
   circleName: string;
   basePath: string;
   circle: CircleContext;
   available: PickerAvailableItem[];
   linked: PickerLinkedItem[];
   notice?: string;
+  noticeKind?: 'error' | 'success';
 }) {
   return (
     <Screen
@@ -33,7 +34,7 @@ export function RegistryPickerScreen({ circleName, basePath, circle, available, 
       circle={circle}
     >
       <div className="pn-measure-sm pn-stack pn-stack-lg">
-        {notice !== undefined && <Notice kind="error">{notice}</Notice>}
+        {notice !== undefined && <Notice kind={noticeKind}>{notice}</Notice>}
 
         <Panel as="section" className="pn-stack">
           <h2>In this circle</h2>
