@@ -28,14 +28,16 @@ test('landing to hub to created owner ledger with share link', async ({ page }) 
   await expect(page.getByRole('link', { name: 'Open your circle link' })).toHaveAttribute('href', `/c/${slug}`);
 });
 
-test('hub My circles opens find, not a paste link', async ({ page }) => {
+test('hub Open with a code opens find, not a paste link', async ({ page }) => {
   await page.goto('/app');
   await expect(page.getByLabel(/Circle link or code/)).toHaveCount(0);
-  await page.getByRole('link', { name: 'My circles' }).click();
+  await page.getByRole('link', { name: 'Open with a code' }).click();
   await expect(page).toHaveURL(/\/app\/find$/);
   await expect(page.getByRole('heading', { name: 'Open my circles' })).toBeVisible();
   await page.getByLabel(/Email or phone number/).fill('owner@example.test');
   await page.getByRole('button', { name: 'Send my code' }).click();
+  // Find POST returns the verify screen in-place (URL stays /app/find).
   await expect(page.getByRole('heading', { name: 'Enter the code' })).toBeVisible();
-  await expect(page.getByRole('alert')).toContainText(/code is on its way/);
+  await expect(page.getByRole('status')).toContainText(/code is on its way/);
+  await expect(page.getByRole('heading', { name: 'Next: enter your code' })).toBeVisible();
 });

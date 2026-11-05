@@ -1,40 +1,25 @@
 import type { CircleChoice } from '@/components/screens/circle-rail';
 
-/** Circles for the signed-in person, plus which one is open. Screens add the section link. */
+/** Circles for the signed-in person, plus which one is open. */
 export type CircleSwitcher = {
   circles: CircleChoice[];
   currentSlug: string;
   appHref?: string;
 };
 
-export type CircleMenuProps = CircleSwitcher & {
-  /** The list this circle is showing: wishes for the owner, gifts for a friend. */
-  sectionHref: string;
-  sectionLabel: string;
-  sectionCurrent?: boolean;
-};
+export type CircleMenuProps = CircleSwitcher;
 
 /**
- * Side menu modelled on a closet drawer: one section for the list (wishes),
- * then every circle this person can open.
+ * Side-menu circle switcher: every circle this person can open, plus start-another
+ * and the dashboard. Section links (Wishes / Add / Settings) live in Screen's sidebar.
  */
 export function CircleMenu({
   circles,
   currentSlug,
   appHref = '/app',
-  sectionHref,
-  sectionLabel,
-  sectionCurrent = false,
 }: CircleMenuProps) {
   return (
     <nav className="pn-sidemenu" aria-label="Circles">
-      <a
-        className="pn-sidemenu-item"
-        href={sectionHref}
-        {...(sectionCurrent ? { 'aria-current': 'page' as const } : {})}
-      >
-        {sectionLabel}
-      </a>
       <p className="pn-eyebrow">Your circles</p>
       {circles.length === 0 ? (
         <p className="pn-small pn-muted">This is your only circle so far.</p>

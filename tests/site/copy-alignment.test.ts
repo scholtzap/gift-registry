@@ -8,7 +8,8 @@ describe('site copy alignment (CR-UX-06)', () => {
   it('points the secondary hero CTA at login, not contact', () => {
     const html = site('index.html');
     expect(html).toContain('My circles');
-    expect(html).toContain('https://pinata.scholtz.work/app/find');
+    expect(html).toContain('https://pinata.scholtz.work/app">My circles</a>');
+    expect(html).not.toContain('https://pinata.scholtz.work/app/find">My circles');
     expect(html).not.toContain('#open-my-circle');
     expect(html).not.toContain('or get in touch');
     expect(html).not.toContain('The demo app is open.');
@@ -45,7 +46,7 @@ describe('site copy alignment (CR-UX-06)', () => {
     expect(html).toContain('shares one circle link');
     expect(html).toContain('who claimed or is buying each gift');
     expect(html).toContain('who is buying each gift');
-    expect(html).toContain('https://pinata.scholtz.work/app/find');
+    expect(html).toContain('https://pinata.scholtz.work/app">My circles</a>');
     expect(html).toContain('My circles');
     expect(html).toContain('Optional WhatsApp intake');
     expect(html).not.toContain('Prefer email?');

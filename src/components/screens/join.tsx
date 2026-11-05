@@ -15,7 +15,7 @@ export interface JoinScreenProps {
 export function JoinScreen({ basePath = '', notice, action = '', initialName, initialPhone, rejected }: JoinScreenProps) {
   // A door, not a room: no circle context, no section nav, one measure column on wide rhythm.
   return (
-    <Screen homeHref={`${basePath}/app`} privacyHref={`${basePath}/privacy`}
+    <Screen privacyHref={`${basePath}/privacy`}
       title="Join this circle"
       eyebrow="Keep the surprise"
       lede="Plan the gift with the rest of the group. The person you're buying for can't see any of it."

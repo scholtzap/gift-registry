@@ -14,7 +14,6 @@ export function HubScreen({ basePath = '', notice, initial }: {
 }) {
   return (
     <Screen
-      homeHref={`${basePath}/app`}
       privacyHref={`${basePath}/privacy`}
       title="Start your circle"
       eyebrow="Piñata"
@@ -62,7 +61,7 @@ export function HubScreen({ basePath = '', notice, initial }: {
           <h2>Open my circles</h2>
           <p className="pn-muted">Use the email or phone on your circle. Anyone else uses the link.</p>
           <div className="pn-actions">
-            <Cta href={`${basePath}/app/find`}>My circles</Cta>
+            <Cta href={`${basePath}/app/find`}>Open with a code</Cta>
           </div>
         </Panel>
       </div>

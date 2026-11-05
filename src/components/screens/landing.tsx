@@ -4,7 +4,7 @@ import { Badge, Cta, Panel, Screen } from '@/components/ui';
 export function LandingScreen({ hubHref = '/app', demo = false, assetBase = '' }: { hubHref?: string; demo?: boolean; assetBase?: string } = {}) {
   const appBase = hubHref.replace(/\/app$/, '');
   return (
-    <Screen homeHref={hubHref} privacyHref={`${appBase}/privacy`}>
+    <Screen privacyHref={`${appBase}/privacy`} showMyCircles={false}>
       <div className="pn-hero pn-grid">
         <div className="pn-stack">
           {demo && <Badge>Demo</Badge>}
@@ -22,7 +22,7 @@ export function LandingScreen({ hubHref = '/app', demo = false, assetBase = '' }
           </p>
           <div className="pn-actions">
             <a className="pn-button pn-button-primary" href={hubHref}>Start your circle</a>
-            <Cta href={`${hubHref}/find`}>My circles</Cta>
+            <Cta href={hubHref}>My circles</Cta>
           </div>
         </div>
 

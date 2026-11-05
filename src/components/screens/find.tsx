@@ -11,7 +11,6 @@ export function FindCirclesScreen({ basePath, notice }: {
 }) {
   return (
     <Screen
-      homeHref={`${basePath}/app`}
       privacyHref={`${basePath}/privacy`}
       title="Open my circles"
       eyebrow="Piñata"
@@ -40,16 +39,23 @@ export function VerifyCodeScreen({ basePath, identifier, notice }: {
   identifier: string;
   notice?: string;
 }) {
+  const waiting = notice !== undefined && /code is on its way/i.test(notice);
   return (
     <Screen
-      homeHref={`${basePath}/app`}
       privacyHref={`${basePath}/privacy`}
       title="Enter the code"
       eyebrow="Piñata"
-      lede="If that email or phone is on a circle, a code is on its way. It expires in ten minutes."
+      lede="Open the email we sent, then type the six digits here to reach your circles."
     >
       <div className="pn-measure-sm pn-stack pn-stack-lg">
-        {notice !== undefined && <Notice kind="error">{notice}</Notice>}
+        {waiting ? (
+          <Notice kind="success" title="Next: enter your code">
+            <p>{notice}</p>
+            <p className="pn-banner-cta-hint">Open that email, then type the six digits in the field below to reach your circles.</p>
+          </Notice>
+        ) : notice !== undefined ? (
+          <Notice kind="error">{notice}</Notice>
+        ) : null}
         <Panel as="section" className="pn-stack">
           <form action={`${basePath}/app/verify`} method="post" className="pn-stack">
             <input type="hidden" name="identifier" value={identifier} />

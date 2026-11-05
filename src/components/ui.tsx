@@ -44,10 +44,9 @@ function TabIcon({ name }: { name: string }) {
 }
 
 /**
- * The app shell. `circle` and `nav` are optional so the public landing page renders a bare
- * header; every circle screen passes both, which is what turns a stack of panels into an app
- * with a sense of where you are. The tab bar and the header nav are the same `nav` array
- * rendered twice — CSS shows exactly one of them per breakpoint.
+ * The app shell. The top bar stays slim: brand (landing), optional circle sticker,
+ * and a single "My circles" control. Section links (`nav`) live in the side menu on
+ * wide screens and in the bottom tab bar on small ones — never in the top bar.
  */
 export function Screen({
   children,
@@ -62,6 +61,7 @@ export function Screen({
   homeHref,
   privacyHref,
   menu,
+  showMyCircles = true,
 }: {
   children: ReactNode;
   title?: ReactNode;
@@ -72,16 +72,26 @@ export function Screen({
   circle?: CircleContext;
   nav?: NavItem[];
   footer?: ReactNode;
-  /** Where the brand link goes. A circle screen goes to the signed-in dashboard. */
+  /** Brand / "Piñata home" always opens the landing page unless a test overrides it. */
   homeHref?: string;
-  /** Flat circle switcher. When absent, a circle screen still links to All circles. */
+  /** Circle switcher and any extra side links. Section `nav` is rendered above it. */
   menu?: ReactNode;
   /** The app's own privacy route. Defaults to it under the deployment base path (CR-UX-05). */
   privacyHref?: string;
+  /** Hide the chrome "My circles" control on the marketing landing itself. */
+  showMyCircles?: boolean;
 }) {
-  const appHome = `${process.env.PINATA_BASE_PATH ?? ''}/app`;
-  const resolvedHomeHref = homeHref ?? (circle ? appHome : '/');
-  const resolvedPrivacyHref = privacyHref ?? `${process.env.PINATA_BASE_PATH ?? ''}/privacy`;
+  const base = process.env.PINATA_BASE_PATH ?? '';
+  const appHome = `${base}/app`;
+  const resolvedHomeHref = homeHref ?? '/';
+  const resolvedPrivacyHref = privacyHref ?? `${base}/privacy`;
+  const guideHref = `${base}/guide`;
+  const hasSidebar = Boolean(menu) || (nav !== undefined && nav.length > 0) || Boolean(circle);
+  const sideMenu = menu ?? (circle ? (
+    <nav className="pn-sidemenu" aria-label="Circles">
+      <a className="pn-sidemenu-item" href={appHome}>All circles</a>
+    </nav>
+  ) : null);
   return (
     <div className="pn-screen">
       <a className="pn-skip" href="#pn-content">Skip to content</a>
@@ -97,37 +107,47 @@ export function Screen({
               <p className="pn-context-name">{circle.name}</p>
             </div>
           )}
-          {nav && nav.length > 0 && (
-            <nav className="pn-nav" aria-label="Circle sections">
-              <ul className="pn-nav-list">
-                {nav.map((item) => (
-                  <li key={item.href}>
-                    <a className="pn-nav-item" href={item.href} {...(item.current ? { 'aria-current': 'page' as const } : {})}>
-                      {item.label}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </nav>
+          {showMyCircles && (
+            <a className="pn-chrome-cta" href={appHome}>My circles</a>
           )}
         </div>
-        {menu ?? (circle ? (
-          <nav className="pn-sidemenu" aria-label="Circles">
-            <a className="pn-sidemenu-item" href={appHome}>All circles</a>
-          </nav>
-        ) : null)}
       </header>
-      <main className="pn-main pn-stack" id="pn-content" tabIndex={-1}>
-        {backHref && <a className="pn-back pn-link" href={backHref}><span aria-hidden="true">← </span>{backLabel}</a>}
-        {(title != null || eyebrow != null || lede != null) && (
-          <div className="pn-heading">
-            {eyebrow != null && <p className="pn-eyebrow">{eyebrow}</p>}
-            {title != null && <h1>{title}</h1>}
-            {lede != null && <p className="pn-subhead">{lede}</p>}
-          </div>
+      <div className={hasSidebar ? 'pn-shell-body pn-shell-body-sidebar' : 'pn-shell-body'}>
+        {hasSidebar && (
+          <aside className="pn-sidebar">
+            {nav && nav.length > 0 && (
+              <nav className="pn-sidemenu pn-sidemenu-sections" aria-label="Circle sections">
+                <p className="pn-eyebrow">In this circle</p>
+                <ul className="pn-sidemenu-list">
+                  {nav.map((item) => (
+                    <li key={item.href}>
+                      <a
+                        className="pn-sidemenu-item"
+                        href={item.href}
+                        {...(item.current ? { 'aria-current': 'page' as const } : {})}
+                      >
+                        {item.label}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </nav>
+            )}
+            {sideMenu}
+          </aside>
         )}
-        {children}
-      </main>
+        <main className="pn-main pn-stack" id="pn-content" tabIndex={-1}>
+          {backHref && <a className="pn-back pn-link" href={backHref}><span aria-hidden="true">← </span>{backLabel}</a>}
+          {(title != null || eyebrow != null || lede != null) && (
+            <div className="pn-heading">
+              {eyebrow != null && <p className="pn-eyebrow">{eyebrow}</p>}
+              {title != null && <h1>{title}</h1>}
+              {lede != null && <p className="pn-subhead">{lede}</p>}
+            </div>
+          )}
+          {children}
+        </main>
+      </div>
       {nav && nav.length > 0 && (
         <nav className="pn-tabbar" aria-label="Circle sections">
           {nav.map((item) => (
@@ -138,12 +158,14 @@ export function Screen({
           ))}
         </nav>
       )}
-      <footer className="pn-footer pn-between">
-        <div className="pn-stack pn-stack-sm">
-          <p>{footer ?? 'Group gifts nobody can spoil.'}</p>
+      <footer className="pn-footer">
+        <div className="pn-footer-row">
+          <Brand href={resolvedHomeHref} />
+          <a className="pn-link" href={guideHref}>Guide</a>
+          <a className="pn-link" href={resolvedPrivacyHref}>Privacy notice</a>
           <SiteBuiltBy />
+          <p className="pn-small pn-muted">{footer ?? '© 2026 Piñata'}</p>
         </div>
-        <a className="pn-link pn-link-target" href={resolvedPrivacyHref}>Privacy notice</a>
       </footer>
     </div>
   );
@@ -479,7 +501,8 @@ export function Notice({ children, kind = 'info', title }: {
 }) {
   const role = kind === 'error' ? 'alert' : kind === 'success' ? 'status' : undefined;
   const tone = kind === 'money' ? ' pn-banner-money'
-    : kind === 'done' || kind === 'success' ? ' pn-banner-done'
+    : kind === 'success' ? ' pn-banner-cta'
+    : kind === 'done' ? ' pn-banner-done'
       : kind === 'warning' ? ' pn-banner-warning' : '';
   return (
     <section className={`pn-banner${tone}`} {...(role ? { role } : {})}>

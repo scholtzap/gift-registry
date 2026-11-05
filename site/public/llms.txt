@@ -15,7 +15,7 @@ FAQ on page: https://gifts.scholtz.work/#faq
 - Piñata holds no money; friends settle payments with each other. Prices default to US dollars, with ZAR, EUR or GBP per gift.
 - Friends see who is buying each gift (solo claim or pool buyer).
 - Gift cards are composed for human handover only — no automatic send, notification or social preview.
-- Status: start from the app hub, or open My circles at /app/find to reach the circles dashboard. Use the contact form for help.
+- Status: My circles opens /app (hub or dashboard). Open with a code at /app/find when signed out. Use the contact form for help.
 
 ## FAQ
 

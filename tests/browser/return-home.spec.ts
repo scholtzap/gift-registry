@@ -51,6 +51,8 @@ test('returning person reaches every circle and can come back', async ({ page })
 
   await page.goto('/');
   await page.getByRole('link', { name: 'My circles' }).click();
+  await expect(page).toHaveURL(/\/app$/);
+  await page.getByRole('link', { name: 'Open with a code' }).click();
   await expect(page).toHaveURL(/\/app\/find$/);
   await page.getByLabel(/Email or phone number/).fill(email);
   await page.getByRole('button', { name: 'Send my code' }).click();
@@ -71,14 +73,17 @@ test('returning person reaches every circle and can come back', async ({ page })
   await page.locator('li').filter({ hasText: 'Parents circle' }).getByRole('link', { name: 'Open' }).click();
   await expect(page).toHaveURL(/\/c\/ret-a-/);
   await expect(page.getByText('Your wishes')).toBeVisible();
-  await page.getByRole('link', { name: 'All circles' }).click();
+  // Phone viewport hides the sidebar; chrome "My circles" is the return path.
+  await page.getByRole('link', { name: 'My circles' }).click();
   await expect(page).toHaveURL(/\/app$/);
   await expect(page.getByRole('heading', { name: 'Gifts for you' })).toBeVisible();
 
   await page.locator('li').filter({ hasText: 'Planned picnic' }).getByRole('link', { name: 'Open' }).click();
   await expect(page).toHaveURL(/\/c\/ret-p-/);
   await expect(page.getByText('The gift list')).toBeVisible();
-  await page.getByRole('link', { name: 'Piñata home' }).click();
+  await page.getByRole('link', { name: 'Piñata home' }).first().click();
+  await expect(page).toHaveURL(/\/$/);
+  await page.getByRole('link', { name: 'My circles' }).first().click();
   await expect(page).toHaveURL(/\/app$/);
   await expect(page.getByRole('heading', { name: 'Gifts for others' })).toBeVisible();
 });

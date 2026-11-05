@@ -8,7 +8,7 @@
 python scripts/ops/refresh_plans_index.py --write
 ```
 
-Generated: 2026-11-04 13:20 · repo: `gifts-registry`
+Generated: 2026-11-05 08:13 · repo: `gifts-registry`
 
 ## P0
 
@@ -31,6 +31,7 @@ Generated: 2026-11-04 13:20 · repo: `gifts-registry`
 | 5 | Handover finish-line outcome (site DNS, app follow-ups, remaining gates) | done | `handover-finish-line-outcome.md` |  |
 | 5 | OTP return path — email sign-in for a public circle | implementing | `otp-return-path.md` |  |
 | 5 | WhatsApp task-bot surface — six bounded tasks, fixed menu, no free chat | ready | `whatsapp-task-bot-surface.md` |  |
+| 6 | Consistent chrome, My circles, sidebar sections | done | `chrome-nav-consistency.md` |  |
 | 6 | Day-3 nine follow-ups (throttle, creation, pun, reveal, dispatch, landing) | implementing | `day-3-nine-followups.md` |  |
 | 6 | Pool payout details, amounts-due share, and pledge visibility | done | `pool-payout-details.md` |  |
 | 6 | UX CR-06: align site/guide/app copy with what is actually live | done | `ux-copy-alignment.md` |  |
