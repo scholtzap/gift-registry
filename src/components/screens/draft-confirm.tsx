@@ -1,4 +1,4 @@
-import { AmountField, Badge, Button, Field, IdemKey, Notice, Panel, Screen, type CircleContext, type NavItem } from '@/components/ui';
+import { AmountField, Badge, Button, Cta, Field, IdemKey, Notice, Panel, Screen, type CircleContext, type NavItem } from '@/components/ui';
 import { CURRENCIES, DEFAULT_CURRENCY, currencyLabel, isCurrency, minorToInput } from '@/lib/money';
 
 export type DraftScreenData = {
@@ -76,6 +76,9 @@ export function DraftConfirmScreen({ draft, basePath, role, notice, circle, defa
                 </li>
               ))}
             </ul>
+            <div className="pn-actions">
+              <Cta href={`${basePath}/registry`}>Open Sharing</Cta>
+            </div>
           </Panel>
         )}
 

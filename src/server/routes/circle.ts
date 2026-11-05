@@ -10,6 +10,7 @@ import { loadAccessibleCircles } from "@/server/views/dashboard";
 import { JoinScreen } from "@/components/screens/join";
 import { SettingsScreen } from "@/components/screens/settings";
 import { DraftConfirmScreen } from '@/components/screens/draft-confirm';
+import { RegistryPickerScreen, RegistryPreviewScreen } from '@/components/screens/registry-picker';
 import { ItemDetailScreen } from '@/components/screens/item-detail';
 import { PayoutShareScreen } from '@/components/screens/payout-share';
 import { CardComposerScreen } from '@/components/screens/card-composer';
@@ -26,7 +27,9 @@ import { checkTurnstile, turnstileField } from "@/server/auth/turnstile";
 import { issueSession, sessionCookie, sessionFromRequest, SESSION_COOKIE } from "@/server/auth/session";
 import { AI_CAPABILITIES, assertCan, CAPABILITY_COPY, CapabilityOffError, setCapability } from "@/server/entitlements";
 import { addItem, claimItem, contribute, createPool, markPaid, markPaidFor, purchasePool, releaseClaim, revealItem, savePayout, setEventDate, setItemPhoto } from '@/server/ledger';
-import { linkRegistryItem } from '@/server/ledger/registry';
+import {
+  linkRegistryItem, previewCircleLinks, setLinkVisibility, unlinkRegistryItem,
+} from '@/server/ledger/registry';
 import { formatMinor } from '@/lib/money';
 import { isCalendarDate } from '@/lib/dates';
 import { readStoredMedia } from '@/server/wa/store';
@@ -258,6 +261,45 @@ function minorField(fields: FormData, amountName: string, minorName: string, cur
   return minor === null ? 'invalid' : String(minor);
 }
 
+async function loadRegistryPicker(db: Db, actor: Actor, circleId: string) {
+  return db.withActor(actor, async (tx) => {
+    const [availableRows, linkedRows, visibleRows] = await Promise.all([
+      tx.registryItem.findMany({
+        where: { ownerUserId: actor.userId, private: false, links: { none: { circleId } } },
+        orderBy: { createdAt: 'asc' },
+        select: { id: true, title: true, priceMinor: true, currency: true },
+      }),
+      tx.circleItemLink.findMany({
+        where: { circleId, registryItem: { ownerUserId: actor.userId, private: false } },
+        orderBy: { createdAt: 'asc' },
+        include: { registryItem: { select: { id: true, title: true, priceMinor: true, currency: true } } },
+      }),
+      tx.circleItemLink.findMany({
+        where: { circleId, visible: true, registryItem: { ownerUserId: actor.userId, private: false } },
+        orderBy: { createdAt: 'asc' },
+        include: { registryItem: { select: { title: true } } },
+      }),
+    ]);
+    return {
+      available: availableRows.map((item) => ({
+        id: item.id,
+        title: item.title,
+        price: item.priceMinor === null ? null : formatMinor(item.priceMinor, item.currency),
+      })),
+      linked: linkedRows.map((link) => ({
+        id: link.registryItem.id,
+        title: link.registryItem.title,
+        price: link.registryItem.priceMinor === null
+          ? null
+          : formatMinor(link.registryItem.priceMinor, link.registryItem.currency),
+        visible: link.visible,
+        previewed: link.previewedAt !== null,
+      })),
+      visibleTitles: visibleRows.map((link) => link.registryItem.title),
+    };
+  });
+}
+
 async function circleGet(db: Db, request: Request, slug: string): Promise<Response> {
   const basePath = `/c/${encodeURIComponent(slug)}`;
   const pathname = new URL(request.url).pathname;
@@ -312,12 +354,33 @@ async function circleGet(db: Db, request: Request, slug: string): Promise<Respon
       title: item.title,
       price: item.priceMinor === null ? null : formatMinor(item.priceMinor, item.currency),
     }));
-    const linked = new URL(request.url).searchParams.get('linked') === '1';
     return screenResponse('Review your draft', createElement(DraftConfirmScreen, {
       draft, basePath, role: actor.role, circle: circleContext, defaultCurrency: circle.defaultCurrency, suggestions,
-      notice: linked
-        ? 'Added from your registry — still hidden here until you show it from Sharing.'
-        : undefined,
+    }));
+  }
+  if (pathname === `${basePath}/registry` || pathname === `${basePath}/registry/preview`) {
+    if (actor.role !== 'owner') return notFound();
+    const picker = await loadRegistryPicker(db, actor, circle.id);
+    if (pathname === `${basePath}/registry/preview`) {
+      return screenResponse(`Previewing ${circle.name}`, createElement(RegistryPreviewScreen, {
+        circleName: circle.name,
+        basePath,
+        circle: circleContext,
+        titles: picker.visibleTitles,
+        showable: picker.linked.filter((item) => !item.visible && item.previewed).map(({ id, title, price }) => ({ id, title, price })),
+      }));
+    }
+    const linkedNotice = new URL(request.url).searchParams.get('linked') === '1'
+      ? 'Added from your registry — still hidden until you preview and show it.'
+      : undefined;
+    return screenResponse(`Sharing in ${circle.name}`, createElement(RegistryPickerScreen, {
+      circleName: circle.name,
+      basePath,
+      circle: circleContext,
+      available: picker.available,
+      linked: picker.linked,
+      notice: linkedNotice,
+      noticeKind: linkedNotice ? 'success' : 'error',
     }));
   }
   const cardSuffix = pathname.slice(basePath.length);
@@ -546,6 +609,52 @@ async function circlePost(db: Db, request: Request, slug: string, deps: CircleRo
       }
       return new Response(null, { status: 303, headers: headers({ Location: `${basePath}/items/${itemId}/card` }) });
     }
+    if (pathname === `${basePath}/registry`) {
+      if (actor.role !== 'owner') return notFound();
+      const intent = String(fields.get('intent') ?? '');
+      const registryItemId = String(fields.get('registryItemId') ?? '');
+      const pickerAgain = async (notice: string) => {
+        const picker = await loadRegistryPicker(db, actor, circle.id);
+        return screenResponse(`Sharing in ${circle.name}`, createElement(RegistryPickerScreen, {
+          circleName: circle.name,
+          basePath,
+          circle: { name: circle.name, role: actor.role },
+          available: picker.available,
+          linked: picker.linked,
+          notice,
+        }), 422);
+      };
+      try {
+        if (intent === 'preview') {
+          await db.withActor(actor, tx => previewCircleLinks(tx, actor, circle.id));
+          return new Response(null, { status: 303, headers: headers({ Location: `${basePath}/registry/preview` }) });
+        }
+        if (!z.uuid().safeParse(registryItemId).success) return notFound();
+        if (intent === 'link') {
+          await db.withActor(actor, tx => linkRegistryItem(tx, actor, registryItemId, circle.id));
+          return new Response(null, { status: 303, headers: headers({ Location: `${basePath}/registry?linked=1` }) });
+        }
+        if (intent === 'unlink') {
+          await db.withActor(actor, tx => unlinkRegistryItem(tx, actor, registryItemId, circle.id));
+          return new Response(null, { status: 303, headers: headers({ Location: `${basePath}/registry` }) });
+        }
+        if (intent === 'show') {
+          await db.withActor(actor, tx => setLinkVisibility(tx, actor, registryItemId, circle.id, true));
+          return new Response(null, { status: 303, headers: headers({ Location: `${basePath}/registry` }) });
+        }
+        if (intent === 'hide') {
+          await db.withActor(actor, tx => setLinkVisibility(tx, actor, registryItemId, circle.id, false));
+          return new Response(null, { status: 303, headers: headers({ Location: `${basePath}/registry` }) });
+        }
+      } catch (error) {
+        if (error instanceof Error && error.message === 'ledger_not_found') return notFound();
+        if (error instanceof Error && error.message === 'ledger_preview_required') {
+          return pickerAgain('Preview this circle before showing anything new. Showing stays closed until then.');
+        }
+        throw error;
+      }
+      return notFound();
+    }
     if (pathname === `${basePath}/draft`) {
       if (fields.get('intent') === 'link_registry') {
         if (actor.role !== 'owner') return notFound();
@@ -557,7 +666,7 @@ async function circlePost(db: Db, request: Request, slug: string, deps: CircleRo
           if (error instanceof Error && error.message === 'ledger_not_found') return notFound();
           throw error;
         }
-        return new Response(null, { status: 303, headers: headers({ Location: `${basePath}/draft?linked=1` }) });
+        return new Response(null, { status: 303, headers: headers({ Location: `${basePath}/registry?linked=1` }) });
       }
       if (fields.get('intent') !== 'confirm') return notFound();
       const draft = {
