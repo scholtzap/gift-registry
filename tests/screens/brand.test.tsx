@@ -54,13 +54,14 @@ describe('Piñata shared public render', () => {
     expect(html).toContain('pn-button-quiet');
   });
 
-  it('points brand and privacy at the app surface under its base path (CR-UX-05)', () => {
+  it('keeps brand on the landing and My circles on the app hub under a base path', () => {
     const html = renderToStaticMarkup(
-      <Screen homeHref="/app/app" privacyHref="/app/privacy"><Panel>Hi</Panel></Screen>,
+      <Screen homeHref="/" privacyHref="/app/privacy"><Panel>Hi</Panel></Screen>,
     );
-    expect(html).toMatch(/<a[^>]*href="\/app\/app"[^>]*aria-label="Piñata home"/);
+    expect(html).toMatch(/<a[^>]*href="\/"[^>]*aria-label="Piñata home"/);
+    expect(html).toMatch(/<a[^>]*class="pn-chrome-cta"[^>]*href="\/app"[^>]*>My circles<\/a>/);
     expect(html).toMatch(/<a[^>]*href="\/app\/privacy"[^>]*>Privacy notice<\/a>/);
-    expect(html).not.toMatch(/<a[^>]*href="\/"[^>]*aria-label="Piñata home"/);
+    expect(html).toMatch(/<a[^>]*href="\/guide"[^>]*>Guide<\/a>/);
   });
 
   it('credits scholtz.work in the shell footer with the fixed GEO copy', () => {
@@ -69,6 +70,25 @@ describe('Piñata shared public render', () => {
     expect(html).toMatch(
       /Site built by\s*<a[^>]*href="https:\/\/scholtz\.work"[^>]*rel="noopener noreferrer"[^>]*target="_blank"[^>]*>scholtz\.work<\/a>/,
     );
+  });
+
+  it('puts circle section links in the side menu, not the top bar', () => {
+    const html = renderToStaticMarkup(
+      <Screen
+        circle={{ name: 'Arno — Birthday', role: 'owner' }}
+        nav={[
+          { href: '/c/x', label: 'Wishes', current: true },
+          { href: '/c/x/draft', label: 'Add' },
+          { href: '/c/x/settings', label: 'Settings' },
+        ]}
+      >
+        <Panel>Hi</Panel>
+      </Screen>,
+    );
+    expect(html).toContain('aria-label="Circle sections"');
+    expect(html).toContain('pn-sidebar');
+    expect(html).not.toContain('pn-nav-list');
+    expect(html).toMatch(/<a[^>]*class="pn-chrome-cta"[^>]*>My circles<\/a>/);
   });
 
   it('supports untitled screens and ReactNode labels without duplicate input IDs', () => {

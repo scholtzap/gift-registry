@@ -121,20 +121,17 @@ function renderFriend(view: NonNullable<Awaited<ReturnType<typeof friendCircleVi
 async function renderLedger(db: Db, actor: Actor, circleId: string, basePath: string, date?: { notice?: string; eventDateDraft?: string | null }): Promise<Response> {
   const circles = actor.userId ? await loadAccessibleCircles(db, actor.userId) : [];
   const currentSlug = decodeURIComponent(basePath.slice('/c/'.length));
-  const menuFor = (sectionLabel: string) => createElement(CircleMenu, {
+  const menu = createElement(CircleMenu, {
     circles: circles.map((circle) => ({ name: circle.name, shareSlug: circle.shareSlug, role: circle.role })),
     currentSlug,
     appHref: `${process.env.PINATA_BASE_PATH ?? ''}/app`,
-    sectionHref: basePath,
-    sectionLabel,
-    sectionCurrent: true,
   });
   if (actor.role === 'owner') {
     const view = await db.withActor(actor, tx => ownerCircleView(tx, circleId));
-    return view === null ? notFound() : renderOwner(view, basePath, date, menuFor('Wishes'));
+    return view === null ? notFound() : renderOwner(view, basePath, date, menu);
   }
   const view = await db.withActor(actor, tx => friendCircleView(tx, circleId, actor.userId));
-  return view === null ? notFound() : renderFriend(view, basePath, date, menuFor('Gifts'));
+  return view === null ? notFound() : renderFriend(view, basePath, date, menu);
 }
 
 function screenResponse(title: string, content: ReactNode, status = 200): Response {

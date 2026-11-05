@@ -5,10 +5,11 @@ import { HubScreen } from '@/components/screens/hub';
 
 const render = (props?: Parameters<typeof HubScreen>[0]) => renderToStaticMarkup(createElement(HubScreen, props));
 
-it('points brand and privacy at the app routes under the base path (CR-UX-05)', () => {
+it('keeps brand on the landing and privacy under the base path', () => {
   const html = render({ basePath: '/app' });
-  expect(html).toContain('href="/app/app"');
+  expect(html).toMatch(/aria-label="Piñata home"[^>]*href="\/"|href="\/"[^>]*aria-label="Piñata home"/);
   expect(html).toContain('href="/app/privacy"');
+  expect(html).toMatch(/class="pn-chrome-cta"[^>]*href="\/app"/);
 });
 
 describe('entry hub (CR-UX-01)', () => {
@@ -17,13 +18,13 @@ describe('entry hub (CR-UX-01)', () => {
     expect(html).toContain('Create my circle');
     expect(html).toContain('Start a circle for someone');
     expect(html).toContain('Open my circles');
+    expect(html).toContain('Open with a code');
     expect(html).toContain('action="/app/create"');
     expect(html).toContain('href="/app/find"');
     expect(html).not.toContain('action="/app/find"');
     expect(html).not.toContain('open-my-circle');
     expect(html).toContain('href="/lookup"');
-    // Brand/Home intentionally returns to this hub (CR-UX-05); no primary
-    // button may reload it.
+    // Brand returns to the landing; chrome My circles opens this hub.
     expect(html).not.toMatch(/pn-button-primary[^>]*href="\/app"/);
   });
 

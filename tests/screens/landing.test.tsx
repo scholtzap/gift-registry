@@ -39,14 +39,14 @@ describe('the public Piñata landing', () => {
     const html = renderLanding();
     const anchors = [...html.matchAll(/<a\b[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/g)];
     const appLinks = anchors.filter((anchor) => anchor[1] === '/app');
-    // Brand/Home plus the primary CTA both point at the entry hub (CR-UX-05).
+    // Primary "Start" and secondary "My circles" both open the hub; chrome hides My circles on the landing.
     expect(appLinks).toHaveLength(2);
     const primary = appLinks.find((anchor) => anchor[0].includes('pn-button-primary'));
     expect(primary).toBeDefined();
     expect(textOf(primary![2]!)).toBe('Start your circle');
     expect(textOf(html)).toContain('My circles');
     expect(anchors.map((anchor) => anchor[1])).toEqual([
-      '#pn-content', '/app', '/app', '/app/find', 'https://scholtz.work', '/privacy',
+      '#pn-content', '/', '/app', '/app', '/', '/guide', '/privacy', 'https://scholtz.work',
     ]);
     expect(html).toContain('Site built by');
     expect([...html.matchAll(/(?:href|src)="(https?:[^"]+)"/g)].map((m) => m[1])).toEqual(['https://scholtz.work']);
@@ -123,7 +123,8 @@ describe('the public Piñata landing', () => {
     expect(html.match(/<h1\b/g)).toHaveLength(1);
     expect(html).not.toContain('id="how-it-works"');
     expect(html).toMatch(/<img\b[^>]*src="\/icon.png"[^>]*alt=""/);
-    expect(html.match(/<img\b/g)).toHaveLength(4);
+    // Header brand, footer brand, three demo screenshots.
+    expect(html.match(/<img\b/g)).toHaveLength(5);
     for (const shot of ['owner-ledger', 'friend-ledger', 'gift-card']) {
       expect(html).toContain(`src="/screenshots/${shot}.png"`);
     }

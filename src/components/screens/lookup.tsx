@@ -6,7 +6,7 @@ export const PROXY_EXPLAINER =
 
 export function LookupSearchScreen({ basePath = '' }: { basePath?: string } = {}) {
   return (
-    <Screen homeHref={`${basePath}/app`} privacyHref={`${basePath}/privacy`}
+    <Screen privacyHref={`${basePath}/privacy`}
       title="Buying a gift for someone?"
       eyebrow="Start a circle"
       lede="Type their number and we will help you start. Nothing about anyone is shown here."
@@ -36,7 +36,7 @@ export function LookupSearchScreen({ basePath = '' }: { basePath?: string } = {}
 
 export function ProxyOfferScreen({ basePath = '' }: { basePath?: string } = {}) {
   return (
-    <Screen homeHref={`${basePath}/app`} privacyHref={`${basePath}/privacy`}
+    <Screen privacyHref={`${basePath}/privacy`}
       title="Start a gift circle for someone"
       eyebrow="For someone else"
       lede={PROXY_EXPLAINER}

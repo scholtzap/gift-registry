@@ -15,7 +15,7 @@ export const metadata: Metadata = {
 export default function OfflinePage() {
   const base = process.env.PINATA_BASE_PATH ?? '';
   return (
-    <Screen homeHref={`${base}/app`} privacyHref={`${base}/privacy`}
+    <Screen privacyHref={`${base}/privacy`}
       title="You are offline"
       lede="Piñata can’t reach the server right now."
     >

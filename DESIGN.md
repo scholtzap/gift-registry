@@ -78,8 +78,10 @@ tomato wash = needs attention. A new surface picks its wash by what it is about,
 - **Buttons:** primary = tomato fill, white DM Sans 700, 48px tall, ink outline + lift. One primary per
   screen. Secondary = white fill, ink text. Quiet = link-coloured text, no outline. Disabled = paper fill,
   `ink-2` text, no shadow.
-- **Header:** paper, brand tile + wordmark, a **sticker** naming the side (`Friends only` with a lock on
-  lilac, `Owner view` on marigold, rotated -2°), the circle name, then the fringe.
+- **Header:** paper, brand tile + wordmark (always the landing), a **sticker** naming the side
+  (`Friends only` with a lock on lilac, `Owner view` on marigold, rotated -2°), the circle name, one
+  **My circles** control to `/app`, then the fringe. Section links (Wishes / Add / Settings) and the
+  circle switcher live in the **side menu**, never in the top bar.
 - **Tab bar (mobile):** white, ink top rule; the current tab is a marigold pill with an ink outline.
 - **Item card:** white sticker card; title is the link (Bricolage, marigold underline); price in `money-ink`;
   one status badge; the pool sits in a nested green block with the meter and "R… settled of R…".

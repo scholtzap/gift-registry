@@ -16,7 +16,6 @@ export function DashboardScreen({ view, basePath, notice }: {
   const isOwner = view.role === 'owner';
   return (
     <Screen
-      homeHref={`${basePath}/app`}
       privacyHref={`${basePath}/privacy`}
       title="Your circles"
       eyebrow="Piñata"
