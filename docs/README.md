@@ -4,6 +4,15 @@ Source of truth for Gift Circles (WhatsApp-native group gift registry). Syncs to
 GitHub Actions on push to `main` — see `.github/workflows/sync-notion-docs.yml`. Do not run
 `/doc-kb-save` by hand; CI owns the sync.
 
+Pull requests run `.github/workflows/pr-gate.yml`, copied from `scholtzap/agent-config`. It
+calls the shared reusable workflow `scholtzap/.github/.github/workflows/pr-gate.yml@main`.
+This repo's default branch is `main`, so the caller is unchanged. The check fails when the
+description's first non-empty line does not start with `Done when:`, when no `Task:` line
+carries a board Task ID, or when a test-plan box is unticked and the line has no
+`follow-up: #<issue>`. Product checks stay in `.github/workflows/verify.yml`. Adding
+`pr-gate` to the required status checks on `main` is an owner setting in branch protection;
+the workflow file does not do that.
+
 | Folder | Holds |
 |---|---|
 | [`plans/`](plans/) | The work queue. Every plan, TODO, deferred item and handover, each with YAML frontmatter. Indexed by [`PLANS_INDEX.md`](plans/PLANS_INDEX.md), which is generated. |
