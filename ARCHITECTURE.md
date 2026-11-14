@@ -45,7 +45,7 @@ gifts-registry/
     deployment/             # Unexecuted Oracle/Caddy/Compose/k6 candidates
     operations/parallel-agent-outputs/ # Worker reports and parent verification addenda
     plans/                  # Git-native work queue and generated index
-  .github/workflows/        # Existing workflow sources; execution not certified here
+  .github/workflows/        # verify, plans-registry-gate, sync-notion-docs, pr-gate caller
 ```
 
 **Ecosystem:** [AGENTS.md](AGENTS.md) governs behavior; [SPEC.md](SPEC.md) defines product requirements; [DESIGN.md](DESIGN.md) defines the Paper Fiesta tokens and the UI rules agents must pass; [MISTAKES.md](MISTAKES.md) and [WISHLIST.md](WISHLIST.md) record incidents and tooling gaps. Work status is in [docs/plans/PLANS_INDEX.md](docs/plans/PLANS_INDEX.md); integration evidence is in [parallel-build-closeout](docs/plans/parallel-build-closeout.md). No generated graph is needed to use this map.
@@ -150,6 +150,8 @@ Migrations must remain expand-only. Recovery requires a previous image tag and a
 
 **CI quickref:** this repo is public (free Linux minutes). Historically, while it was still private, a GitHub Actions job that failed in ~4 s with zero steps and no log meant Actions minutes/billing, not YAML — the reason lived in the check-run annotation, not `--log-failed`. Do not debug the workflow file for that pattern.
 
+`.github/workflows/pr-gate.yml` calls `scholtzap/.github/.github/workflows/pr-gate.yml@main` on pull request open, edit, synchronize, and reopen. Required status checks on `main` (set 2026-11-05) are `tsc --noEmit`, `vitest (Postgres 16 service)`, and `gitleaks + no-real-numbers`. `pr-gate` is not one of those contexts until an owner adds it. Docs index: [docs/README.md](docs/README.md).
+
 ## 7. Security Considerations
 
 - Actual ownership and active membership are checked at HTTP/model boundaries; a signed cookie role alone is insufficient. Keep the explicit owner branch and friend-owner exclusion.
@@ -191,7 +193,7 @@ Repository: `scholtzap/gift-registry` (**public** as of the 2026-11-04 safety ch
 
 Primary Contact: Arno Scholtz. Meta Global AI Developer Hackathon, Indie Developer track; submission deadline **2026-11-04 21:00 ET**.
 
-Date of Last Update: **2026-11-04**.
+Date of Last Update: **2026-11-13**.
 
 ## 11. Glossary / Acronyms
 

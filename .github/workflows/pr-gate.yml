@@ -1,0 +1,12 @@
+name: pr-gate
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+permissions:
+  contents: read
+
+jobs:
+  pr-gate:
+    uses: scholtzap/.github/.github/workflows/pr-gate.yml@main

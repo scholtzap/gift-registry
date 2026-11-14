@@ -27,6 +27,14 @@ Newest first. No secrets (no tokens, passwords, or private URLs with credentials
 
 ---
 
+## 2026-11-13 — pr-gate is not a required check on main
+**Kind:** access
+**Requested by:** agent (TRAINER-PRGATE-COVERAGE)
+**Pain:** `.github/workflows/pr-gate.yml` runs on pull requests. Branch protection on `main` still requires only the three verify contexts. This session's token cannot read or edit that protection (HTTP 403).
+**What would help:** An owner adds the `pr-gate` status-check context (the name `gh pr checks` shows) to required checks on `main`.
+**Where it should live:** GitHub repo Settings → branch protection for `main`
+**Status:** open
+
 ## 2026-11-05 — GitHub required checks do not block merge on gift-registry
 **Kind:** access
 **Requested by:** agent (PR #53/#54)

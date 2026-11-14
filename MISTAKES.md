@@ -2,6 +2,12 @@
 
 Agent error log. Newest entry first. No secrets, tokens, env dumps, or credentialed URLs.
 
+## 2026-11-13 — Shared pr-gate treated the agent body marker as the first line
+**What happened:** `.github/workflows/pr-gate.yml` calls `scholtzap/.github` and requires the first non-empty description line to start with `Done when:`. The pull-request writer stores `<!-- CURSOR_AGENT_PR_BODY_BEGIN -->` above that line. The first runs failed on that marker. The git credential can push but cannot update a pull request (HTTP 403, `pull_requests=read`).
+**Impact:** pr-gate stayed red until the stored description was rewritten so line 1 is `Done when:`. A follow-up edit was refused once the begin marker was gone ("not agent-managed").
+**Fix:** The description on PR #60 was replaced with text that starts with `Done when:`. The workflow file itself stays the byte-identical caller.
+**Do not repeat:** Do not treat the text passed to the pull-request tool as the stored body. Read the body back. Do not strip the begin marker if a later edit still has to go through that tool.
+
 ## 2026-11-05 — PR #53 squash-merged before tsc/vitest fixes landed
 **What happened:** `gh pr merge --auto --squash` merged #53 at the same timestamp the first `tsc` job failed. Follow-up pushes (tsc + event-date leak fixes) never ran CI because the PR was already merged; `main` stayed on the broken first squash.
 **Impact:** `main` briefly carried known `tsc` errors and two red event-date leak tests until a follow-up PR.
